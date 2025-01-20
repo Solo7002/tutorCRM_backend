@@ -1,4 +1,4 @@
-const { uploadFileToBlob, deleteFileFromBlob } = require('../storage/azureBlob');
+const { uploadFileToBlob, deleteFileFromBlob, generateTemporaryUrl } = require('../storage/azureBlob');
 
 const uploadFile = async (req, res) => {
   try {
@@ -42,4 +42,20 @@ const deleteFile = async (req, res) => {
   }
 };
 
-module.exports = { uploadFile, deleteFile };
+const downloadFile = async (req, res) => {
+  try {
+    const { fileName } = req.params;
+
+    if (!fileName) {
+      return res.status(400).json({ error: "Имя файла не указано" });
+    }
+
+    const fileUrl = await generateTemporaryUrl(fileName);
+    res.status(200).json({ url: fileUrl });
+  } catch (error) {
+    console.error("Ошибка при создании ссылки для скачивания:", error.message);
+    res.status(500).json({ error: "Внутренняя ошибка сервера" });
+  }
+};
+
+module.exports = { uploadFile, deleteFile, downloadFile };

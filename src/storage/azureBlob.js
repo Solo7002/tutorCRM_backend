@@ -1,4 +1,4 @@
-const { BlobServiceClient, StorageSharedKeyCredential } = require('@azure/storage-blob');
+const { BlobServiceClient, StorageSharedKeyCredential, generateBlobSASQueryParameters, BlobSASPermissions } = require('@azure/storage-blob');
 require('dotenv').config();
 
 const accountName = process.env.AZURE_STORAGE_ACCOUNT_NAME;
@@ -9,7 +9,6 @@ if (!accountName || !accountKey) {
   throw new Error("Storage account name or key is not configured.");
 }
 
-// Авторизация
 const sharedKeyCredential = new StorageSharedKeyCredential(accountName, accountKey);
 const blobServiceClient = new BlobServiceClient(
   `https://${accountName}.blob.core.windows.net`,
@@ -32,4 +31,21 @@ async function deleteFileFromBlob(fileName) {
   await blockBlobClient.deleteIfExists();
 }
 
-module.exports = { uploadFileToBlob, deleteFileFromBlob };
+// Генерация временной ссылки (SAS токена)
+function generateTemporaryUrl(fileName, expiryTimeInMinutes = 60) {
+  const now = new Date();
+  const expiryTime = new Date(now);
+  expiryTime.setMinutes(now.getMinutes() + expiryTimeInMinutes);
+
+  const sasToken = generateBlobSASQueryParameters({
+    containerName,
+    blobName: fileName,
+    permissions: BlobSASPermissions.parse("r"), // Только чтение
+    startsOn: now,
+    expiresOn: expiryTime,
+  }, sharedKeyCredential).toString();
+
+  return `https://${accountName}.blob.core.windows.net/${containerName}/${fileName}?${sasToken}`;
+}
+
+module.exports = { uploadFileToBlob, deleteFileFromBlob, generateTemporaryUrl };
