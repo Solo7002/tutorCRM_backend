@@ -3,36 +3,33 @@ require('dotenv').config();
 
 const accountName = process.env.AZURE_STORAGE_ACCOUNT_NAME;
 const accountKey = process.env.AZURE_STORAGE_ACCOUNT_KEY;
+const containerName = process.env.AZURE_STORAGE_CONTAINER;
 
 if (!accountName || !accountKey) {
-  throw new Error("Необходимо указать AZURE_STORAGE_ACCOUNT_NAME и AZURE_STORAGE_ACCOUNT_KEY в файле .env");
+  throw new Error("Storage account name or key is not configured.");
 }
 
+// Авторизация
 const sharedKeyCredential = new StorageSharedKeyCredential(accountName, accountKey);
 const blobServiceClient = new BlobServiceClient(
   `https://${accountName}.blob.core.windows.net`,
   sharedKeyCredential
 );
 
-const containerName = "file-storage";
-
-async function createContainer() {
+async function uploadFileToBlob(file) {
   const containerClient = blobServiceClient.getContainerClient(containerName);
   await containerClient.createIfNotExists();
-  console.log(`Container "${containerName}" создан или уже существует.`);
+
+  const blockBlobClient = containerClient.getBlockBlobClient(file.originalname);
+  await blockBlobClient.upload(file.buffer, file.buffer.length);
+
+  return `https://${accountName}.blob.core.windows.net/${containerName}/${file.originalname}`;
 }
 
-// Запуск, если файл запущен напрямую
-if (require.main === module) {
-  (async () => {
-    try {
-      await createContainer();
-    } catch (error) {
-      console.error("Ошибка при создании контейнера:", error.message);
-    }
-  })();
+async function deleteFileFromBlob(fileName) {
+  const containerClient = blobServiceClient.getContainerClient(containerName);
+  const blockBlobClient = containerClient.getBlockBlobClient(fileName);
+  await blockBlobClient.deleteIfExists();
 }
 
-module.exports = {
-  createContainer,
-};
+module.exports = { uploadFileToBlob, deleteFileFromBlob };
