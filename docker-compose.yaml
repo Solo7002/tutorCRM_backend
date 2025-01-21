@@ -1,0 +1,40 @@
+name: ${PROJECT_NAME}
+
+services:
+
+  server:
+    pull_policy: build
+    image: node-i
+    container_name: ${NODE_CONTAINER_NAME}
+    env_file: .env
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - .:/src/server
+      - server-node-modules:/src/server/node_modules
+    ports:
+      - ${PORT}:${PORT}
+
+  prometheus:
+    pull_policy: build
+    image: prometheus-i
+    container_name: ${PROMETHEUS_CONTAINER_NAME}
+    env_file: .env
+    build:
+      context: ./src/metrics
+      dockerfile: Dockerfile
+    volumes:
+      - ./src/metrics/prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - ${PROMETHEUS_PORT}:${PROMETHEUS_PORT}
+
+  node_exporter:
+    image: prom/node-exporter:latest
+    container_name: node_exporter_container
+    ports:
+      - ${METRICS_PORT}:${METRICS_PORT}
+
+volumes:
+  server-node-modules:
+    name: server-node-modules

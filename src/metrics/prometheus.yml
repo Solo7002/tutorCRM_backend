@@ -1,0 +1,13 @@
+global:
+  scrape_interval: 5s
+
+scrape_configs:
+  - job_name: tutor-crm-node-app
+    static_configs:
+      - targets:
+          - node-c:4000
+
+  - job_name: node-exporter
+    static_configs:
+      - targets:
+          - node_exporter_container:9100
