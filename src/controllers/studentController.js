@@ -9,7 +9,7 @@ exports.createStudent = async (req, res) => {
   }
 };
 
-exports.getAllStudents = async (req, res) => {
+exports.getStudents = async (req, res) => {
   try {
     const students = await Student.findAll();
     res.status(200).json(students);

@@ -3,7 +3,7 @@ const router = express.Router();
 const selectedAnswerController = require('../controllers/selectedAnswerController');
 
 router.post('/', selectedAnswerController.createSelectedAnswer);
-router.get('/', selectedAnswerController.getAllSelectedAnswers);
+router.get('/', selectedAnswerController.getSelectedAnswers);
 router.get('/:id', selectedAnswerController.getSelectedAnswerById);
 router.put('/:id', selectedAnswerController.updateSelectedAnswer);
 router.delete('/:id', selectedAnswerController.deleteSelectedAnswer);

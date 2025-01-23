@@ -3,7 +3,7 @@ const router = express.Router();
 const purchasedMaterialController = require('../controllers/purchasedMaterialController');
 
 router.post('/', purchasedMaterialController.createPurchasedMaterial);
-router.get('/', purchasedMaterialController.getAllPurchasedMaterials);
+router.get('/', purchasedMaterialController.getPurchasedMaterials);
 router.get('/:id', purchasedMaterialController.getPurchasedMaterialById);
 router.put('/:id', purchasedMaterialController.updatePurchasedMaterial);
 router.delete('/:id', purchasedMaterialController.deletePurchasedMaterial);

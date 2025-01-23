@@ -3,7 +3,7 @@ const router = express.Router();
 const userComplaintController = require('../controllers/userComplaintController');
 
 router.post('/', userComplaintController.createUserComplaint);
-router.get('/', userComplaintController.getAllUserComplaints);
+router.get('/', userComplaintController.getUserComplaints);
 router.get('/:id', userComplaintController.getUserComplaintById);
 router.put('/:id', userComplaintController.updateUserComplaint);
 router.delete('/:id', userComplaintController.deleteUserComplaint);

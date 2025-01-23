@@ -9,7 +9,7 @@ exports.createTeacher = async (req, res) => {
   }
 };
 
-exports.getAllTeachers = async (req, res) => {
+exports.getTeachers = async (req, res) => {
   try {
     const teachers = await Teacher.findAll();
     res.status(200).json(teachers);

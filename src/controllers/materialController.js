@@ -9,7 +9,7 @@ exports.createMaterial = async (req, res) => {
   }
 };
 
-exports.getAllMaterials = async (req, res) => {
+exports.getMaterials = async (req, res) => {
   try {
     const materials = await Material.findAll();
     res.status(200).json(materials);
