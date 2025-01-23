@@ -1,7 +1,8 @@
 const bcrypt=require('bcryptjs');
 const jwt=require('jsonwebtoken');
 const User=require('../models/User');
-
+const Student=require('../models/Student');
+const Teacher=require('../models/Teacher');
 const{JWT_SECRET,JWT_EXPIRATION}=process.env;
 
 //Хеширование пароля
@@ -22,14 +23,36 @@ const registerUser=async(user)=>{
         
         const hashPassworde = await hashPassword(user.Password); 
        
-        const newUser=await User.create({
-            Username:user.Username,
-            Password:hashPassworde,
-            LastName:user.LastName,
-            FirstName:user.FirstName,
-            Email:user.Email,
-            ImageFilePath:user.ImageFilePath,
-        });
+        const newUser = await User.create({
+            Username: user.Username,
+            Password: hashPassworde,
+            LastName: user.LastName,
+            FirstName: user.FirstName,
+            Email: user.Email,
+            ImageFilePath: user.ImageFilePath,
+          });
+        if(user.Role==='Student'){
+            const newStudent =await Student.create({
+                UserId:newUser.UserId,
+                SchoolName:user.SchoolName,
+                Grade:user.Grade
+            });
+            additionalId = newStudent.StudentId;
+            await newUser.update({ StudentId: additionalId });
+        }else if(user.Role==='Teacher'){
+            const newTeacher = await Teacher.create({
+                UserId:newUser.UserId,
+                AboutTeacher: user.AboutTeacher,
+                LessonPrice: user.LessonPrice,
+                LessonType: user.LessonType,
+                MeetingType: user.MeetingType,
+                SubscriptionLevelId: user.SubscriptionLevelId,
+                
+            });
+            additionalId = newTeacher.TeacherId;
+            await newUser.update({ TeacherId: additionalId });
+        }
+
        
         return newUser;
 

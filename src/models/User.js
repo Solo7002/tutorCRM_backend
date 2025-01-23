@@ -33,7 +33,15 @@ const User=sequelize.define('User',{
     ImageFilePath:{
         type:DataTypes.STRING,
         allowNull: true
-    }
+    },
+    TeacherId: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+      },
+      StudentId: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+      },    
 },{tableName:'Users',timestamps:false});
 
 module.exports=User;

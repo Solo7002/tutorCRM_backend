@@ -2,13 +2,25 @@ const express=require('express');
 const router=express.Router();
 const authController=require('../controllers/authController');
 const authenticateToken=require('../middlewares/authMiddleware');
+const checkRole=require('../middlewares/checkRole');
 
 router.post('/register',authController.register);
 router.post('/login',authController.login);
 
-//Примеи защищенного  маршрута
+//Пример защищенного  маршрута
 router.get('/profile',authenticateToken,(req,res)=>{
     res.json({ message: 'Welcome to your profile!', user: req.user });
+})
+
+//Пример защищенного  маршрута,доступ только для студента
+router.get('/profile/student',authenticateToken,checkRole('Student'),(req,res)=>{
+    res.json({ message: 'Welcome to your student profile!', user: req.user });
+})
+
+
+//Пример защищенного  маршрута,доступ только для учителя
+router.get('/profile/teacher',authenticateToken,checkRole('Teacher'),(req,res)=>{
+    res.json({ message: 'Welcome to your teacher profile!', user: req.user });
 })
 
 module.exports=router;
