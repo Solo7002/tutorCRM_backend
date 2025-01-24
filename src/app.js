@@ -35,6 +35,8 @@ app.get('/memory-load', (req, res) => {
         memoryHog.push(largeString);
     }
 
+const app = express();
+const fileRoutes = require('./routes/fileRoutes');
     res.send(`Memory load completed with ${iterations} iterations.`);
 });
 
@@ -45,5 +47,9 @@ app.get('/', (req, res) => {
     const randomStatusCode = Math.floor(Math.random() * 400) + 200;
     res.status(randomStatusCode).send(`Response with status code: ${randomStatusCode}`);
 });
+
+app.use(express.json());
+
+app.use('/api/files', fileRoutes);
 
 module.exports = app;
