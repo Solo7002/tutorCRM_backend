@@ -6,14 +6,15 @@ const PORT = process.env.PORT;
 
 const server = http.createServer(app);
 
-const { sendEmail } = require('./services/emailService');
+const { sendRegistrationEmail } = require('./services/emailService');
 
-sendEmail(
-    'nikitasiskov737@gmail.com',
-    'My Brevo Test Email',
-    'This is a test email sent via Brevo. SDAOIPkjfpsdfmockvnpsdojn psidjvn psdikjnvc psdkjnfv pksdjnf piksdjnvg psekdfjnvb pskefjvn pskfdjvn pdskfjvn pdsfkjv nspdfj vnsdfpj vn',
-    '<strong>    This is a test email sent via Brevo. SDAOIPkjfpsdfmockvnpsdojn psidjvn psdikjnvc psdkjnfv pksdjnf piksdjnvg psekdfjnvb pskefjvn pskfdjvn pdskfjvn pdsfkjv nspdfj vnsdfpj vn</strong>'
-  ).catch(console.error);
+sendRegistrationEmail(
+  'nikitasiskov737@gmail.com',
+  'Nikita',
+  'https://example.com/activate?token=abc123'
+).then(() => console.log('Письмо о регистрации отправлено'))
+  .catch(err => console.error('Ошибка при отправке письма о регистрации:', err));
+
 
 
 server.listen(PORT, () => {

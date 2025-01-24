@@ -1,4 +1,6 @@
 const nodemailer = require('nodemailer');
+const fs = require('fs').promises;
+const path = require('path');
 require('dotenv').config();
 
 const BREVO_SMTP_KEY = process.env.BREVO_API_KEY;
@@ -21,6 +23,34 @@ const transporter = nodemailer.createTransport({
   debug: true,  // Включение отладки
 });
 
+/**
+ * Рендеринг HTML-шаблонов с использованием переменных
+ * @param {string} templateName - Имя файла шаблона (без расширения)
+ * @param {Object} variables - Переменные для замены в шаблоне
+ * @returns {Promise<string>} - Отрендеренный HTML
+ */
+async function renderTemplate(templateName, variables) {
+  const templatePath = path.join('./src/templates', `${templateName}.html`);
+  try {
+    let content = await fs.readFile(templatePath, 'utf-8');
+    for (const [key, value] of Object.entries(variables)) {
+      const placeholder = new RegExp(`{{${key}}}`, 'g');
+      content = content.replace(placeholder, value);
+    }
+    return content;
+  } catch (error) {
+    console.error(`Ошибка при рендеринге шаблона ${templateName}:`, error.message);
+    throw error;
+  }
+}
+
+/**
+ * Отправка письма
+ * @param {string} to - Email получателя
+ * @param {string} subject - Тема письма
+ * @param {string} text - Текстовое содержимое (опционально)
+ * @param {string|null} html - HTML содержимое письма (опционально)
+ */
 async function sendEmail(to, subject, text, html = null) {
   const mailOptions = {
     from: EMAIL_FROM,
@@ -38,4 +68,42 @@ async function sendEmail(to, subject, text, html = null) {
   }
 }
 
-module.exports = { sendEmail };
+/**
+ * Отправка письма о регистрации
+ * @param {string} email - Email получателя
+ * @param {string} username - Имя пользователя
+ * @param {string} activationLink - Ссылка для активации аккаунта
+ */
+async function sendRegistrationEmail(email, username, activationLink) {
+  const htmlContent = await renderTemplate('registration', { username, link: activationLink });
+  await sendEmail(email, 'Регистрация завершена', 'Спасибо за регистрацию!', htmlContent);
+}
+
+/**
+ * Отправка письма о сбросе пароля
+ * @param {string} email - Email получателя
+ * @param {string} username - Имя пользователя
+ * @param {string} resetLink - Ссылка для сброса пароля
+ */
+async function sendResetPasswordEmail(email, username, resetLink) {
+  const htmlContent = await renderTemplate('reset_password', { username, link: resetLink });
+  await sendEmail(email, 'Сброс пароля', 'Инструкции по сбросу пароля', htmlContent);
+}
+
+/**
+ * Отправка письма о сбросе пароля
+ * @param {string} email - Email получателя
+ * @param {string} username - Имя пользователя
+ * @param {string} cancelLink - Ссылка для отмены
+ */
+async function sendLoginEmail(email, username, cancelLink) {
+  const htmlContent = await renderTemplate('login', { username, link: cancelLink });
+  await sendEmail(email, 'Новый вход', 'Был совершен новый вход', htmlContent);
+}
+
+module.exports = {
+  sendEmail,
+  sendRegistrationEmail,
+  sendResetPasswordEmail,
+  sendLoginEmail,
+};
