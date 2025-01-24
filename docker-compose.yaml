@@ -1,40 +1,70 @@
-name: ${PROJECT_NAME}
+version: '3'
 
 services:
-
-  server:
-    pull_policy: build
-    image: node-i
-    container_name: ${NODE_CONTAINER_NAME}
-    env_file: .env
-    build: 
-      context: .
-      dockerfile: Dockerfile
-    volumes:
-      - .:/src/server
-      - server-node-modules:/src/server/node_modules
-    ports:
-      - ${PORT}:${PORT}
-
-  prometheus:
-    pull_policy: build
-    image: prometheus-i
-    container_name: ${PROMETHEUS_CONTAINER_NAME}
-    env_file: .env
+  tutor-crm-api:
+    container_name: tutor-crm-api
     build:
-      context: ./src/metrics
-      dockerfile: Dockerfile
-    volumes:
-      - ./src/metrics/prometheus.yml:/etc/prometheus/prometheus.yml
+      context: .
+      dockerfile: ./Dockerfile
     ports:
-      - ${PROMETHEUS_PORT}:${PROMETHEUS_PORT}
+      - '4000:4000'
+    networks:
+      - monitoring
+    restart: 'on-failure'
 
-  node_exporter:
-    image: prom/node-exporter:latest
-    container_name: node_exporter_container
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: tutor-crm-api-cadvisor
+    restart: always
     ports:
-      - ${METRICS_PORT}:${METRICS_PORT}
+      - "8080:8080"
+    networks:
+      - monitoring
+    volumes:
+      - /:/rootfs:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+  
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: tutor-crm-api-prometheus
+    restart: always
+    ports:
+      - '9090:9090'
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+      - ./src/prometheus:/etc/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+    networks:
+      - monitoring
+
+  alertmanager:
+    image: prom/alertmanager:v0.23.0
+    restart: unless-stopped
+    ports:
+      - "9093:9093"
+    volumes:
+      - "./alertmanager:/config"
+      - alertmanager-data:/data
+    command: --config.file=/config/alertmanager.yml --log.level=debug --cluster.advertise-address=0.0.0.0:9093
+    networks:
+      - monitoring
+  discord-alerts:
+    image: benjojo/alertmanager-discord
+    container_name: discord-alerts
+    restart: unless-stopped
+    environment:
+      - DISCORD_WEBHOOK=${DISCORD_WEBHOOK_URL}
+    ports:
+      - 9094:9094
+    networks:
+      - monitoring
+
+networks:
+  monitoring:
 
 volumes:
-  server-node-modules:
-    name: server-node-modules
+  alertmanager-data:

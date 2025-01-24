@@ -1,0 +1,20 @@
+groups:
+  - name: alert_rules
+    interval: 1s
+    rules:
+      - alert: cpu_criticaly_loaded
+        expr: sum(rate(container_cpu_usage_seconds_total[1m])) > 0.15
+        for: 1s
+        labels:
+          severity: critical
+        annotations:
+          summary: CPU doing to many operation per second
+          description: 'An estimated {{ $value | printf "%.0f" }} % of CPU have been used in the last minute.'
+      - alert: ram_criticaly_loaded
+        expr: ((sum(container_spec_memory_limit_bytes) - (sum(container_spec_memory_limit_bytes)-sum(container_memory_usage_bytes)))/sum(container_spec_memory_limit_bytes)*100) > 30
+        for: 1s
+        labels:
+          severity: critical
+        annotations:
+          summary: RAM is too loaded
+          description: 'An estimated {{ $value | printf "%.0f" }} % of RAM have been used in the last minute.'
