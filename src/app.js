@@ -38,6 +38,9 @@ app.get('/memory-load', (req, res) => {
     res.send(`Memory load completed with ${iterations} iterations.`);
 });
 
+const routes = require('./routes/routes');
+app.use(routes);
+
 app.get('/', (req, res) => {
     const randomStatusCode = Math.floor(Math.random() * 400) + 200;
     res.status(randomStatusCode).send(`Response with status code: ${randomStatusCode}`);
