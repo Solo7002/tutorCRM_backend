@@ -1,8 +1,21 @@
 const express = require('express');
 const app = express();
 const { metricsMiddleware, register } = require('./utils/metrics');
+const dotenv = require('dotenv');
+const bodyParser = require('body-parser');
+const authRoutes = require('./routes/authRoutes');
+const routes = require('./routes/routes');
+const fileRoutes = require('./routes/fileRoutes');
 
+dotenv.config();
+
+app.use(express.json());
+
+app.use('/api/files', fileRoutes);
 app.use(metricsMiddleware);
+app.use(routes);
+app.use(bodyParser.json());
+app.use('/api/auth', authRoutes);
 
 app.get('/metrics', async (req, res) => {
     res.setHeader('Content-type', register.contentType);
@@ -25,11 +38,7 @@ app.get('/cpu-load', (req, res) => {
 
     res.send(`Heads: ${heads}, Tails: ${tails}`);
 });
-const dotenv = require('dotenv');
-const bodyParser = require('body-parser');
-const authRoutes = require('./routes/authRoutes');
 
-dotenv.config();
 app.get('/memory-load', (req, res) => {
     const iterations = parseInt(req.query.iterations) || 100;
     const memoryHog = [];
@@ -44,20 +53,9 @@ const fileRoutes = require('./routes/fileRoutes');
     res.send(`Memory load completed with ${iterations} iterations.`);
 });
 
-const routes = require('./routes/routes');
-app.use(routes);
-
-
-app.use(bodyParser.json());
-app.use('/api/auth', authRoutes);
-
 app.get('/', (req, res) => {
     const randomStatusCode = Math.floor(Math.random() * 400) + 200;
     res.status(randomStatusCode).send(`Response with status code: ${randomStatusCode}`);
 });
-
-app.use(express.json());
-
-app.use('/api/files', fileRoutes);
 
 module.exports = app;

@@ -9,6 +9,7 @@ RUN npm install
 
 COPY .env .env
 COPY src ./src
+COPY config ./config
 
 EXPOSE ${PORT}
 

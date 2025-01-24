@@ -1,33 +1,28 @@
-const {DataTypes} = require('sequelize');
-const sequelize=require('../config/database');
-const User=require('./User');
-
-const Student=sequelize.define('Student',{
-    StudentId:{
-        type:DataTypes.INTEGER,
-        primaryKey:true,
-        autoIncrement:true
-    },
-    SchoolName:{
-        type:DataTypes.STRING,
-        allowNull:false
-    },
-    Grade:{
-        type:DataTypes.STRING,
-        allowNull:false,
-    },
-    UserId:{
-        type:DataTypes.INTEGER,
-        allowNull:false,
-        references:{
-            model:User,
-            key:'UserId',
+module.exports = (sequelize, DataTypes) => {
+    const Student = sequelize.define('Student', {
+        studentId: {
+            type: DataTypes.INTEGER,
+            autoIncrement: true,
+            primaryKey: true,
         },
-        onDelete:'CASCADE',
-    },
-},{tableName:'Students',timestamps:false});
+        schoolName: {
+            type: DataTypes.STRING,
+            allowNull: false
+        },
+        grade: {
+            type: DataTypes.STRING,
+            allowNull: false
+        }
+    }, {
+        timestamps: false,
+    });
 
-User.hasOne(Student,{foreignKey:'UserId'});
-Student.belongsTo(User,{foreignKey:'UserId'});
+    Student.associate = (models) => {
+        Student.belongsTo(models.User, {
+            foreignKey: 'userId',
+            as: 'user'
+        });
+    };
 
-module.exports=Student;
+    return Student;
+};  

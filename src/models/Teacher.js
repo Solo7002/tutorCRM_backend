@@ -1,47 +1,46 @@
-const {DataTypes}=require('sequelize');
-const sequelize=require('../config/database');
-const User=require('./User');
-
-const Teacher=sequelize.define('Teacher',{
-    TeacherId:{
-        type:DataTypes.INTEGER,
-        primaryKey:true,
-        autoIncrement:true
-    },
-    AboutTeacher:{
-        type:DataTypes.INTEGER,
-        allowNull:true,
-    },
-    LessonPrice:{
-        type:DataTypes.INTEGER,
-        allowNull:true,
-    },
-    LessonType:{
-        type: DataTypes.ENUM('group', 'solo'),
-        allowNull:false,
-    },
-    MeetingType:{
-        type:DataTypes.ENUM('offline','online'),
-        allowNull:false
-    },
-    //Исправить после создания модель Subscription 
-    SubscriptionLevelId:{
-        type:DataTypes.INTEGER,
-        allowNull:false
-    },
-    UserId:{
-        type:DataTypes.INTEGER,
-        allowNull:false,
-        references:{
-            model:User,
-            key:'UserId',
+module.exports = (sequelize, DataTypes) => {
+    const Teacher = sequelize.define('Teacher', {
+        teacherId: {
+            type: DataTypes.INTEGER,
+            autoIncrement: true,
+            primaryKey: true,
         },
-        onDelete:'CASCADE'
-    }
+        aboutTeacher: {
+            type: DataTypes.STRING,
+            allowNull: true
+        },
+        lessonPrice: {
+            type: DataTypes.INTEGER,
+            allowNull: true
+        },
+        lessonType: {
+            type: DataTypes.STRING,
+            allowNull: false,
+            validate: {
+                isIn: [['group', 'solo']]
+            }
+        },
+        meetingType: {
+            type: DataTypes.STRING,
+            allowNull: false,
+            validate: {
+                isIn: [['offline', 'online']]
+            }
+        }
+    }, {
+        timestamps: false,
+    });
 
-},{tableName:'Teachers',timestamps:false});
+    Teacher.associate = (models) => {
+        Teacher.belongsTo(models.User, {
+            foreignKey: 'userId',
+            as: 'user'
+        });
+        Teacher.hasMany(models.Course, {
+            foreignKey: 'teacherId',
+            as: 'courses'
+        });
+    };
 
-User.hasOne(Teacher,{foreignKey:'UserId'});
-Teacher.belongsTo(User,{foreignKey:'UserId'});
-
-module.exports=Teacher;
+    return Teacher;
+};  

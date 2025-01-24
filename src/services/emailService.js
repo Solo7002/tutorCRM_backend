@@ -19,8 +19,8 @@ const transporter = nodemailer.createTransport({
     user: BREVO_SMTP_USER,
     pass: BREVO_SMTP_KEY,
   },
-  logger: true, // Включение логирования
-  debug: true,  // Включение отладки
+  logger: false, // Включение логирования
+  debug: false,  // Включение отладки
 });
 
 /**
