@@ -13,11 +13,11 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.STRING,
         allowNull: false
       },
-      lat: {
+      latitude: {
         type: DataTypes.DECIMAL(9, 6),
         allowNull: true
       },
-      long: {
+      longitude: {
         type: DataTypes.DECIMAL(9, 6),
         allowNull: true
       },
@@ -25,7 +25,9 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.STRING,
         allowNull: true
       }
-    }, {});
+    }, {
+      timestamps: false,
+    });
   
     return Location;
   };  

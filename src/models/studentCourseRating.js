@@ -4,7 +4,9 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.DECIMAL(10, 2),
         allowNull: false
       }
-    }, {});
+    }, {
+      timestamps: false,
+    });
   
     StudentCourseRating.associate = (models) => {
       StudentCourseRating.belongsTo(models.Student, {

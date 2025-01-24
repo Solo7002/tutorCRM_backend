@@ -1,4 +1,4 @@
-const { MaterialVisibilityStudent } = require('../models/materialVisibilityStudent');
+const { MaterialVisibilityStudent } = require('../models');
 
 exports.createMaterialVisibilityStudent = async (req, res) => {
   try {
@@ -11,7 +11,9 @@ exports.createMaterialVisibilityStudent = async (req, res) => {
 
 exports.getMaterialVisibilityStudents = async (req, res) => {
   try {
-    const materialVisibilityStudents = await MaterialVisibilityStudent.findAll();
+    const materialVisibilityStudents = await MaterialVisibilityStudent.findAll({
+      attributes: ['materialId', 'studentId']
+    });
     res.status(200).json(materialVisibilityStudents);
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -20,8 +22,14 @@ exports.getMaterialVisibilityStudents = async (req, res) => {
 
 exports.getMaterialVisibilityStudentById = async (req, res) => {
   try {
-    const materialVisibilityStudent = await MaterialVisibilityStudent.findByPk(req.params.id);
-    if (!materialVisibilityStudent) return res.status(404).json({ error: "MaterialVisibilityStudent not found" });
+    const materialVisibilityStudent = await MaterialVisibilityStudent.findByPk(req.params.id, {
+      attributes: ['materialId', 'studentId']
+    });
+    
+    if (!materialVisibilityStudent) {
+      return res.status(404).json({ error: "MaterialVisibilityStudent not found" });
+    }
+    
     res.status(200).json(materialVisibilityStudent);
   } catch (error) {
     res.status(400).json({ error: error.message });

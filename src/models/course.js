@@ -1,5 +1,10 @@
 module.exports = (sequelize, DataTypes) => {
     const Course = sequelize.define('Course', {
+      courseId: {
+        type: DataTypes.INTEGER,
+        autoIncrement: true,
+        primaryKey: true,
+      },
       courseName: {
         type: DataTypes.STRING,
         allowNull: false
@@ -8,22 +13,20 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.STRING,
         allowNull: true
       }
-    }, {});
+    }, {
+      timestamps: false,
+    });
   
     Course.associate = (models) => {
-      Course.belongsTo(models.teacher, {
+      Course.belongsTo(models.Teacher, {
         foreignKey: 'teacherId',
         as: 'teacher'
       });
-      Course.belongsTo(models.subject, {
+      Course.belongsTo(models.Subject, {
         foreignKey: 'subjectId',
         as: 'subject'
       });
-      Course.belongsTo(models.group, {
-        foreignKey: 'groupId',
-        as: 'group'
-      });
-      Course.belongsTo(models.location, {
+      Course.belongsTo(models.Location, {
         foreignKey: 'locationId',
         as: 'location'
       });

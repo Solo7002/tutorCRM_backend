@@ -17,7 +17,9 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.STRING,
         allowNull: true
       }
-    }, {});
+    }, {
+      timestamps: false,
+    });
   
     Group.associate = (models) => {
       Group.hasMany(models.GroupStudent, {

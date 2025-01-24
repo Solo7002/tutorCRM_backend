@@ -1,51 +1,51 @@
-const { Hometask } = require('../models/homeTask');
+const { HomeTask } = require('../models');
 
-exports.createHometask = async (req, res) => {
+exports.createHomeTask = async (req, res) => {
   try {
-    const hometask = await Hometask.create(req.body);
-    res.status(201).json(hometask);
+    const HomeTask = await HomeTask.create(req.body);
+    res.status(201).json(HomeTask);
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
 };
 
-exports.getHometasks = async (req, res) => {
+exports.getHomeTasks = async (req, res) => {
   try {
-    const hometasks = await Hometask.findAll();
-    res.status(200).json(hometasks);
+    const HomeTasks = await HomeTask.findAll();
+    res.status(200).json(HomeTasks);
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
 };
 
-exports.getHometaskById = async (req, res) => {
+exports.getHomeTaskById = async (req, res) => {
   try {
-    const hometask = await Hometask.findByPk(req.params.id);
-    if (!hometask) return res.status(404).json({ error: "Hometask not found" });
-    res.status(200).json(hometask);
+    const HomeTask = await HomeTask.findByPk(req.params.id);
+    if (!HomeTask) return res.status(404).json({ error: "HomeTask not found" });
+    res.status(200).json(HomeTask);
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
 };
 
-exports.updateHometask = async (req, res) => {
+exports.updateHomeTask = async (req, res) => {
   try {
-    const hometask = await Hometask.findByPk(req.params.id);
-    if (!hometask) return res.status(404).json({ error: "Hometask not found" });
+    const HomeTask = await HomeTask.findByPk(req.params.id);
+    if (!HomeTask) return res.status(404).json({ error: "HomeTask not found" });
     
-    await hometask.update(req.body);
-    res.status(200).json(hometask);
+    await HomeTask.update(req.body);
+    res.status(200).json(HomeTask);
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
 };
 
-exports.deleteHometask = async (req, res) => {
+exports.deleteHomeTask = async (req, res) => {
   try {
-    const hometask = await Hometask.findByPk(req.params.id);
-    if (!hometask) return res.status(404).json({ error: "Hometask not found" });
+    const HomeTask = await HomeTask.findByPk(req.params.id);
+    if (!HomeTask) return res.status(404).json({ error: "HomeTask not found" });
     
-    await hometask.destroy();
+    await HomeTask.destroy();
     res.status(204).send();
   } catch (error) {
     res.status(400).json({ error: error.message });

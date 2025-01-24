@@ -2,10 +2,10 @@ const express = require('express');
 const router = express.Router();
 const hometaskController = require('../controllers/hometaskController');
 
-router.post('/', hometaskController.createHometask);
-router.get('/', hometaskController.getHometasks);
-router.get('/:id', hometaskController.getHometaskById);
-router.put('/:id', hometaskController.updateHometask);
-router.delete('/:id', hometaskController.deleteHometask);
+router.post('/', hometaskController.createHomeTask);
+router.get('/', hometaskController.getHomeTasks);
+router.get('/:id', hometaskController.getHomeTaskById);
+router.put('/:id', hometaskController.updateHomeTask);
+router.delete('/:id', hometaskController.deleteHomeTask);
 
 module.exports = router;

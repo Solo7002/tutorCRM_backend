@@ -1,8 +1,8 @@
-const { DoneHometaskFile } = require('../models/doneHomeTaskFile');
+const { DoneHomeTaskFile } = require('../models');
 
 exports.createDoneHometaskFile = async (req, res) => {
   try {
-    const doneHometaskFile = await DoneHometaskFile.create(req.body);
+    const doneHometaskFile = await DoneHomeTaskFile.create(req.body);
     res.status(201).json(doneHometaskFile);
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -11,7 +11,7 @@ exports.createDoneHometaskFile = async (req, res) => {
 
 exports.getDoneHometaskFiles = async (req, res) => {
   try {
-    const doneHometaskFiles = await DoneHometaskFile.findAll();
+    const doneHometaskFiles = await DoneHomeTaskFile.findAll();
     res.status(200).json(doneHometaskFiles);
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -20,7 +20,7 @@ exports.getDoneHometaskFiles = async (req, res) => {
 
 exports.getDoneHometaskFileById = async (req, res) => {
   try {
-    const doneHometaskFile = await DoneHometaskFile.findByPk(req.params.id);
+    const doneHometaskFile = await DoneHomeTaskFile.findByPk(req.params.id);
     if (!doneHometaskFile) return res.status(404).json({ error: "DoneHometaskFile not found" });
     res.status(200).json(doneHometaskFile);
   } catch (error) {
@@ -30,7 +30,7 @@ exports.getDoneHometaskFileById = async (req, res) => {
 
 exports.updateDoneHometaskFile = async (req, res) => {
   try {
-    const doneHometaskFile = await DoneHometaskFile.findByPk(req.params.id);
+    const doneHometaskFile = await DoneHomeTaskFile.findByPk(req.params.id);
     if (!doneHometaskFile) return res.status(404).json({ error: "DoneHometaskFile not found" });
     
     await doneHometaskFile.update(req.body);
@@ -42,7 +42,7 @@ exports.updateDoneHometaskFile = async (req, res) => {
 
 exports.deleteDoneHometaskFile = async (req, res) => {
   try {
-    const doneHometaskFile = await DoneHometaskFile.findByPk(req.params.id);
+    const doneHometaskFile = await DoneHomeTaskFile.findByPk(req.params.id);
     if (!doneHometaskFile) return res.status(404).json({ error: "DoneHometaskFile not found" });
     
     await doneHometaskFile.destroy();

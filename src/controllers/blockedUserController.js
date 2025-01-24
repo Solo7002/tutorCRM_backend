@@ -1,4 +1,4 @@
-const { BlockedUser } = require('../models/blockedUser');
+const { BlockedUser } = require('../models');
 
 exports.createBlockedUser = async (req, res) => {
   try {

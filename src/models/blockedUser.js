@@ -1,5 +1,10 @@
 module.exports = (sequelize, DataTypes) => {
     const BlockedUser = sequelize.define('BlockedUser', {
+      blockedId: {
+        type: DataTypes.INTEGER,
+        autoIncrement: true,
+        primaryKey: true,
+      },
       reasonDescription: {
         type: DataTypes.TEXT,
         allowNull: false
@@ -12,10 +17,12 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.DATE,
         allowNull: true
       }
-    }, {});
+    }, {
+      timestamps: false,
+    });
   
     BlockedUser.associate = (models) => {
-      BlockedUser.belongsTo(models.user, {
+      BlockedUser.belongsTo(models.User, {
         foreignKey: 'userId',
         as: 'user'
       });

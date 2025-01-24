@@ -1,6 +1,6 @@
 module.exports = (sequelize, DataTypes) => {
     const DoneHomeTaskFile = sequelize.define('DoneHomeTaskFile', {
-      doneHomeTaskFileId: {
+      hometaskFileId: {
         type: DataTypes.INTEGER,
         primaryKey: true,
         autoIncrement: true
@@ -13,7 +13,9 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.STRING,
         allowNull: false
       }
-    }, {});
+    }, {
+      timestamps: false,
+    });
   
     DoneHomeTaskFile.associate = (models) => {
       DoneHomeTaskFile.belongsTo(models.DoneHomeTask, {

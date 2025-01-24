@@ -1,4 +1,4 @@
-const { UserReview } = require('../models/userReview');
+const { UserReview } = require('../models');
 
 exports.createUserReview = async (req, res) => {
   try {

@@ -1,4 +1,4 @@
-const { SaleMaterialFile } = require('../models/saleMaterialFile');
+const { SaleMaterialFile } = require('../models');
 
 exports.createSaleMaterialFile = async (req, res) => {
   try {

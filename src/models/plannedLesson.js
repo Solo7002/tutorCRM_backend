@@ -21,7 +21,9 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.BOOLEAN,
         allowNull: false
       }
-    }, {});
+    }, {
+      timestamps: false,
+    });
   
     PlannedLesson.associate = (models) => {
       PlannedLesson.belongsTo(models.Group, {

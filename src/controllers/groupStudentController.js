@@ -1,4 +1,4 @@
-const { GroupStudent } = require('../models/groupStudent');
+const { GroupStudent } = require('../models');
 
 exports.createGroupStudent = async (req, res) => {
   try {
@@ -11,22 +11,29 @@ exports.createGroupStudent = async (req, res) => {
 
 exports.getGroupStudents = async (req, res) => {
   try {
-    const groupStudents = await GroupStudent.findAll();
+    const groupStudents = await GroupStudent.findAll({
+      attributes: ['groupId', 'studentId']
+    });
     res.status(200).json(groupStudents);
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
 };
 
+
 exports.getGroupStudentById = async (req, res) => {
   try {
-    const groupStudent = await GroupStudent.findByPk(req.params.id);
+    const groupStudent = await GroupStudent.findByPk(req.params.id, {
+      attributes: ['groupId', 'studentId']
+    });
+    
     if (!groupStudent) return res.status(404).json({ error: "GroupStudent not found" });
     res.status(200).json(groupStudent);
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
 };
+
 
 exports.updateGroupStudent = async (req, res) => {
   try {

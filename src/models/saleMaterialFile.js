@@ -17,7 +17,9 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.DATE,
         defaultValue: DataTypes.NOW
       }
-    }, {});
+    }, {
+      timestamps: false,
+    });
   
     SaleMaterialFile.associate = (models) => {
       SaleMaterialFile.belongsTo(models.SaleMaterial, {

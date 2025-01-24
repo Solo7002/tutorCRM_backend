@@ -20,7 +20,9 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.DATE,
         defaultValue: DataTypes.NOW
       }
-    }, {});
+    }, {
+      timestamps: false,
+    });
   
     MarkHistory.associate = (models) => {
       MarkHistory.belongsTo(models.Student, {

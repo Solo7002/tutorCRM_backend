@@ -17,7 +17,9 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.TIME,
         allowNull: false
       }
-    }, {});
+    }, {
+      timestamps: false,
+    });
   
     DoneTest.associate = (models) => {
       DoneTest.belongsTo(models.Student, {

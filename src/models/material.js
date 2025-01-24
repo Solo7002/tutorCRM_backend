@@ -1,5 +1,10 @@
 module.exports = (sequelize, DataTypes) => {
     const Material = sequelize.define('Material', {
+      materialId: {
+        type: DataTypes.INTEGER,
+        autoIncrement: true,
+        primaryKey: true,
+      },
       materialName: {
         type: DataTypes.STRING,
         allowNull: false
@@ -11,14 +16,16 @@ module.exports = (sequelize, DataTypes) => {
           isIn: [['file', 'folder']]
         }
       }
-    }, {});
+    }, {
+      timestamps: false,
+    });
   
     Material.associate = (models) => {
-      Material.belongsTo(models.material, {
+      Material.belongsTo(models.Material, {
         foreignKey: 'parentId',
         as: 'parent'
       });
-      Material.belongsTo(models.teacher, {
+      Material.belongsTo(models.Teacher, {
         foreignKey: 'teacherId',
         as: 'teacher'
       });

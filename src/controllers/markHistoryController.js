@@ -1,4 +1,4 @@
-const { MarkHistory } = require('../models/markHistory');
+const { MarkHistory } = require('../models');
 
 exports.createMarkHistory = async (req, res) => {
   try {

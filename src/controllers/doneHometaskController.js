@@ -1,8 +1,8 @@
-const { DoneHometask } = require('../models/doneHomeTask');
+const { DoneHomeTask } = require('../models');
 
 exports.createDoneHometask = async (req, res) => {
   try {
-    const doneHometask = await DoneHometask.create(req.body);
+    const doneHometask = await DoneHomeTask.create(req.body);
     res.status(201).json(doneHometask);
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -11,7 +11,7 @@ exports.createDoneHometask = async (req, res) => {
 
 exports.getDoneHometasks = async (req, res) => {
   try {
-    const doneHometasks = await DoneHometask.findAll();
+    const doneHometasks = await DoneHomeTask.findAll();
     res.status(200).json(doneHometasks);
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -20,7 +20,7 @@ exports.getDoneHometasks = async (req, res) => {
 
 exports.getDoneHometaskById = async (req, res) => {
   try {
-    const doneHometask = await DoneHometask.findByPk(req.params.id);
+    const doneHometask = await DoneHomeTask.findByPk(req.params.id);
     if (!doneHometask) return res.status(404).json({ error: "DoneHometask not found" });
     res.status(200).json(doneHometask);
   } catch (error) {
@@ -30,7 +30,7 @@ exports.getDoneHometaskById = async (req, res) => {
 
 exports.updateDoneHometask = async (req, res) => {
   try {
-    const doneHometask = await DoneHometask.findByPk(req.params.id);
+    const doneHometask = await DoneHomeTask.findByPk(req.params.id);
     if (!doneHometask) return res.status(404).json({ error: "DoneHometask not found" });
     
     await doneHometask.update(req.body);
@@ -42,7 +42,7 @@ exports.updateDoneHometask = async (req, res) => {
 
 exports.deleteDoneHometask = async (req, res) => {
   try {
-    const doneHometask = await DoneHometask.findByPk(req.params.id);
+    const doneHometask = await DoneHomeTask.findByPk(req.params.id);
     if (!doneHometask) return res.status(404).json({ error: "DoneHometask not found" });
     
     await doneHometask.destroy();

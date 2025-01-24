@@ -1,5 +1,7 @@
 module.exports = (sequelize, DataTypes) => {
-    const GroupStudent = sequelize.define('GroupStudent', {}, {});
+    const GroupStudent = sequelize.define('GroupStudent', {}, {
+      timestamps: false,
+    });
   
     GroupStudent.associate = (models) => {
       GroupStudent.belongsTo(models.Group, {

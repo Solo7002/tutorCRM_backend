@@ -1,6 +1,11 @@
 module.exports = (sequelize, DataTypes) => {
     const Test = sequelize.define('Test', {
-      testHeader: {
+      testId: {
+        type: DataTypes.INTEGER,
+        autoIncrement: true,
+        primaryKey: true,
+      },
+      testName: {
         type: DataTypes.STRING,
         allowNull: false
       },
@@ -8,16 +13,18 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.TEXT,
         allowNull: true
       },
-      createDate: {
+      createdDate: {
         type: DataTypes.DATE,
         defaultValue: DataTypes.NOW
       }
-    }, {});
+    }, {
+      timestamps: false,
+    });
   
     Test.associate = (models) => {
-      Test.belongsTo(models.teacher, {
-        foreignKey: 'creatorId',
-        as: 'creator'
+      Test.belongsTo(models.Group, {
+        foreignKey: 'groupId',
+        as: 'groups'
       });
     };
   

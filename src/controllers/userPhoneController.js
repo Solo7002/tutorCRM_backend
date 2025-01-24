@@ -1,4 +1,4 @@
-const { UserPhone } = require('../models/userPhone');
+const { UserPhone } = require('../models');
 
 exports.createUserPhone = async (req, res) => {
   try {

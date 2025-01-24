@@ -1,4 +1,4 @@
-const { StudentCourseRating } = require('../models/studentCourseRating');
+const { StudentCourseRating } = require('../models');
 
 exports.createStudentCourseRating = async (req, res) => {
   try {

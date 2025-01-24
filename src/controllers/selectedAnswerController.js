@@ -1,4 +1,4 @@
-const { SelectedAnswer } = require('../models/selectedAnswer');
+const { SelectedAnswer } = require('../models');
 
 exports.createSelectedAnswer = async (req, res) => {
   try {

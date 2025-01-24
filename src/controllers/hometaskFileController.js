@@ -1,8 +1,8 @@
-const { HometaskFile } = require('../models/homeTaskFile');
+const { HomeTaskFile } = require('../models');
 
 exports.createHometaskFile = async (req, res) => {
   try {
-    const hometaskFile = await HometaskFile.create(req.body);
+    const hometaskFile = await HomeTaskFile.create(req.body);
     res.status(201).json(hometaskFile);
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -11,7 +11,7 @@ exports.createHometaskFile = async (req, res) => {
 
 exports.getHometaskFiles = async (req, res) => {
   try {
-    const hometaskFiles = await HometaskFile.findAll();
+    const hometaskFiles = await HomeTaskFile.findAll();
     res.status(200).json(hometaskFiles);
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -20,7 +20,7 @@ exports.getHometaskFiles = async (req, res) => {
 
 exports.getHometaskFileById = async (req, res) => {
   try {
-    const hometaskFile = await HometaskFile.findByPk(req.params.id);
+    const hometaskFile = await HomeTaskFile.findByPk(req.params.id);
     if (!hometaskFile) return res.status(404).json({ error: "HometaskFile not found" });
     res.status(200).json(hometaskFile);
   } catch (error) {
@@ -30,7 +30,7 @@ exports.getHometaskFileById = async (req, res) => {
 
 exports.updateHometaskFile = async (req, res) => {
   try {
-    const hometaskFile = await HometaskFile.findByPk(req.params.id);
+    const hometaskFile = await HomeTaskFile.findByPk(req.params.id);
     if (!hometaskFile) return res.status(404).json({ error: "HometaskFile not found" });
     
     await hometaskFile.update(req.body);
@@ -42,7 +42,7 @@ exports.updateHometaskFile = async (req, res) => {
 
 exports.deleteHometaskFile = async (req, res) => {
   try {
-    const hometaskFile = await HometaskFile.findByPk(req.params.id);
+    const hometaskFile = await HomeTaskFile.findByPk(req.params.id);
     if (!hometaskFile) return res.status(404).json({ error: "HometaskFile not found" });
     
     await hometaskFile.destroy();

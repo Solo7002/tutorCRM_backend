@@ -1,28 +1,36 @@
 module.exports = (sequelize, DataTypes) => {
-    const TestQuestion = sequelize.define('TestQuestion', {
-      question: {
-        type: DataTypes.TEXT,
-        allowNull: false
-      },
-      type: {
-        type: DataTypes.STRING,
-        allowNull: false,
-        validate: {
-          isIn: [['single', 'multiple', 'text']]
-        }
-      },
-      score: {
-        type: DataTypes.INTEGER,
-        allowNull: false
-      }
-    }, {});
-  
-    TestQuestion.associate = (models) => {
-      TestQuestion.belongsTo(models.test, {
-        foreignKey: 'testId',
-        as: 'test'
-      });
-    };
-  
-    return TestQuestion;
-  };  
+  const TestQuestion = sequelize.define('TestQuestion', {
+    testQuestionId: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    testQuestionHeader: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    testQuestionDescription: {
+      type: DataTypes.TEXT,
+      allowNull: false,
+    },
+    imagePath: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    audioPath: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    }
+  }, {
+    timestamps: false,
+  });
+
+  TestQuestion.associate = (models) => {
+    TestQuestion.belongsTo(models.Test, {
+      foreignKey: 'testId',
+      as: 'test',
+    });
+  };
+
+  return TestQuestion;
+};

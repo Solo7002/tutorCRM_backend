@@ -5,7 +5,9 @@ module.exports = (sequelize, DataTypes) => {
         primaryKey: true,
         autoIncrement: true
       }
-    }, {});
+    }, {
+      timestamps: false,
+    });
   
     SelectedAnswer.associate = (models) => {
       SelectedAnswer.belongsTo(models.TestQuestion, {

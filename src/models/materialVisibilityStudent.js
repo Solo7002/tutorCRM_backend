@@ -1,12 +1,14 @@
 module.exports = (sequelize, DataTypes) => {
-    const MaterialVisibilityStudent = sequelize.define('MaterialVisibilityStudent', {}, {});
+    const MaterialVisibilityStudent = sequelize.define('MaterialVisibilityStudent', {}, {
+      timestamps: false,
+    });
   
     MaterialVisibilityStudent.associate = (models) => {
-      MaterialVisibilityStudent.belongsTo(models.material, {
+      MaterialVisibilityStudent.belongsTo(models.Material, {
         foreignKey: 'materialId',
         as: 'material'
       });
-      MaterialVisibilityStudent.belongsTo(models.student, {
+      MaterialVisibilityStudent.belongsTo(models.Student, {
         foreignKey: 'studentId',
         as: 'student'
       });

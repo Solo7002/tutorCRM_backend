@@ -1,4 +1,4 @@
-const { ReviewComplaint } = require('../models/reviewComplaint');
+const { ReviewComplaint } = require('../models');
 
 exports.createReviewComplaint = async (req, res) => {
   try {

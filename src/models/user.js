@@ -1,5 +1,10 @@
 module.exports = (sequelize, DataTypes) => {
   const User = sequelize.define('User', {
+    userId: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
     username: {
       type: DataTypes.STRING,
       allowNull: false,
@@ -30,14 +35,16 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.DATE,
       defaultValue: DataTypes.NOW
     }
-  }, {});
+  }, {
+    timestamps: false,
+  });
 
   User.associate = (models) => {
-    User.hasOne(models.student, {
+    User.hasOne(models.Student, {
       foreignKey: 'userId',
       as: 'student'
     });
-    User.hasOne(models.teacher, {
+    User.hasOne(models.Teacher, {
       foreignKey: 'userId',
       as: 'teacher'
     });

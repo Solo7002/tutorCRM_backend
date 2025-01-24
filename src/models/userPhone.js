@@ -1,5 +1,10 @@
 module.exports = (sequelize, DataTypes) => {
     const UserPhone = sequelize.define('UserPhone', {
+      userPhoneId: {
+        type: DataTypes.INTEGER,
+        autoIncrement: true,
+        primaryKey: true,
+      },
       phoneNumber: {
         type: DataTypes.STRING,
         allowNull: false
@@ -12,10 +17,12 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.STRING,
         allowNull: true
       }
-    }, {});
+    }, {
+      timestamps: false,
+    });
   
     UserPhone.associate = (models) => {
-      UserPhone.belongsTo(models.user, {
+      UserPhone.belongsTo(models.User, {
         foreignKey: 'userId',
         as: 'user'
       });
