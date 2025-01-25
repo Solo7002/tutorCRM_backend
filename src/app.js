@@ -4,7 +4,7 @@ const { metricsMiddleware, register } = require('./utils/metrics');
 const dotenv = require('dotenv');
 const bodyParser = require('body-parser');
 const authRoutes = require('./routes/authRoutes');
-const routes = require('./routes/routes');
+const routes = require('./routes/dbRoutes/routes');
 const fileRoutes = require('./routes/fileRoutes');
 
 dotenv.config();

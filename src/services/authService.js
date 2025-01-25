@@ -1,6 +1,6 @@
 const bcrypt=require('bcryptjs');
 const jwt=require('jsonwebtoken');
-const { User, Student, Teacher } = require('../models');
+const { User, Student, Teacher } = require('../models/dbModels');
 const{JWT_SECRET,JWT_EXPIRATION}=process.env;
 
 //Хеширование пароля

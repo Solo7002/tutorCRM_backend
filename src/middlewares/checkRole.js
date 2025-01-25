@@ -1,5 +1,5 @@
-const Student=require('../models/student');
-const Teacher=require('../models/teacher');
+const Student=require('../models/dbModels/student');
+const Teacher=require('../models/dbModels/teacher');
 
 const checkRole=(requiredRole)=>async(req,res,next)=>{
     try{

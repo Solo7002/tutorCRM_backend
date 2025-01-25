@@ -1,7 +1,7 @@
 {
   "development": {
     "username": "root",
-    "password": "MySqlPassword",
+    "password": "MySQLPassword",
     "database": "tutorcrmdb",
     "host": "localhost",
     "dialect": "mysql"
