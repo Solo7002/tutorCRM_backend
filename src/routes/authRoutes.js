@@ -22,5 +22,10 @@ router.get('/profile/student',authenticateToken,checkRole('Student'),(req,res)=>
 router.get('/profile/teacher',authenticateToken,checkRole('Teacher'),(req,res)=>{
     res.json({ message: 'Welcome to your teacher profile!', user: req.user });
 })
+//Маршрут до отправки сброса пароля по Email 
+router.post('/request-password-resest/',authController.resetPassword);
+//Маршрут после отправки сброса пароля по Email
+router.post('/reset-password/:token',authController.changePassword);
+
 
 module.exports=router;

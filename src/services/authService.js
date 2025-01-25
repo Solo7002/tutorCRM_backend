@@ -2,7 +2,7 @@ const bcrypt=require('bcryptjs');
 const jwt=require('jsonwebtoken');
 const { User, Student, Teacher } = require('../models/dbModels');
 const{JWT_SECRET,JWT_EXPIRATION}=process.env;
-
+const emailService=require('../services/emailService');
 //Хеширование пароля
 const hashPassword=async(password)=>{
     const salt=await bcrypt.genSalt(10);
@@ -29,7 +29,7 @@ const registerUser=async(user)=>{
             Email: user.Email,
             ImageFilePath: user.ImageFilePath,
           });
-          console.log("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+        
         if(user.Role==='Student'){
             const newStudent =await Student.create({
                 UserId:newUser.UserId,
@@ -79,8 +79,42 @@ const loginUser=async(Email,Password)=>{
 
 };
 
+const resetPasswordByService=async(Email)=>{
+    try{
+        const user=await User.findOne({where:{Email:Email}});
+        if(!user){
+            throw new Error("User not found");
+        }
+        const token=jwt.sign({id:user.UserId,email:user.Email},JWT_SECRET,{expiresIn:JWT_EXPIRATION});
+        const link=`${process.env.BASE_URL}/api/auth/reset-password/${token}`;
+      
+        emailService.sendResetPasswordEmail(user.Email,user.Username,link);
+
+    }catch(error)
+    {
+        throw new Error(error.message);
+    }
+}
+
+const resetAndChangePassword=async(token,NewPassword)=>{
+    try{
+       const decode=jwt.verify(token,JWT_SECRET);
+      const user=await User.findOne({where:{UserId:decode.id}});
+       if(!user){
+        throw new Error("User not found");
+        }
+        const hashPassworde = await hashPassword(NewPassword); 
+        await user.update({Password:hashPassworde});
+      
+    }catch(error){
+        throw new Error(error.message);
+    }
+}
+
 
 module.exports={
     loginUser,
-    registerUser
+    registerUser,
+    resetPasswordByService,
+    resetAndChangePassword
 }
