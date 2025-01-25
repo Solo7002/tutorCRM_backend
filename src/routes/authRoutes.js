@@ -27,5 +27,10 @@ router.post('/request-password-resest/',authController.resetPassword);
 //Маршрут после отправки сброса пароля по Email
 router.post('/reset-password/:token',authController.changePassword);
 
+//Маршрут регистрации через потверждение Email
+router.post('/register-email', authController.sendConfirmEmail);
+//Маршрут потверждения почты и регистрации 
+router.post('/confirm-email/:token', authController.confirmEmail);
+
 
 module.exports=router;

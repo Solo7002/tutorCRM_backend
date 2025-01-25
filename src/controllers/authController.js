@@ -44,9 +44,33 @@ const changePassword=async(req,res)=>{
     
 }
 
+const sendConfirmEmail=async(req,res)=>{
+    try{
+        const userData = req.body;
+        await authService.registerAndSendEmailConfirmation(userData);
+        res.status(200).json({message:'A confirmation sheet has been sent to your email.'});
+    }catch(error){
+        res.status(400).json({message: error.message}); 
+    }
+    
+}
+
+const confirmEmail=async(req,res)=>{
+    try{
+        const {token}=req.params;
+        const newUser=await authService.verifyEmailAndRegisterUser(token);
+        res.status(201).json({ message: 'User registered successfully and confirm email', user: newUser });
+    }catch(error){
+        res.status(400).json({message: error.message}); 
+    }
+    
+}
+
 module.exports={
     register,
     login,
     resetPassword,
-    changePassword
+    changePassword,
+    sendConfirmEmail,
+    confirmEmail
 }
