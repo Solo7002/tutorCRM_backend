@@ -1,26 +1,26 @@
 module.exports = (sequelize, DataTypes) => {
     const Teacher = sequelize.define('Teacher', {
-        teacherId: {
+        TeacherId: {
             type: DataTypes.INTEGER,
             autoIncrement: true,
             primaryKey: true,
         },
-        aboutTeacher: {
+        AboutTeacher: {
             type: DataTypes.STRING,
             allowNull: true
         },
-        lessonPrice: {
+        LessonPrice: {
             type: DataTypes.INTEGER,
             allowNull: true
         },
-        lessonType: {
+        LessonType: {
             type: DataTypes.STRING,
             allowNull: false,
             validate: {
                 isIn: [['group', 'solo']]
             }
         },
-        meetingType: {
+        MeetingType: {
             type: DataTypes.STRING,
             allowNull: false,
             validate: {
@@ -33,14 +33,14 @@ module.exports = (sequelize, DataTypes) => {
 
     Teacher.associate = (models) => {
         Teacher.belongsTo(models.User, {
-            foreignKey: 'userId',
+            foreignKey: 'UserId',
             as: 'user'
         });
         Teacher.hasMany(models.Course, {
-            foreignKey: 'teacherId',
+            foreignKey: 'TeacherId',
             as: 'courses'
         });
     };
 
     return Teacher;
-};  
+};

@@ -1,15 +1,15 @@
 module.exports = (sequelize, DataTypes) => {
     const Student = sequelize.define('Student', {
-        studentId: {
+        StudentId: {
             type: DataTypes.INTEGER,
             autoIncrement: true,
             primaryKey: true,
         },
-        schoolName: {
+        SchoolName: {
             type: DataTypes.STRING,
             allowNull: false
         },
-        grade: {
+        Grade: {
             type: DataTypes.STRING,
             allowNull: false
         }
@@ -19,7 +19,7 @@ module.exports = (sequelize, DataTypes) => {
 
     Student.associate = (models) => {
         Student.belongsTo(models.User, {
-            foreignKey: 'userId',
+            foreignKey: 'UserId',
             as: 'user'
         });
     };

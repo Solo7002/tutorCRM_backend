@@ -1,8 +1,6 @@
 const bcrypt=require('bcryptjs');
 const jwt=require('jsonwebtoken');
-const User=require('../models/user');
-const Student=require('../models/student');
-const Teacher=require('../models/teacher');
+const { User, Student, Teacher } = require('../models');
 const{JWT_SECRET,JWT_EXPIRATION}=process.env;
 
 //Хеширование пароля
@@ -31,6 +29,7 @@ const registerUser=async(user)=>{
             Email: user.Email,
             ImageFilePath: user.ImageFilePath,
           });
+          console.log("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
         if(user.Role==='Student'){
             const newStudent =await Student.create({
                 UserId:newUser.UserId,

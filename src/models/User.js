@@ -1,37 +1,37 @@
 module.exports = (sequelize, DataTypes) => {
     const User = sequelize.define('User', {
-        userId: {
+        UserId: {
             type: DataTypes.INTEGER,
             autoIncrement: true,
             primaryKey: true,
         },
-        username: {
+        Username: {
             type: DataTypes.STRING,
             allowNull: false,
             unique: true
         },
-        password: {
+        Password: {
             type: DataTypes.STRING,
             allowNull: false
         },
-        lastName: {
+        LastName: {
             type: DataTypes.STRING,
             allowNull: false
         },
-        firstName: {
+        FirstName: {
             type: DataTypes.STRING,
             allowNull: false
         },
-        email: {
+        Email: {
             type: DataTypes.STRING,
             allowNull: false,
             unique: true
         },
-        imageFilePath: {
+        ImageFilePath: {
             type: DataTypes.STRING,
             allowNull: true
         },
-        createDate: {
+        CreateDate: {
             type: DataTypes.DATE,
             defaultValue: DataTypes.NOW
         }
@@ -41,11 +41,11 @@ module.exports = (sequelize, DataTypes) => {
 
     User.associate = (models) => {
         User.hasOne(models.Student, {
-            foreignKey: 'userId',
+            foreignKey: 'UserId',
             as: 'student'
         });
         User.hasOne(models.Teacher, {
-            foreignKey: 'userId',
+            foreignKey: 'UserId',
             as: 'teacher'
         });
     };
