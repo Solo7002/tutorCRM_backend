@@ -1,4 +1,5 @@
 const { SelectedAnswer } = require('../../models/dbModels');
+const { parseQueryParams } = require('../../utils/dbUtils/queryUtils');
 
 exports.createSelectedAnswer = async (req, res) => {
   try {
@@ -11,7 +12,8 @@ exports.createSelectedAnswer = async (req, res) => {
 
 exports.getSelectedAnswers = async (req, res) => {
   try {
-    const selectedAnswers = await SelectedAnswer.findAll();
+    const { where, order } = parseQueryParams(req.query);
+    const selectedAnswers = await SelectedAnswer.findAll({ where: where || undefined, order: order || undefined });
     res.status(200).json(selectedAnswers);
   } catch (error) {
     res.status(400).json({ error: error.message });

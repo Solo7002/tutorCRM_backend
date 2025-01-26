@@ -1,4 +1,5 @@
 const { BlockedUser } = require('../../models/dbModels');
+const { parseQueryParams } = require('../../utils/dbUtils/queryUtils');
 
 exports.createBlockedUser = async (req, res) => {
   try {
@@ -11,7 +12,8 @@ exports.createBlockedUser = async (req, res) => {
 
 exports.getBlockedUsers = async (req, res) => {
   try {
-    const blockedUsers = await BlockedUser.findAll();
+    const { where, order } = parseQueryParams(req.query);
+    const blockedUsers = await BlockedUser.findAll({ where: where || undefined, order: order || undefined });
     res.status(200).json(blockedUsers);
   } catch (error) {
     res.status(400).json({ error: error.message });

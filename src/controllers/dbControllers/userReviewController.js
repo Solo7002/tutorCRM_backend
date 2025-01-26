@@ -1,4 +1,5 @@
 const { UserReview } = require('../../models/dbModels');
+const { parseQueryParams } = require('../../utils/dbUtils/queryUtils');
 
 exports.createUserReview = async (req, res) => {
   try {
@@ -11,7 +12,8 @@ exports.createUserReview = async (req, res) => {
 
 exports.getUserReviews = async (req, res) => {
   try {
-    const userReviews = await UserReview.findAll();
+    const { where, order } = parseQueryParams(req.query);
+    const userReviews = await UserReview.findAll({ where: where || undefined, order: order || undefined });
     res.status(200).json(userReviews);
   } catch (error) {
     res.status(400).json({ error: error.message });

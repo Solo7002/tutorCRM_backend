@@ -1,4 +1,5 @@
 const { HomeTask } = require('../../models/dbModels');
+const { parseQueryParams } = require('../../utils/dbUtils/queryUtils');
 
 exports.createHomeTask = async (req, res) => {
   try {
@@ -11,7 +12,8 @@ exports.createHomeTask = async (req, res) => {
 
 exports.getHomeTasks = async (req, res) => {
   try {
-    const HomeTasks = await HomeTask.findAll();
+    const { where, order } = parseQueryParams(req.query);
+    const HomeTasks = await HomeTask.findAll({ where: where || undefined, order: order || undefined });
     res.status(200).json(HomeTasks);
   } catch (error) {
     res.status(400).json({ error: error.message });

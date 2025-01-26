@@ -1,4 +1,5 @@
 const { Subject } = require('../../models/dbModels');
+const { parseQueryParams } = require('../../utils/dbUtils/queryUtils');
 
 exports.createSubject = async (req, res) => {
   try {
@@ -11,7 +12,8 @@ exports.createSubject = async (req, res) => {
 
 exports.getSubjects = async (req, res) => {
   try {
-    const subjects = await Subject.findAll();
+    const { where, order } = parseQueryParams(req.query);
+    const subjects = await Subject.findAll({ where: where || undefined, order: order || undefined });
     res.status(200).json(subjects);
   } catch (error) {
     res.status(400).json({ error: error.message });

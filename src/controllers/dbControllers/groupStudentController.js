@@ -1,4 +1,5 @@
 const { GroupStudent } = require('../../models/dbModels');
+const { parseQueryParams } = require('../../utils/dbUtils/queryUtils');
 
 exports.createGroupStudent = async (req, res) => {
   try {
@@ -11,9 +12,8 @@ exports.createGroupStudent = async (req, res) => {
 
 exports.getGroupStudents = async (req, res) => {
   try {
-    const groupStudents = await GroupStudent.findAll({
-      attributes: ['GroupId', 'StudentId']
-    });
+    const { where, order } = parseQueryParams(req.query);
+    const groupStudents = await GroupStudent.findAll({ attributes: ['GroupId', 'StudentId'], where: where || undefined, order: order || undefined });
     res.status(200).json(groupStudents);
   } catch (error) {
     res.status(400).json({ error: error.message });

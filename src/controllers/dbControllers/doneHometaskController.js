@@ -1,4 +1,5 @@
 const { DoneHomeTask } = require('../../models/dbModels');
+const { parseQueryParams } = require('../../utils/dbUtils/queryUtils');
 
 exports.createDoneHometask = async (req, res) => {
   try {
@@ -11,7 +12,8 @@ exports.createDoneHometask = async (req, res) => {
 
 exports.getDoneHometasks = async (req, res) => {
   try {
-    const doneHometasks = await DoneHomeTask.findAll();
+    const { where, order } = parseQueryParams(req.query);
+    const doneHometasks = await DoneHometask.findAll({ where: where || undefined, order: order || undefined });
     res.status(200).json(doneHometasks);
   } catch (error) {
     res.status(400).json({ error: error.message });

@@ -1,4 +1,5 @@
 const { Group } = require('../../models/dbModels');
+const { parseQueryParams } = require('../../utils/dbUtils/queryUtils');
 
 exports.createGroup = async (req, res) => {
   try {
@@ -11,7 +12,8 @@ exports.createGroup = async (req, res) => {
 
 exports.getGroups = async (req, res) => {
   try {
-    const groups = await Group.findAll();
+    const { where, order } = parseQueryParams(req.query);
+    const groups = await Group.findAll({ where: where || undefined, order: order || undefined });
     res.status(200).json(groups);
   } catch (error) {
     res.status(400).json({ error: error.message });

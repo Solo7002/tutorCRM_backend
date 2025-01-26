@@ -1,4 +1,5 @@
 const { ReviewComplaint } = require('../../models/dbModels');
+const { parseQueryParams } = require('../../utils/dbUtils/queryUtils');
 
 exports.createReviewComplaint = async (req, res) => {
   try {
@@ -11,7 +12,8 @@ exports.createReviewComplaint = async (req, res) => {
 
 exports.getReviewComplaints = async (req, res) => {
   try {
-    const reviewComplaints = await ReviewComplaint.findAll();
+    const { where, order } = parseQueryParams(req.query);
+    const reviewComplaints = await ReviewComplaint.findAll({ where: where || undefined, order: order || undefined });
     res.status(200).json(reviewComplaints);
   } catch (error) {
     res.status(400).json({ error: error.message });

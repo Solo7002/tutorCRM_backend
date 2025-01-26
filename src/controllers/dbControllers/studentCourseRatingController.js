@@ -1,4 +1,5 @@
 const { StudentCourseRating } = require('../../models/dbModels');
+const { parseQueryParams } = require('../../utils/dbUtils/queryUtils');
 
 exports.createStudentCourseRating = async (req, res) => {
   try {
@@ -11,7 +12,8 @@ exports.createStudentCourseRating = async (req, res) => {
 
 exports.getStudentCourseRatings = async (req, res) => {
   try {
-    const studentCourseRatings = await StudentCourseRating.findAll();
+    const { where, order } = parseQueryParams(req.query);
+    const studentCourseRatings = await StudentCourseRating.findAll({ where: where || undefined, order: order || undefined });
     res.status(200).json(studentCourseRatings);
   } catch (error) {
     res.status(400).json({ error: error.message });

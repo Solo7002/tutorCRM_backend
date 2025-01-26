@@ -1,4 +1,5 @@
 const { Material } = require('../../models/dbModels');
+const { parseQueryParams } = require('../../utils/dbUtils/queryUtils');
 
 exports.createMaterial = async (req, res) => {
   try {
@@ -11,7 +12,8 @@ exports.createMaterial = async (req, res) => {
 
 exports.getMaterials = async (req, res) => {
   try {
-    const materials = await Material.findAll();
+    const { where, order } = parseQueryParams(req.query);
+    const materials = await Material.findAll({ where: where || undefined, order: order || undefined });
     res.status(200).json(materials);
   } catch (error) {
     res.status(400).json({ error: error.message });

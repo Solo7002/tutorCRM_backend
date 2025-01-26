@@ -1,4 +1,5 @@
 const { HomeTaskFile } = require('../../models/dbModels');
+const { parseQueryParams } = require('../../utils/dbUtils/queryUtils');
 
 exports.createHometaskFile = async (req, res) => {
   try {
@@ -11,7 +12,8 @@ exports.createHometaskFile = async (req, res) => {
 
 exports.getHometaskFiles = async (req, res) => {
   try {
-    const hometaskFiles = await HomeTaskFile.findAll();
+    const { where, order } = parseQueryParams(req.query);
+    const hometaskFiles = await HomeTaskFile.findAll({ where: where || undefined, order: order || undefined });
     res.status(200).json(hometaskFiles);
   } catch (error) {
     res.status(400).json({ error: error.message });

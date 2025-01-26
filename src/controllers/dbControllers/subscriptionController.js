@@ -1,4 +1,5 @@
 const { Subscription } = require('../../models/dbModels');
+const { parseQueryParams } = require('../../utils/dbUtils/queryUtils');
 
 exports.createSubscription = async (req, res) => {
   try {
@@ -11,7 +12,8 @@ exports.createSubscription = async (req, res) => {
 
 exports.getSubscriptions = async (req, res) => {
   try {
-    const subscriptions = await Subscription.findAll();
+    const { where, order } = parseQueryParams(req.query);
+    const subscriptions = await Subscription.findAll({ where: where || undefined, order: order || undefined });
     return res.status(200).json(subscriptions);
   } catch (error) {
     return res.status(400).json({ error: error.message });

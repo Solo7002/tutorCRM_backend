@@ -1,4 +1,5 @@
 const { MaterialVisibilityStudent } = require('../../models/dbModels');
+const { parseQueryParams } = require('../../utils/dbUtils/queryUtils');
 
 exports.createMaterialVisibilityStudent = async (req, res) => {
   try {
@@ -11,9 +12,8 @@ exports.createMaterialVisibilityStudent = async (req, res) => {
 
 exports.getMaterialVisibilityStudents = async (req, res) => {
   try {
-    const materialVisibilityStudents = await MaterialVisibilityStudent.findAll({
-      attributes: ['MaterialId', 'StudentId']
-    });
+    const { where, order } = parseQueryParams(req.query);
+    const materialVisibilityStudents = await MaterialVisibilityStudent.findAll({ attributes: ['MaterialId', 'StudentId'], where: where || undefined, order: order || undefined });
     res.status(200).json(materialVisibilityStudents);
   } catch (error) {
     res.status(400).json({ error: error.message });

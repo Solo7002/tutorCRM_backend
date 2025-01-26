@@ -1,4 +1,5 @@
 const { MarkHistory } = require('../../models/dbModels');
+const { parseQueryParams } = require('../../utils/dbUtils/queryUtils');
 
 exports.createMarkHistory = async (req, res) => {
   try {
@@ -11,7 +12,8 @@ exports.createMarkHistory = async (req, res) => {
 
 exports.getMarkHistories = async (req, res) => {
   try {
-    const markHistories = await MarkHistory.findAll();
+    const { where, order } = parseQueryParams(req.query);
+    const markHistories = await MarkHistory.findAll({ where: where || undefined, order: order || undefined });
     res.status(200).json(markHistories);
   } catch (error) {
     res.status(400).json({ error: error.message });
