@@ -7,6 +7,8 @@ const authRoutes = require('./routes/authRoutes');
 const routes = require('./routes/dbRoutes/routes');
 const fileRoutes = require('./routes/fileRoutes');
 
+require('./config/passportConfig');
+
 dotenv.config();
 
 app.use(express.json());

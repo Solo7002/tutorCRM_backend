@@ -15,7 +15,7 @@ const login=async(req,res)=>{
     try{
         const { Email, Password } = req.body;
         const { user, token } = await authService.loginUser(Email, Password);
-        res.status(200).json({ message: 'Login successful', user, token });
+        res.status(200).json({ message: 'Login successful', user, token:token });
 
     }catch (error) {
         res.status(400).json({ message: error.message });
@@ -66,11 +66,23 @@ const confirmEmail=async(req,res)=>{
     
 }
 
+
+const oauthCallback=async(req,res)=>{
+    try{
+            const user=req.user;
+            const token =authService.loginToOuth2(user);
+            res.status(200).json({ message: 'Login successful', user, token:token });
+    }catch(error){
+        res.status(400).json({message:error.message});
+    }
+}
+
 module.exports={
     register,
     login,
     resetPassword,
     changePassword,
     sendConfirmEmail,
-    confirmEmail
+    confirmEmail,
+    oauthCallback
 }

@@ -134,6 +134,18 @@ const loginUser=async(Email,Password)=>{
 
 };
 
+const loginToOuth2=(user)=>{
+    try{
+        if(!user){
+            throw new Error("User not found");
+        }
+        const token=jwt.sign({id:user.UserId,email:user.Email},JWT_SECRET,{expiresIn:JWT_EXPIRATION})
+        return token;
+    }catch(error){
+        throw new Error(error.message);
+    }
+}
+
 const resetPasswordByService=async(Email)=>{
     try{
         const user=await User.findOne({where:{Email:Email}});
@@ -173,5 +185,6 @@ module.exports={
     resetPasswordByService,
     resetAndChangePassword,
     registerAndSendEmailConfirmation,
-    verifyEmailAndRegisterUser
+    verifyEmailAndRegisterUser,
+    loginToOuth2
 }
