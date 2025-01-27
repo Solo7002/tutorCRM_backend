@@ -4,6 +4,7 @@ const plannedLessonController = require('../../controllers/dbControllers/planned
 
 router.post('/', plannedLessonController.createPlannedLesson);
 router.get('/', plannedLessonController.getPlannedLessons);
+router.get('/search', plannedLessonController.searchPlannedLessons);
 router.get('/:id', plannedLessonController.getPlannedLessonById);
 router.put('/:id', plannedLessonController.updatePlannedLesson);
 router.delete('/:id', plannedLessonController.deletePlannedLesson);

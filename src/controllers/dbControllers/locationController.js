@@ -1,5 +1,6 @@
 const { Location } = require('../../models/dbModels');
 const { parseQueryParams } = require('../../utils/dbUtils/queryUtils');
+const { Op } = require('sequelize');
 
 exports.createLocation = async (req, res) => {
   try {
@@ -27,6 +28,30 @@ exports.getLocationById = async (req, res) => {
     res.status(200).json(location);
   } catch (error) {
     res.status(400).json({ error: error.message });
+  }
+};
+
+exports.searchLocations = async (req, res) => {
+  try {
+    const { city, country, latitude, longitude, address } = req.query;
+    let whereConditions = {};
+
+    if (city) whereConditions.City = { [Op.like]: `%${city}%` };
+    if (country) whereConditions.Country = { [Op.like]: `%${country}%` };
+    if (latitude) whereConditions.Latitude = latitude;
+    if (longitude) whereConditions.Longitude = longitude;
+    if (address) whereConditions.Address = { [Op.like]: `%${address}%` };
+
+    const locations = await Location.findAll({
+      where: whereConditions,
+    });
+
+    if (!locations.length) return res.status(404).json({ success: false, message: 'No locations found matching the criteria.' });
+
+    return res.status(200).json({ success: true, data: locations });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ success: false, message: 'Server error, please try again later.' });
   }
 };
 

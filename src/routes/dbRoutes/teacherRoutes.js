@@ -4,6 +4,7 @@ const teacherController = require('../../controllers/dbControllers/teacherContro
 
 router.post('/', teacherController.createTeacher);
 router.get('/', teacherController.getTeachers);
+router.get('/search', teacherController.searchTeachers);
 router.get('/:id', teacherController.getTeacherById);
 router.put('/:id', teacherController.updateTeacher);
 router.delete('/:id', teacherController.deleteTeacher);

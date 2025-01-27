@@ -1,5 +1,6 @@
 const { PlannedLesson } = require('../../models/dbModels');
 const { parseQueryParams } = require('../../utils/dbUtils/queryUtils');
+const { Op } = require('sequelize');
 
 exports.createPlannedLesson = async (req, res) => {
   try {
@@ -27,6 +28,29 @@ exports.getPlannedLessonById = async (req, res) => {
     res.status(200).json(PlannedLesson);
   } catch (error) {
     res.status(400).json({ error: error.message });
+  }
+};
+
+exports.searchPlannedLessons = async (req, res) => {
+  try {
+    const { lessonHeader, lessonPrice, isPaid, groupId } = req.query;
+    let whereConditions = {};
+
+    if (lessonHeader) whereConditions.LessonHeader = { [Op.like]: `%${lessonHeader}%` };
+    if (lessonPrice) whereConditions.LessonPrice = lessonPrice;
+    if (isPaid !== undefined) whereConditions.IsPaid = isPaid;
+    if (groupId) whereConditions.GroupId = groupId;
+
+    const plannedLessons = await PlannedLesson.findAll({
+      where: whereConditions,
+    });
+
+    if (!plannedLessons.length) return res.status(404).json({ success: false, message: 'No planned lessons found matching the criteria.' });
+
+    return res.status(200).json({ success: true, data: plannedLessons });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ success: false, message: 'Server error, please try again later.' });
   }
 };
 

@@ -4,6 +4,7 @@ const selectedAnswerController = require('../../controllers/dbControllers/select
 
 router.post('/', selectedAnswerController.createSelectedAnswer);
 router.get('/', selectedAnswerController.getSelectedAnswers);
+router.get('/search', selectedAnswerController.searchSelectedAnswers);
 router.get('/:id', selectedAnswerController.getSelectedAnswerById);
 router.put('/:id', selectedAnswerController.updateSelectedAnswer);
 router.delete('/:id', selectedAnswerController.deleteSelectedAnswer);

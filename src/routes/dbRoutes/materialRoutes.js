@@ -4,6 +4,7 @@ const materialController = require('../../controllers/dbControllers/materialCont
 
 router.post('/', materialController.createMaterial);
 router.get('/', materialController.getMaterials);
+router.get('/search', materialController.searchMaterials);
 router.get('/:id', materialController.getMaterialById);
 router.put('/:id', materialController.updateMaterial);
 router.delete('/:id', materialController.deleteMaterial);

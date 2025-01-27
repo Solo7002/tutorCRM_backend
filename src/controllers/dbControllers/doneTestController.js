@@ -1,5 +1,6 @@
-const { DoneTest } = require('../../models/dbModels');
+const { DoneTest, Student, Test } = require('../../models/dbModels');
 const { parseQueryParams } = require('../../utils/dbUtils/queryUtils');
+const { Op } = require('sequelize');
 
 exports.createDoneTest = async (req, res) => {
   try {
@@ -27,6 +28,34 @@ exports.getDoneTestById = async (req, res) => {
     res.status(200).json(doneTest);
   } catch (error) {
     res.status(400).json({ error: error.message });
+  }
+};
+
+exports.searchDoneTests = async (req, res) => {
+  try {
+    const { mark, startDate, endDate, studentId, testId } = req.query;
+    const whereConditions = {};
+
+    if (mark) whereConditions.Mark = { [Op.eq]: mark };
+    if (startDate) whereConditions.DoneDate = { [Op.gte]: new Date(startDate) };
+    if (endDate) whereConditions.DoneDate = { [Op.lte]: new Date(endDate) };
+    if (studentId) whereConditions.StudentId = studentId;
+    if (testId) whereConditions.TestId = testId;
+
+    const doneTests = await DoneTest.findAll({
+      where: whereConditions,
+      include: [
+        { model: Student, as: 'Student', attributes: ['StudentId', 'FirstName', 'LastName'] },
+        { model: Test, as: 'Test', attributes: ['TestId', 'TestName'] }
+      ]
+    });
+
+    if (!doneTests.length) return res.status(404).json({ success: false, message: 'No tests found matching the criteria.' });
+
+    return res.status(200).json({ success: true, data: doneTests });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ success: false, message: 'Server error, please try again later.' });
   }
 };
 

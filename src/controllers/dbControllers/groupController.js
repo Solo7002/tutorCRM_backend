@@ -1,5 +1,6 @@
-const { Group } = require('../../models/dbModels');
+const { Group, GroupStudent } = require('../../models/dbModels');
 const { parseQueryParams } = require('../../utils/dbUtils/queryUtils');
+const { Op } = require('sequelize');
 
 exports.createGroup = async (req, res) => {
   try {
@@ -27,6 +28,33 @@ exports.getGroupById = async (req, res) => {
     res.status(200).json(group);
   } catch (error) {
     res.status(400).json({ error: error.message });
+  }
+};
+
+exports.searchGroups = async (req, res) => {
+  try {
+    const { groupName, minPrice, maxPrice } = req.query;
+    let whereConditions = {};
+
+    if (groupName) whereConditions.GroupName = { [Op.like]: `%${groupName}%` };
+    if (minPrice) whereConditions.GroupPrice = { [Op.gte]: minPrice };
+    if (maxPrice) whereConditions.GroupPrice = { [Op.lte]: maxPrice };
+
+    const groups = await Group.findAll({
+      where: whereConditions,
+      include: {
+        model: GroupStudent,
+        as: 'Students',
+        attributes: ['GroupId', 'StudentId'],
+      }
+    });
+
+    if (!groups.length) return res.status(404).json({ success: false, message: 'No groups found matching the criteria.' });
+
+    return res.status(200).json({ success: true, data: groups });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ success: false, message: 'Server error, please try again later.' });
   }
 };
 

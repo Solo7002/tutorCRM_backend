@@ -4,6 +4,7 @@ const reviewComplaintController = require('../../controllers/dbControllers/revie
 
 router.post('/', reviewComplaintController.createReviewComplaint);
 router.get('/', reviewComplaintController.getReviewComplaints);
+router.get('/search', reviewComplaintController.searchReviewComplaints);
 router.get('/:id', reviewComplaintController.getReviewComplaintById);
 router.put('/:id', reviewComplaintController.updateReviewComplaint);
 router.delete('/:id', reviewComplaintController.deleteReviewComplaint);

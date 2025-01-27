@@ -4,6 +4,7 @@ const doneTestController = require('../../controllers/dbControllers/doneTestCont
 
 router.post('/', doneTestController.createDoneTest);
 router.get('/', doneTestController.getDoneTests);
+router.get('/search', doneTestController.searchDoneTests);
 router.get('/:id', doneTestController.getDoneTestById);
 router.put('/:id', doneTestController.updateDoneTest);
 router.delete('/:id', doneTestController.deleteDoneTest);

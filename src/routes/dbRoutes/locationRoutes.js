@@ -4,6 +4,7 @@ const locationController = require('../../controllers/dbControllers/locationCont
 
 router.post('/', locationController.createLocation);
 router.get('/', locationController.getLocations);
+router.get('/search', locationController.searchLocations);
 router.get('/:id', locationController.getLocationById);
 router.put('/:id', locationController.updateLocation);
 router.delete('/:id', locationController.deleteLocation);

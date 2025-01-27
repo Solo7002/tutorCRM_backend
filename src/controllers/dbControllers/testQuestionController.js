@@ -1,5 +1,6 @@
 const { TestQuestion } = require('../../models/dbModels');
 const { parseQueryParams } = require('../../utils/dbUtils/queryUtils');
+const { Op } = require('sequelize');
 
 exports.createTestQuestion = async (req, res) => {
   try {
@@ -27,6 +28,30 @@ exports.getTestQuestionById = async (req, res) => {
     res.status(200).json(testQuestion);
   } catch (error) {
     res.status(400).json({ error: error.message });
+  }
+};
+
+exports.searchTestQuestions = async (req, res) => {
+  try {
+    const { header, description } = req.query;
+    let whereConditions = {};
+
+    if (header) whereConditions.TestQuestionHeader = { [Op.like]: `%${header}%` };
+    if (description) whereConditions.TestQuestionDescription = { [Op.like]: `%${description}%` };
+
+    const testQuestions = await TestQuestion.findAll({
+      where: whereConditions,
+      attributes: ['TestQuestionId', 'TestQuestionHeader', 'TestQuestionDescription', 'ImagePath', 'AudioPath'],
+    });
+
+    if (!testQuestions.length) {
+      return res.status(404).json({ success: false, message: 'No test questions found matching the criteria.' });
+    }
+
+    return res.status(200).json({ success: true, data: testQuestions });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ success: false, message: 'Server error, please try again later.' });
   }
 };
 

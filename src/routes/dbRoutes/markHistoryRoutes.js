@@ -4,6 +4,7 @@ const markHistoryController = require('../../controllers/dbControllers/markHisto
 
 router.post('/', markHistoryController.createMarkHistory);
 router.get('/', markHistoryController.getMarkHistories);
+router.get('/search', markHistoryController.searchMarkHistory);
 router.get('/:id', markHistoryController.getMarkHistoryById);
 router.put('/:id', markHistoryController.updateMarkHistory);
 router.delete('/:id', markHistoryController.deleteMarkHistory);

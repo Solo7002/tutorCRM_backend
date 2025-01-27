@@ -4,6 +4,7 @@ const studentCourseRatingController = require('../../controllers/dbControllers/s
 
 router.post('/', studentCourseRatingController.createStudentCourseRating);
 router.get('/', studentCourseRatingController.getStudentCourseRatings);
+router.get('/search', studentCourseRatingController.searchStudentCourseRatings);
 router.get('/:id', studentCourseRatingController.getStudentCourseRatingById);
 router.put('/:id', studentCourseRatingController.updateStudentCourseRating);
 router.delete('/:id', studentCourseRatingController.deleteStudentCourseRating);

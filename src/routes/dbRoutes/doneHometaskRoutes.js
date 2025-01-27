@@ -4,6 +4,7 @@ const doneHometaskController = require('../../controllers/dbControllers/doneHome
 
 router.post('/', doneHometaskController.createDoneHometask);
 router.get('/', doneHometaskController.getDoneHometasks);
+router.get('/search', doneHometaskController.searchDoneHomeTasks);
 router.get('/:id', doneHometaskController.getDoneHometaskById);
 router.put('/:id', doneHometaskController.updateDoneHometask);
 router.delete('/:id', doneHometaskController.deleteDoneHometask);

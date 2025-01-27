@@ -4,6 +4,7 @@ const purchasedMaterialController = require('../../controllers/dbControllers/pur
 
 router.post('/', purchasedMaterialController.createPurchasedMaterial);
 router.get('/', purchasedMaterialController.getPurchasedMaterials);
+router.get('/search', purchasedMaterialController.searchPurchasedMaterials);
 router.get('/:id', purchasedMaterialController.getPurchasedMaterialById);
 router.put('/:id', purchasedMaterialController.updatePurchasedMaterial);
 router.delete('/:id', purchasedMaterialController.deletePurchasedMaterial);

@@ -1,5 +1,6 @@
-const { HomeTask } = require('../../models/dbModels');
+const { HomeTask, Group } = require('../../models/dbModels');
 const { parseQueryParams } = require('../../utils/dbUtils/queryUtils');
+const { Op } = require('sequelize');
 
 exports.createHomeTask = async (req, res) => {
   try {
@@ -27,6 +28,34 @@ exports.getHomeTaskById = async (req, res) => {
     res.status(200).json(HomeTask);
   } catch (error) {
     res.status(400).json({ error: error.message });
+  }
+};
+
+exports.searchHomeTasks = async (req, res) => {
+  try {
+    const { homeTaskHeader, groupId, startDate, deadlineDate } = req.query;
+    let whereConditions = {};
+
+    if (homeTaskHeader) whereConditions.HomeTaskHeader = { [Op.like]: `%${homeTaskHeader}%` };
+    if (groupId) whereConditions.GroupId = groupId;
+    if (startDate) whereConditions.StartDate = { [Op.gte]: new Date(startDate) };
+    if (deadlineDate) whereConditions.DeadlineDate = { [Op.lte]: new Date(deadlineDate) };
+
+    const homeTasks = await HomeTask.findAll({
+      where: whereConditions,
+      include: {
+        model: Group,
+        as: 'Group',
+        attributes: ['GroupId', 'GroupName'],
+      }
+    });
+
+    if (!homeTasks.length) return res.status(404).json({ success: false, message: 'No home tasks found matching the criteria.' });
+
+    return res.status(200).json({ success: true, data: homeTasks });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ success: false, message: 'Server error, please try again later.' });
   }
 };
 

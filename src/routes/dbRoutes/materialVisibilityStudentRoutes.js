@@ -4,6 +4,7 @@ const materialVisibilityStudentController = require('../../controllers/dbControl
 
 router.post('/', materialVisibilityStudentController.createMaterialVisibilityStudent);
 router.get('/', materialVisibilityStudentController.getMaterialVisibilityStudents);
+router.get('/search', materialVisibilityStudentController.searchMaterialVisibility);
 router.get('/:id', materialVisibilityStudentController.getMaterialVisibilityStudentById);
 router.put('/:id', materialVisibilityStudentController.updateMaterialVisibilityStudent);
 router.delete('/:id', materialVisibilityStudentController.deleteMaterialVisibilityStudent);

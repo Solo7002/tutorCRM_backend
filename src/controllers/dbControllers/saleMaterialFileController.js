@@ -1,5 +1,6 @@
 const { SaleMaterialFile } = require('../../models/dbModels');
 const { parseQueryParams } = require('../../utils/dbUtils/queryUtils');
+const { Op } = require('sequelize');
 
 exports.createSaleMaterialFile = async (req, res) => {
   try {
@@ -27,6 +28,30 @@ exports.getSaleMaterialFileById = async (req, res) => {
     res.status(200).json(saleMaterialFile);
   } catch (error) {
     res.status(400).json({ error: error.message });
+  }
+};
+
+exports.searchSaleMaterialFiles = async (req, res) => {
+  try {
+    const { filePath, fileName, appearedDate, saleMaterialId, purchasedMaterialId } = req.query;
+    let whereConditions = {};
+
+    if (filePath) whereConditions.FilePath = { [Op.like]: `%${filePath}%` };
+    if (fileName) whereConditions.FileName = { [Op.like]: `%${fileName}%` };
+    if (appearedDate) whereConditions.AppearedDate = { [Op.gte]: new Date(appearedDate) };
+    if (saleMaterialId) whereConditions.SaleMaterialId = saleMaterialId;
+    if (purchasedMaterialId) whereConditions.PurchasedMaterialId = purchasedMaterialId;
+
+    const saleMaterialFiles = await SaleMaterialFile.findAll({
+      where: whereConditions,
+    });
+
+    if (!saleMaterialFiles.length) return res.status(404).json({ success: false, message: 'No sale material files found matching the criteria.' });
+
+    return res.status(200).json({ success: true, data: saleMaterialFiles });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ success: false, message: 'Server error, please try again later.' });
   }
 };
 

@@ -4,6 +4,7 @@ const doneHometaskFileController = require('../../controllers/dbControllers/done
 
 router.post('/', doneHometaskFileController.createDoneHometaskFile);
 router.get('/', doneHometaskFileController.getDoneHometaskFiles);
+router.get('/search', doneHometaskFileController.searchDoneHomeTaskFiles);
 router.get('/:id', doneHometaskFileController.getDoneHometaskFileById);
 router.put('/:id', doneHometaskFileController.updateDoneHometaskFile);
 router.delete('/:id', doneHometaskFileController.deleteDoneHometaskFile);

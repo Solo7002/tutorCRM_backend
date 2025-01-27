@@ -4,6 +4,7 @@ const subscriptionController = require('../../controllers/dbControllers/subscrip
 
 router.post('/', subscriptionController.createSubscription);
 router.get('/', subscriptionController.getSubscriptions);
+router.get('/search', subscriptionController.searchSubscriptions);
 router.get('/:id', subscriptionController.getSubscriptionById);
 router.put('/:id', subscriptionController.updateSubscription);
 router.delete('/:id', subscriptionController.deleteSubscription);

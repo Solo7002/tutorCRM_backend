@@ -4,6 +4,7 @@ const saleMaterialFileController = require('../../controllers/dbControllers/sale
 
 router.post('/', saleMaterialFileController.createSaleMaterialFile);
 router.get('/', saleMaterialFileController.getSaleMaterialFiles);
+router.get('/search', saleMaterialFileController.searchSaleMaterialFiles);
 router.get('/:id', saleMaterialFileController.getSaleMaterialFileById);
 router.put('/:id', saleMaterialFileController.updateSaleMaterialFile);
 router.delete('/:id', saleMaterialFileController.deleteSaleMaterialFile);

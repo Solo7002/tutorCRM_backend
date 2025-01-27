@@ -1,5 +1,6 @@
 const { Test } = require('../../models/dbModels');
 const { parseQueryParams } = require('../../utils/dbUtils/queryUtils');
+const { Op } = require('sequelize');
 
 exports.createTest = async (req, res) => {
   try {
@@ -27,6 +28,33 @@ exports.getTestById = async (req, res) => {
     res.status(200).json(test);
   } catch (error) {
     res.status(400).json({ error: error.message });
+  }
+};
+
+exports.searchTests = async (req, res) => {
+  try {
+    const { testName, testDescription, startDate, endDate } = req.query;
+    let whereConditions = {};
+
+    if (testName) whereConditions.TestName = { [Op.like]: `%${testName}%` };
+    if (testDescription) whereConditions.TestDescription = { [Op.like]: `%${testDescription}%` };
+    if (startDate && endDate) {
+      whereConditions.CreatedDate = { [Op.between]: [new Date(startDate), new Date(endDate)] };
+    }
+
+    const tests = await Test.findAll({
+      where: whereConditions,
+      attributes: ['TestId', 'TestName', 'TestDescription', 'CreatedDate'],
+    });
+
+    if (!tests.length) {
+      return res.status(404).json({ success: false, message: 'No tests found matching the criteria.' });
+    }
+
+    return res.status(200).json({ success: true, data: tests });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ success: false, message: 'Server error, please try again later.' });
   }
 };
 

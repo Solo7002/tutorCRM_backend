@@ -1,5 +1,6 @@
 const { DoneHomeTaskFile } = require('../../models/dbModels');
 const { parseQueryParams } = require('../../utils/dbUtils/queryUtils');
+const { Op } = require('sequelize');
 
 exports.createDoneHometaskFile = async (req, res) => {
   try {
@@ -27,6 +28,29 @@ exports.getDoneHometaskFileById = async (req, res) => {
     res.status(200).json(doneHometaskFile);
   } catch (error) {
     res.status(400).json({ error: error.message });
+  }
+};
+
+exports.searchDoneHomeTaskFiles = async (req, res) => {
+  try {
+    const { fileName, doneHomeTaskId, filePath } = req.query;
+    let whereConditions = {};
+
+    if (fileName) whereConditions.FileName = { [Op.like]: `%${fileName}%` };
+    if (doneHomeTaskId) whereConditions.DoneHomeTaskId = doneHomeTaskId;
+    if (filePath) whereConditions.FilePath = { [Op.like]: `%${filePath}%` };
+
+    const files = await DoneHomeTaskFile.findAll({
+      where: whereConditions,
+      include: [
+        { model: DoneHomeTask, as: 'DoneHomeTask', attributes: ['DoneHomeTaskId', 'Mark'] }
+      ]
+    });
+
+    if (!files.length) return res.status(404).json({ success: false, message: 'No files found matching the criteria.' });
+    return res.status(200).json({ success: true, data: files });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: 'Server error, please try again later.' });
   }
 };
 

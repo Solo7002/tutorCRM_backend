@@ -1,5 +1,6 @@
 const { UserReview } = require('../../models/dbModels');
 const { parseQueryParams } = require('../../utils/dbUtils/queryUtils');
+const { Op } = require('sequelize');
 
 exports.createUserReview = async (req, res) => {
   try {
@@ -27,6 +28,33 @@ exports.getUserReviewById = async (req, res) => {
     res.status(200).json(userReview);
   } catch (error) {
     res.status(400).json({ error: error.message });
+  }
+};
+
+exports.searchUserReviews = async (req, res) => {
+  try {
+    const { reviewHeader, reviewText, startDate, endDate } = req.query;
+    let whereConditions = {};
+
+    if (reviewHeader) whereConditions.ReviewHeader = { [Op.like]: `%${reviewHeader}%` };
+    if (reviewText) whereConditions.ReviewText = { [Op.like]: `%${reviewText}%` };
+    if (startDate && endDate) {
+      whereConditions.CreateDate = { [Op.between]: [new Date(startDate), new Date(endDate)] };
+    }
+
+    const userReviews = await UserReview.findAll({
+      where: whereConditions,
+      attributes: ['UserReviewId', 'ReviewHeader', 'ReviewText', 'CreateDate'],
+    });
+
+    if (!userReviews.length) {
+      return res.status(404).json({ success: false, message: 'No user reviews found matching the criteria.' });
+    }
+
+    return res.status(200).json({ success: true, data: userReviews });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ success: false, message: 'Server error, please try again later.' });
   }
 };
 

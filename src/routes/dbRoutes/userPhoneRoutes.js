@@ -4,6 +4,7 @@ const userPhoneController = require('../../controllers/dbControllers/userPhoneCo
 
 router.post('/', userPhoneController.createUserPhone);
 router.get('/', userPhoneController.getUserPhones);
+router.get('/search', userPhoneController.searchUserPhones);
 router.get('/:id', userPhoneController.getUserPhoneById);
 router.put('/:id', userPhoneController.updateUserPhone);
 router.delete('/:id', userPhoneController.deleteUserPhone);

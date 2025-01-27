@@ -4,6 +4,7 @@ const groupStudentController = require('../../controllers/dbControllers/groupStu
 
 router.post('/', groupStudentController.createGroupStudent);
 router.get('/', groupStudentController.getGroupStudents);
+router.get('/search', groupStudentController.searchGroupStudents);
 router.get('/:id', groupStudentController.getGroupStudentById);
 router.put('/:id', groupStudentController.updateGroupStudent);
 router.delete('/:id', groupStudentController.deleteGroupStudent);

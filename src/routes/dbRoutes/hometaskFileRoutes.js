@@ -4,6 +4,7 @@ const hometaskFileController = require('../../controllers/dbControllers/hometask
 
 router.post('/', hometaskFileController.createHometaskFile);
 router.get('/', hometaskFileController.getHometaskFiles);
+router.get('/search', hometaskFileController.searchHomeTaskFiles);
 router.get('/:id', hometaskFileController.getHometaskFileById);
 router.put('/:id', hometaskFileController.updateHometaskFile);
 router.delete('/:id', hometaskFileController.deleteHometaskFile);

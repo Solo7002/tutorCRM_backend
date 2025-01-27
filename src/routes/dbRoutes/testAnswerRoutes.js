@@ -4,6 +4,7 @@ const testAnswerController = require('../../controllers/dbControllers/testAnswer
 
 router.post('/', testAnswerController.createTestAnswer);
 router.get('/', testAnswerController.getTestAnswers);
+router.get('/search', testAnswerController.searchTestAnswers);
 router.get('/:id', testAnswerController.getTestAnswerById);
 router.put('/:id', testAnswerController.updateTestAnswer);
 router.delete('/:id', testAnswerController.deleteTestAnswer);

@@ -1,5 +1,6 @@
 const { SelectedAnswer } = require('../../models/dbModels');
 const { parseQueryParams } = require('../../utils/dbUtils/queryUtils');
+const { Op } = require('sequelize');
 
 exports.createSelectedAnswer = async (req, res) => {
   try {
@@ -27,6 +28,27 @@ exports.getSelectedAnswerById = async (req, res) => {
     res.status(200).json(selectedAnswer);
   } catch (error) {
     res.status(400).json({ error: error.message });
+  }
+};
+
+exports.searchSelectedAnswers = async (req, res) => {
+  try {
+    const { testQuestionId, doneTestId } = req.query;
+    let whereConditions = {};
+
+    if (testQuestionId) whereConditions.TestQuestionId = testQuestionId;
+    if (doneTestId) whereConditions.DoneTestId = doneTestId;
+
+    const selectedAnswers = await SelectedAnswer.findAll({
+      where: whereConditions,
+    });
+
+    if (!selectedAnswers.length) return res.status(404).json({ success: false, message: 'No selected answers found.' });
+
+    return res.status(200).json({ success: true, data: selectedAnswers });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ success: false, message: 'Server error.' });
   }
 };
 

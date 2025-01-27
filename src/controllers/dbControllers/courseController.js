@@ -1,5 +1,6 @@
-const { Course } = require('../../models/dbModels');
+const { Course, Teacher, Subject, Location  } = require('../../models/dbModels');
 const { parseQueryParams } = require('../../utils/dbUtils/queryUtils');
+const { Op } = require('sequelize');
 
 exports.createCourse = async (req, res) => {
   try {
@@ -27,6 +28,34 @@ exports.getCourseById = async (req, res) => {
     res.status(200).json(course);
   } catch (error) {
     res.status(400).json({ error: error.message });
+  }
+};
+
+exports.searchCourses = async (req, res) => {
+  try {
+    const { courseName, teacherId, subjectId, locationId } = req.query;
+    const whereConditions = {};
+
+    if (courseName) whereConditions.CourseName = { [Op.like]: `%${courseName}%` };
+    if (teacherId) whereConditions.TeacherId = teacherId;
+    if (subjectId) whereConditions.SubjectId = subjectId;
+    if (locationId) whereConditions.LocationId = locationId;
+
+    const courses = await Course.findAll({
+      where: whereConditions,
+      include: [
+        { model: Teacher, as: 'Teacher', attributes: ['TeacherId', 'Name'] },
+        { model: Subject, as: 'Subject', attributes: ['SubjectId', 'SubjectName'] },
+        { model: Location, as: 'Location', attributes: ['LocationId', 'LocationName'] }
+      ]
+    });
+
+    if (!courses.length) return res.status(404).json({ success: false, message: 'No courses found matching the criteria.' });
+
+    return res.status(200).json({ success: true, data: courses });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ success: false, message: 'Server error, please try again later.' });
   }
 };
 
