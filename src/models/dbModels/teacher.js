@@ -7,26 +7,32 @@ module.exports = (sequelize, DataTypes) => {
         },
         AboutTeacher: {
             type: DataTypes.STRING,
-            allowNull: true
+            allowNull: true,
+            validate: {
+                len: { args: [0, 255], msg: 'AboutTeacher must be up to 255 characters' },
+            },
         },
         LessonPrice: {
             type: DataTypes.INTEGER,
-            allowNull: true
+            allowNull: true,
+            validate: {
+                isInt: { msg: 'LessonPrice must be an integer' },
+            },
         },
         LessonType: {
-            type: DataTypes.STRING,
+            type: DataTypes.ENUM('group', 'solo'),
             allowNull: false,
             validate: {
-                isIn: [['group', 'solo']]
-            }
+                notEmpty: { msg: 'LessonType cannot be empty' },
+            },
         },
         MeetingType: {
-            type: DataTypes.STRING,
+            type: DataTypes.ENUM('offline', 'online'),
             allowNull: false,
             validate: {
-                isIn: [['offline', 'online']]
-            }
-        }
+                notEmpty: { msg: 'MeetingType cannot be empty' },
+            },
+        },
     }, {
         timestamps: false,
     });

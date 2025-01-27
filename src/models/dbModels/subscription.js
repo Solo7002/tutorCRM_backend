@@ -7,7 +7,11 @@ module.exports = (sequelize, DataTypes) => {
       },
       SubscriptionName: {
         type: DataTypes.STRING,
-        allowNull: false
+        allowNull: false,
+        validate: {
+            notEmpty: { msg: 'SubscriptionName cannot be empty' },
+            len: { args: [1, 100], msg: 'SubscriptionName must be between 1 and 100 characters' },
+        },
       },
       SubscriptionDescription: {
         type: DataTypes.STRING,
@@ -15,7 +19,10 @@ module.exports = (sequelize, DataTypes) => {
       },
       SubscriptionPrice: {
         type: DataTypes.DECIMAL(10, 2),
-        allowNull: false
+        allowNull: false,
+        validate: {
+            isDecimal: { msg: 'SubscriptionPrice must be a valid decimal number' },
+        },
       }
     }, {
       timestamps: false,
