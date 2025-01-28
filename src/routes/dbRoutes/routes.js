@@ -1,4 +1,5 @@
 const express = require('express');
+const { cacheMiddleware } = require('../../middlewares/cacheMiddleware');
 const router = express.Router();
 
 const userRoutes = require('./userRoutes');
@@ -32,6 +33,8 @@ const testQuestionRoutes = require('./testQuestionRoutes');
 const testAnswerRoutes = require('./testAnswerRoutes');
 const doneTestRoutes = require('./doneTestRoutes');
 const selectedAnswerRoutes = require('./selectedAnswerRoutes');
+
+router.use(cacheMiddleware(3600));
 
 router.use('/api/users', userRoutes);
 router.use('/api/students', studentRoutes);

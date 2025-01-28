@@ -1,4 +1,4 @@
-version: '3'
+version: '3.7'
 
 services:
   tutor-crm-api:
@@ -10,7 +10,40 @@ services:
       - '4000:4000'
     networks:
       - monitoring
-    restart: 'on-failure'
+    depends_on:
+      - mysql
+      - redis
+    environment:
+      - DB_HOST=mysql
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    restart: on-failure
+
+  mysql:
+    image: mysql:8.0
+    container_name: mysql-database
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME}
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./seeders:/docker-entrypoint-initdb.d
+    ports:
+      - '3307:3306'
+    networks:
+      - monitoring
+
+  redis:
+    image: redis:latest
+    container_name: redis-cache
+    restart: always
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data:/data
+    networks:
+      - monitoring
 
   cadvisor:
     image: gcr.io/cadvisor/cadvisor:latest
@@ -23,9 +56,9 @@ services:
     volumes:
       - /:/rootfs:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - /sys:/sys:ro
-      - /var/lib/docker/:/var/lib/docker:ro
-  
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+
   prometheus:
     image: prom/prometheus:latest
     container_name: tutor-crm-api-prometheus
@@ -52,6 +85,7 @@ services:
     command: --config.file=/config/alertmanager.yml --log.level=debug --cluster.advertise-address=0.0.0.0:9093
     networks:
       - monitoring
+
   discord-alerts:
     image: benjojo/alertmanager-discord
     container_name: discord-alerts
@@ -67,4 +101,6 @@ networks:
   monitoring:
 
 volumes:
+  mysql_data:
+  redis_data:
   alertmanager-data:

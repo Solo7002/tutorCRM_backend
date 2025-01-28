@@ -1,23 +1,23 @@
 {
-  "development": {
-    "username": "root",
-    "password": "MySQLPassword",
-    "database": "tutorcrmdb",
-    "host": "localhost",
-    "dialect": "mysql"
-  },
-  "test": {
-    "username": "root",
-    "password": null,
-    "database": "tutorcrmdb",
-    "host": "127.0.0.1",
-    "dialect": "mysql"
-  },
-  "production": {
-    "username": "root",
-    "password": null,
-    "database": "tutorcrmdb",
-    "host": "127.0.0.1",
-    "dialect": "mysql"
-  }
+    "development": {
+        "username": "root",
+        "password": "MySqlPassword",
+        "database": "TutorCRMDB",
+        "host": "mysql-database",
+        "dialect": "mysql"
+    },
+    "test": {
+        "username": "root",
+        "password": "MySqlPassword",
+        "database": "TutorCRMDB",
+        "host": "mysql-database",
+        "dialect": "mysql"
+    },
+    "production": {
+        "username": "root",
+        "password": "MySqlPassword",
+        "database": "TutorCRMDB",
+        "host": "mysql-database",
+        "dialect": "mysql"
+    }
 }

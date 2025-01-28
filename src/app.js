@@ -1,21 +1,39 @@
 const express = require('express');
-const app = express();
-const { metricsMiddleware, register } = require('./utils/metrics');
 const dotenv = require('dotenv');
 const bodyParser = require('body-parser');
+const { exec } = require('child_process');
+
 const authRoutes = require('./routes/authRoutes');
 const routes = require('./routes/dbRoutes/routes');
 const fileRoutes = require('./routes/fileRoutes');
+const { connectRedis } = require('./utils/cacheUtils');
+const { metricsMiddleware, register } = require('./utils/metrics');
 
+
+const app = express();
 dotenv.config();
+connectRedis();
 
 app.use(express.json());
-
-app.use('/api/files', fileRoutes);
-app.use(metricsMiddleware);
-app.use(routes);
 app.use(bodyParser.json());
+app.use(metricsMiddleware);
+app.use('/api/files', fileRoutes);
 app.use('/api/auth', authRoutes);
+app.use(routes);
+
+
+exec('npx sequelize-cli db:migrate', (err, stdout, stderr) => {
+    if (err) {
+        console.error(`Error doing migrations: ${err.message}`);
+        return;
+    }
+
+    if (stderr) {
+        console.error(`stderr: ${stderr}`);
+    }
+
+    console.log(`stdout: ${stdout}`);
+});
 
 app.get('/metrics', async (req, res) => {
     res.setHeader('Content-type', register.contentType);
@@ -47,9 +65,6 @@ app.get('/memory-load', (req, res) => {
         const largeString = 'x'.repeat(1024 * 1024);
         memoryHog.push(largeString);
     }
-
-const app = express();
-const fileRoutes = require('./routes/fileRoutes');
     res.send(`Memory load completed with ${iterations} iterations.`);
 });
 

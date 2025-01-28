@@ -7,9 +7,7 @@ COPY package-lock.json .
 
 RUN npm install
 
-COPY .env .env
-COPY src ./src
-COPY config ./config
+COPY . .
 
 EXPOSE ${PORT}
 

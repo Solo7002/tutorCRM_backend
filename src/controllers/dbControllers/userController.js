@@ -1,6 +1,7 @@
 const { User } = require('../../models/dbModels');
 
 exports.createUser = async (req, res) => {
+  console.log("+++++++++++++++++ Create user");
   try {
     const user = await User.create(req.body);
     res.status(201).json(user);
