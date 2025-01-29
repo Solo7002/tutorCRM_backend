@@ -2,7 +2,8 @@ const nodemailer = require('nodemailer');
 const fs = require('fs').promises;
 const path = require('path');
 const logger = require('../utils/logger');
-const { ExceptionHandler } = require('winston');
+const sendToQueue = require('../queues/emailQueue');
+
 require('dotenv').config();
 
 const BREVO_SMTP_KEY = process.env.BREVO_API_KEY;
@@ -76,15 +77,18 @@ async function sendEmail(to, subject, text, html = null) {
  * @param {string} activationLink - Ссылка для активации аккаунта
  */
 async function sendRegistrationEmail(email, username, activationLink) {
-  try {
-    const htmlContent = await renderTemplate('registration', { username, link: activationLink });
-    const info = await sendEmail(email, 'Регистрация завершена', 'Спасибо за регистрацию!', htmlContent);
-    logger.info(`Письмо регистрации отправлено на почту ${email}, Message ID: ${info.messageId}`);
-  } catch (error) {
-    logger.error(`Ошибка отправки письма регистрации на почту ${email}: ${error.message}`);
-    throw error;
-  }
+  const htmlContent = await renderTemplate('registration', { username, link: activationLink });
+
+  const emailData = {
+    to: email,
+    subject: 'Регистрация завершена',
+    text: 'Спасибо за регистрацию!',
+    html: htmlContent,
+  };
+
+  await sendToQueue(emailData); 
 }
+
 
 /**
  * Отправка письма о сбросе пароля
@@ -95,8 +99,14 @@ async function sendRegistrationEmail(email, username, activationLink) {
 async function sendResetPasswordEmail(email, username, resetLink) {
   try {
     const htmlContent = await renderTemplate('reset_password', { username, link: resetLink });
-    const info = await sendEmail(email, 'Сброс пароля', 'Инструкции по сбросу пароля', htmlContent);
-    logger.info(`Письмо сброса пароля отправлено на почту ${email}, Message ID: ${info.messageId}`);
+    const emailData = {
+      to: email,
+      subject: 'Сброс пароля',
+      text: 'Инструкции по сбросу пароля',
+      html: htmlContent,
+    };
+  
+    await sendToQueue(emailData); 
   } catch (error) {
     logger.error(`Ошибка отправки письма сброса пароля на почту ${email}: ${error.message}`);
     throw error;
@@ -112,8 +122,14 @@ async function sendResetPasswordEmail(email, username, resetLink) {
 async function sendLoginEmail(email, username, cancelLink) {
   try {
     const htmlContent = await renderTemplate('login', { username, link: cancelLink });
-    const info = await sendEmail(email, 'Новый вход', 'Был совершен новый вход', htmlContent);
-    logger.info(`Уведомление о входе отправлено на почту ${email}, Message ID: ${info.messageId}`);
+    const emailData = {
+      to: email,
+      subject: 'Новый вход',
+      text: 'Был совершен новый вход',
+      html: htmlContent,
+    };
+  
+    await sendToQueue(emailData); 
   } catch (error) {
     logger.error(`Ошибка отправки уведомления о входе на почту ${email}: ${error.message}`);
     throw error;
