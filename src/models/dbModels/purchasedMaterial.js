@@ -15,17 +15,6 @@ module.exports = (sequelize, DataTypes) => {
   }, {
     timestamps: false,
   });
-
-  PurchasedMaterial.associate = (models) => {
-    PurchasedMaterial.belongsTo(models.Material, {
-      foreignKey: 'SaleMaterialId',
-      as: 'SaleMaterial'
-    });
-    PurchasedMaterial.belongsTo(models.Teacher, {
-      foreignKey: 'PurchaserId',
-      as: 'Purchaser'
-    });
-  };
-
+  
   return PurchasedMaterial;
 };  

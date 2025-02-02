@@ -38,13 +38,6 @@ module.exports = (sequelize, DataTypes) => {
   }, {
     timestamps: false,
   });
-
-  TestQuestion.associate = (models) => {
-    TestQuestion.belongsTo(models.Test, {
-      foreignKey: 'TestId',
-      as: 'Test',
-    });
-  };
-
+  
   return TestQuestion;
 };

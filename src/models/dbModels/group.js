@@ -32,12 +32,5 @@ module.exports = (sequelize, DataTypes) => {
     timestamps: false,
   });
 
-  Group.associate = (models) => {
-    Group.hasMany(models.GroupStudent, {
-      foreignKey: 'GroupId',
-      as: 'Students'
-    });
-  };
-
   return Group;
 };  

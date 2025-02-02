@@ -25,16 +25,5 @@ module.exports = (sequelize, DataTypes) => {
     timestamps: false,
   });
 
-  DoneHomeTask.associate = (models) => {
-    DoneHomeTask.belongsTo(models.HomeTask, {
-      foreignKey: 'HomeTaskId',
-      as: 'HomeTask'
-    });
-    DoneHomeTask.belongsTo(models.Student, {
-      foreignKey: 'StudentId',
-      as: 'Student'
-    });
-  };
-
   return DoneHomeTask;
 };  

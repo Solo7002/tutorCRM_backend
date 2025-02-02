@@ -28,16 +28,5 @@ module.exports = (sequelize, DataTypes) => {
     timestamps: false,
   });
 
-  TestAnswer.associate = (models) => {
-    TestAnswer.belongsTo(models.TestQuestion, {
-      foreignKey: 'TestQuestionId',
-      as: 'TestQuestion'
-    });
-    TestAnswer.belongsTo(models.SelectedAnswer, {
-      foreignKey: 'SelectedAnswerId',
-      as: 'SelectedAnswer'
-    });
-  };
-
   return TestAnswer;
 };  

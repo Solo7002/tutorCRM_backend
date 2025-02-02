@@ -37,12 +37,5 @@ module.exports = (sequelize, DataTypes) => {
     timestamps: false,
   });
 
-  BlockedUser.associate = (models) => {
-    BlockedUser.belongsTo(models.User, {
-      foreignKey: 'UserId',
-      as: 'User'
-    });
-  };
-
   return BlockedUser;
 };  

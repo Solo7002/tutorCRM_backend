@@ -3,16 +3,5 @@ module.exports = (sequelize, DataTypes) => {
     timestamps: false,
   });
 
-  MaterialVisibilityStudent.associate = (models) => {
-    MaterialVisibilityStudent.belongsTo(models.Material, {
-      foreignKey: 'MaterialId',
-      as: 'Material'
-    });
-    MaterialVisibilityStudent.belongsTo(models.Student, {
-      foreignKey: 'StudentId',
-      as: 'Student'
-    });
-  };
-
   return MaterialVisibilityStudent;
 };  

@@ -1,3 +1,5 @@
+const bcrypt = require('bcrypt');
+
 module.exports = (sequelize, DataTypes) => {
     const User = sequelize.define('User', {
         UserId: {
@@ -69,16 +71,17 @@ module.exports = (sequelize, DataTypes) => {
         timestamps: false,
     });
 
-    User.associate = (models) => {
-        User.hasOne(models.Student, {
-            foreignKey: 'UserId',
-            as: 'Student'
-        });
-        User.hasOne(models.Teacher, {
-            foreignKey: 'UserId',
-            as: 'Teacher'
-        });
-    };
+    User.beforeCreate(async (user) => {
+        if (user.Password) {
+            user.Password = await bcrypt.hash(user.Password, 10);
+        }
+    });
+
+    User.beforeUpdate(async (user) => {
+        if (user.Password && !user.Password.startsWith('$2b$')) {
+            user.Password = await bcrypt.hash(user.Password, 10);
+        }
+    });
 
     return User;
 };  

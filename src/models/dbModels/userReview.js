@@ -32,16 +32,5 @@ module.exports = (sequelize, DataTypes) => {
     timestamps: false,
   });
 
-  UserReview.associate = (models) => {
-    UserReview.belongsTo(models.User, {
-      foreignKey: 'UserIdFrom',
-      as: 'Author'
-    });
-    UserReview.belongsTo(models.User, {
-      foreignKey: 'UserIdFor',
-      as: 'Target'
-    });
-  };
-
   return UserReview;
 };  

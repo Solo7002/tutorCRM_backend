@@ -12,17 +12,6 @@ module.exports = (sequelize, DataTypes) => {
   }, {
     timestamps: false,
   });
-
-  StudentCourseRating.associate = (models) => {
-    StudentCourseRating.belongsTo(models.Student, {
-      foreignKey: 'StudentId',
-      as: 'Student'
-    });
-    StudentCourseRating.belongsTo(models.Course, {
-      foreignKey: 'CourseId',
-      as: 'Course'
-    });
-  };
-
+  
   return StudentCourseRating;
 };  

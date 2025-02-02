@@ -28,16 +28,5 @@ module.exports = (sequelize, DataTypes) => {
     timestamps: false,
   });
 
-  Material.associate = (models) => {
-    Material.belongsTo(models.Material, {
-      foreignKey: 'ParentId',
-      as: 'Parent'
-    });
-    Material.belongsTo(models.Teacher, {
-      foreignKey: 'TeacherId',
-      as: 'Teacher'
-    });
-  };
-
   return Material;
 };  

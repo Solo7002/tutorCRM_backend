@@ -32,16 +32,5 @@ module.exports = (sequelize, DataTypes) => {
     timestamps: false,
   });
 
-  MarkHistory.associate = (models) => {
-    MarkHistory.belongsTo(models.Student, {
-      foreignKey: 'StudentId',
-      as: 'Student'
-    });
-    MarkHistory.belongsTo(models.Course, {
-      foreignKey: 'CourseId',
-      as: 'Course'
-    });
-  };
-
   return MarkHistory;
 };

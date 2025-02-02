@@ -24,12 +24,5 @@ module.exports = (sequelize, DataTypes) => {
     timestamps: false,
   });
 
-  DoneHomeTaskFile.associate = (models) => {
-    DoneHomeTaskFile.belongsTo(models.DoneHomeTask, {
-      foreignKey: 'DoneHomeTaskId',
-      as: 'DoneHomeTask'
-    });
-  };
-
   return DoneHomeTaskFile;
 };  

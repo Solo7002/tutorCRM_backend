@@ -24,6 +24,7 @@ module.exports = {
           key: 'UserId',
         },
         onDelete: 'CASCADE',
+        onUpdate: 'CASCADE',
       },
     });
   },

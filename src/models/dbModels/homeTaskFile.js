@@ -24,12 +24,5 @@ module.exports = (sequelize, DataTypes) => {
     timestamps: false,
   });
 
-  HomeTaskFile.associate = (models) => {
-    HomeTaskFile.belongsTo(models.HomeTask, {
-      foreignKey: 'HomeTaskId',
-      as: 'HomeTask'
-    });
-  };
-
   return HomeTaskFile;
 };  

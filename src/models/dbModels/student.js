@@ -20,17 +20,14 @@ module.exports = (sequelize, DataTypes) => {
                 notEmpty: { msg: 'Grade cannot be empty' },
                 len: { args: [1, 50], msg: 'Grade must be between 1 and 50 characters' },
             },
-        }
+        },
+        UserId: {
+          type: DataTypes.INTEGER,
+          allowNull: false,
+        },
     }, {
         timestamps: false,
     });
-
-    Student.associate = (models) => {
-        Student.belongsTo(models.User, {
-            foreignKey: 'UserId',
-            as: 'User'
-        });
-    };
 
     return Student;
 };  

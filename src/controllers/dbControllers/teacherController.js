@@ -27,7 +27,8 @@ exports.getTeacherById = async (req, res) => {
     if (!teacher) return res.status(404).json({ message: 'Teacher not found' });
     res.status(200).json(teacher);
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    console.error('Error in getTeacherById:', error);
+    return res.status(400).json({ error: error.message });
   }
 };
 
@@ -35,7 +36,6 @@ exports.searchTeachers = async (req, res) => {
   try {
     const { lessonType, meetingType, aboutTeacher } = req.query;
     let whereConditions = {};
-
     if (lessonType) whereConditions.LessonType = lessonType;
     if (meetingType) whereConditions.MeetingType = meetingType;
     if (aboutTeacher) whereConditions.AboutTeacher = { [Op.like]: `%${aboutTeacher}%` };
@@ -44,11 +44,13 @@ exports.searchTeachers = async (req, res) => {
       where: whereConditions,
     });
 
-    if (!teachers.length) return res.status(404).json({ success: false, message: 'No teachers found.' });
+    if (!teachers.length) {
+      return res.status(404).json({ success: false, message: 'No teachers found.' });
+    }
 
     return res.status(200).json({ success: true, data: teachers });
   } catch (error) {
-    console.error(error);
+    console.error('Error in searchTeachers:', error);
     return res.status(500).json({ success: false, message: 'Server error.' });
   }
 };

@@ -23,21 +23,6 @@ module.exports = (sequelize, DataTypes) => {
   }, {
     timestamps: false,
   });
-
-  Course.associate = (models) => {
-    Course.belongsTo(models.Teacher, {
-      foreignKey: 'TeacherId',
-      as: 'Teacher'
-    });
-    Course.belongsTo(models.Subject, {
-      foreignKey: 'SubjectId',
-      as: 'Subject'
-    });
-    Course.belongsTo(models.Location, {
-      foreignKey: 'LocationId',
-      as: 'Location'
-    });
-  };
-
+  
   return Course;
 };  

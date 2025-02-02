@@ -31,12 +31,5 @@ module.exports = (sequelize, DataTypes) => {
     timestamps: false,
   });
 
-  Test.associate = (models) => {
-    Test.belongsTo(models.Group, {
-      foreignKey: 'GroupId',
-      as: 'Groups'
-    });
-  };
-
   return Test;
 };  

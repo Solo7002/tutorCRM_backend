@@ -28,12 +28,5 @@ module.exports = (sequelize, DataTypes) => {
       timestamps: false,
     });
   
-    Subscription.associate = (models) => {
-      Subscription.hasMany(models.Teacher, {
-        foreignKey: 'SubscriptionLevelId',
-        as: 'Teachers'
-      });
-    };
-  
     return Subscription;
   };  

@@ -24,16 +24,5 @@ module.exports = (sequelize, DataTypes) => {
     timestamps: false,
   });
 
-  UserComplaint.associate = (models) => {
-    UserComplaint.belongsTo(models.User, {
-      foreignKey: 'UserFromId',
-      as: 'UserFrom'
-    });
-    UserComplaint.belongsTo(models.User, {
-      foreignKey: 'UserForId',
-      as: 'UserFor'
-    });
-  };
-
   return UserComplaint;
 };  

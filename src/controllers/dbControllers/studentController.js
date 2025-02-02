@@ -59,7 +59,8 @@ exports.updateStudent = async (req, res) => {
     await student.update(req.body);
     res.status(200).json(student);
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    console.error('Error in updateStudent:', error);
+    return res.status(400).json({ error: error.message });
   }
 };
 
@@ -70,6 +71,7 @@ exports.deleteStudent = async (req, res) => {
     await student.destroy();
     res.status(200).json({ message: 'Student deleted' });
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    console.error('Error in deleteStudent:', error);
+    return res.status(400).json({ error: error.message });
   }
 };

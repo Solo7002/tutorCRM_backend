@@ -34,12 +34,5 @@ module.exports = (sequelize, DataTypes) => {
     timestamps: false,
   });
 
-  UserPhone.associate = (models) => {
-    UserPhone.belongsTo(models.User, {
-      foreignKey: 'UserId',
-      as: 'User'
-    });
-  };
-
   return UserPhone;
 };  

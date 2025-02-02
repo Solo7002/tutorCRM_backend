@@ -42,12 +42,5 @@ module.exports = (sequelize, DataTypes) => {
     timestamps: false,
   });
 
-  PlannedLesson.associate = (models) => {
-    PlannedLesson.belongsTo(models.Group, {
-      foreignKey: 'GroupId',
-      as: 'Group'
-    });
-  };
-
   return PlannedLesson;
 };  

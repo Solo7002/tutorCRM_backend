@@ -3,16 +3,5 @@ module.exports = (sequelize, DataTypes) => {
     timestamps: false,
   });
 
-  GroupStudent.associate = (models) => {
-    GroupStudent.belongsTo(models.Group, {
-      foreignKey: 'GroupId',
-      as: 'Group'
-    });
-    GroupStudent.belongsTo(models.Student, {
-      foreignKey: 'StudentId',
-      as: 'Student'
-    });
-  };
-
   return GroupStudent;
 };  

@@ -35,16 +35,5 @@ module.exports = (sequelize, DataTypes) => {
     timestamps: false,
   });
 
-  DoneTest.associate = (models) => {
-    DoneTest.belongsTo(models.Student, {
-      foreignKey: 'StudentId',
-      as: 'Student'
-    });
-    DoneTest.belongsTo(models.Test, {
-      foreignKey: 'TestId',
-      as: 'Test'
-    });
-  };
-
   return DoneTest;
 };  

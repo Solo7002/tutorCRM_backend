@@ -47,12 +47,5 @@ module.exports = (sequelize, DataTypes) => {
     timestamps: false,
   });
 
-  SaleMaterial.associate = (models) => {
-    SaleMaterial.belongsTo(models.Teacher, {
-      foreignKey: 'VendorldId',
-      as: 'Vendor'
-    });
-  };
-
   return SaleMaterial;
 };  

@@ -33,20 +33,13 @@ module.exports = (sequelize, DataTypes) => {
                 notEmpty: { msg: 'MeetingType cannot be empty' },
             },
         },
+        UserId: {
+          type: DataTypes.INTEGER,
+          allowNull: false,
+        },
     }, {
         timestamps: false,
     });
-
-    Teacher.associate = (models) => {
-        Teacher.belongsTo(models.User, {
-            foreignKey: 'UserId',
-            as: 'User'
-        });
-        Teacher.hasMany(models.Course, {
-            foreignKey: 'TeacherId',
-            as: 'Courses'
-        });
-    };
 
     return Teacher;
 };
