@@ -2,6 +2,8 @@ const express = require('express');
 const dotenv = require('dotenv');
 const bodyParser = require('body-parser');
 const { exec } = require('child_process');
+const swaggerJSDoc = require("swagger-jsdoc");
+const swaggerUi = require("swagger-ui-express");
 
 const authRoutes = require('./routes/authRoutes');
 const routes = require('./routes/dbRoutes/routes');
@@ -21,6 +23,19 @@ app.use('/api/files', fileRoutes);
 app.use('/api/auth', authRoutes);
 app.use(routes);
 
+const path = require("path");
+const options = {
+    definition: {
+        openapi: '3.0.0',
+        info: { title: "Node JS API Project", version: '1.0.1' },
+        servers: [{ url: "http://localhost:4000/" }]
+    },
+    apis: [path.join(__dirname, "./app.js"), path.join(__dirname, "./routes/**/*.js")]
+};
+
+const swaggerSpec = swaggerJSDoc(options);
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+console.log("Swagger spec:", JSON.stringify(swaggerSpec, null, 2));
 
 exec('npx sequelize-cli db:migrate', (err, stdout, stderr) => {
     if (err) {
@@ -35,11 +50,46 @@ exec('npx sequelize-cli db:migrate', (err, stdout, stderr) => {
     console.log(`stdout: ${stdout}`);
 });
 
+/**
+ * @swagger
+ * /metrics:
+ *   get:
+ *     summary: Returns application metrics
+ *     responses:
+ *       200:
+ *         description: A list of metrics
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               additionalProperties:
+ *                 type: string
+ */
 app.get('/metrics', async (req, res) => {
     res.setHeader('Content-type', register.contentType);
     res.end(await register.metrics());
 });
 
+/**
+ * @swagger
+ * /cpu-load:
+ *   get:
+ *     summary: Simulate CPU load
+ *     parameters:
+ *       - in: query
+ *         name: iterations
+ *         schema:
+ *           type: integer
+ *           default: 1000000
+ *         description: Number of iterations to simulate CPU load
+ *     responses:
+ *       200:
+ *         description: Result of CPU load simulation
+ *         content:
+ *           text/plain:
+ *             schema:
+ *               type: string
+ */
 app.get('/cpu-load', (req, res) => {
     const iterations = parseInt(req.query.iterations) || 1000000;
     let heads = 0;
@@ -57,6 +107,26 @@ app.get('/cpu-load', (req, res) => {
     res.send(`Heads: ${heads}, Tails: ${tails}`);
 });
 
+/**
+ * @swagger
+ * /memory-load:
+ *   get:
+ *     summary: Simulate memory load
+ *     parameters:
+ *       - in: query
+ *         name: iterations
+ *         schema:
+ *           type: integer
+ *           default: 100
+ *         description: Number of iterations to simulate memory load
+ *     responses:
+ *       200:
+ *         description: Result of memory load simulation
+ *         content:
+ *           text/plain:
+ *             schema:
+ *               type: string
+ */
 app.get('/memory-load', (req, res) => {
     const iterations = parseInt(req.query.iterations) || 100;
     const memoryHog = [];
@@ -68,6 +138,19 @@ app.get('/memory-load', (req, res) => {
     res.send(`Memory load completed with ${iterations} iterations.`);
 });
 
+/**
+ * @swagger
+ * /:
+ *   get:
+ *     summary: Get a random status code response
+ *     responses:
+ *       200:
+ *         description: Random status code response
+ *         content:
+ *           text/plain:
+ *             schema:
+ *               type: string
+ */
 app.get('/', (req, res) => {
     const randomStatusCode = Math.floor(Math.random() * 400) + 200;
     res.status(randomStatusCode).send(`Response with status code: ${randomStatusCode}`);

@@ -34,12 +34,10 @@ const testAnswerRoutes = require('./testAnswerRoutes');
 const doneTestRoutes = require('./doneTestRoutes');
 const selectedAnswerRoutes = require('./selectedAnswerRoutes');
 
-router.use(cacheMiddleware(3600));
-
 router.use('/api/users', userRoutes);
 router.use('/api/students', studentRoutes);
 router.use('/api/teachers', teacherRoutes);
-router.use('/api/subscriptions', subscriptionRoutes);
+router.use('/api/subscriptions', cacheMiddleware(3600), subscriptionRoutes);
 router.use('/api/materials', materialRoutes);
 router.use('/api/materialVisibilityStudents', materialVisibilityStudentRoutes);
 router.use('/api/userPhones', userPhoneRoutes);
@@ -52,8 +50,8 @@ router.use('/api/saleMaterialFiles', saleMaterialFileRoutes);
 router.use('/api/saleMaterials', saleMaterialRoutes);
 router.use('/api/studentCourseRatings', studentCourseRatingRoutes);
 router.use('/api/courses', courseRoutes);
-router.use('/api/locations', locationRoutes);
-router.use('/api/subjects', subjectRoutes);
+router.use('/api/locations', cacheMiddleware(3600), locationRoutes);
+router.use('/api/subjects', cacheMiddleware(3600), subjectRoutes);
 router.use('/api/markHistory', markHistoryRoutes);
 router.use('/api/groups', groupRoutes);
 router.use('/api/groupsStudents', groupStudentRoutes);
