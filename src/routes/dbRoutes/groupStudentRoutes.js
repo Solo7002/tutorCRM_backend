@@ -59,6 +59,7 @@ router.post('/', groupStudentController.createGroupStudent);
  *                 $ref: '#/components/schemas/GroupStudent'
  */
 router.get('/', groupStudentController.getGroupStudents);
+router.get('/search', groupStudentController.searchGroupStudents);
 
 /**
  * @swagger

@@ -92,6 +92,7 @@ router.get('/', blockedUserController.getBlockedUsers);
  *             schema:
  *               $ref: '#/components/schemas/BlockedUser'
  */
+router.get('/search', blockedUserController.searchBlockedUsers);
 router.get('/:id', blockedUserController.getBlockedUserById);
 
 /**

@@ -7,7 +7,11 @@ module.exports = (sequelize, DataTypes) => {
       },
       SubjectName: {
         type: DataTypes.STRING,
-        allowNull: false
+        allowNull: false,
+        validate: {
+          notEmpty: { msg: 'SubjectName cannot be empty' },
+          len: { args: [1, 255], msg: 'SubjectName must be between 1 and 255 characters' },
+        },
       }
     }, {
       timestamps: false,

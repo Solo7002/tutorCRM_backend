@@ -73,6 +73,7 @@ router.post('/', locationController.createLocation);
  *                 $ref: '#/components/schemas/Location'
  */
 router.get('/', locationController.getLocations);
+router.get('/search', locationController.searchLocations);
 
 /**
  * @swagger

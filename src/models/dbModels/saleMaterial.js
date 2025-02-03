@@ -1,40 +1,51 @@
 module.exports = (sequelize, DataTypes) => {
-    const SaleMaterial = sequelize.define('SaleMaterial', {
-      SaleMaterialId: {
-        type: DataTypes.INTEGER,
-        autoIncrement: true,
-        primaryKey: true,
+  const SaleMaterial = sequelize.define('SaleMaterial', {
+    SaleMaterialId: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    MaterialsHeader: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      validate: {
+        notEmpty: { msg: 'MaterialsHeader cannot be empty' },
+        len: { args: [1, 255], msg: 'MaterialsHeader must be between 1 and 255 characters' },
       },
-      MaterialsHeader: {
-        type: DataTypes.STRING,
-        allowNull: false
+    },
+    MaterialsDescription: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      validate: {
+        notEmpty: { msg: 'MaterialsDescription cannot be empty' },
+        len: { args: [1, 1000], msg: 'MaterialsDescription must be between 1 and 1000 characters' },
       },
-      MaterialsDescription: {
-        type: DataTypes.STRING,
-        allowNull: false
+    },
+    CreatedDate: {
+      type: DataTypes.DATE,
+      defaultValue: DataTypes.NOW,
+      validate: {
+        isDate: { msg: 'CreatedDate must be a valid date' },
       },
-      CreatedDate: {
-        type: DataTypes.DATE,
-        defaultValue: DataTypes.NOW
+    },
+    PreviewImagePath: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      validate: {
+        isUrl: { msg: 'PreviewImagePath must be a valid URL' },
       },
-      PreviewImagePath: {
-        type: DataTypes.STRING,
-        allowNull: true
+    },
+    Price: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: false,
+      validate: {
+        isDecimal: { msg: 'Price must be a valid decimal number' },
+        min: { args: [0], msg: 'Price must be greater than or equal to 0' },
       },
-      Price: {
-        type: DataTypes.DECIMAL(10, 2),
-        allowNull: false
-      }
-    }, {
-      timestamps: false,
-    });
-  
-    SaleMaterial.associate = (models) => {
-      SaleMaterial.belongsTo(models.Teacher, {
-        foreignKey: 'VendorldId',
-        as: 'Vendor'
-      });
-    };
-  
-    return SaleMaterial;
-  };  
+    }
+  }, {
+    timestamps: false,
+  });
+
+  return SaleMaterial;
+};  

@@ -66,6 +66,7 @@ router.post('/', purchasedMaterialController.createPurchasedMaterial);
  *                 $ref: '#/components/schemas/PurchasedMaterial'
  */
 router.get('/', purchasedMaterialController.getPurchasedMaterials);
+router.get('/search', purchasedMaterialController.searchPurchasedMaterials);
 
 /**
  * @swagger

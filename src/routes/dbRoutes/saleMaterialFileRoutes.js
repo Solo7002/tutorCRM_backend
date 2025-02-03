@@ -72,6 +72,7 @@ router.post('/', saleMaterialFileController.createSaleMaterialFile);
  *                 $ref: '#/components/schemas/SaleMaterialFile'
  */
 router.get('/', saleMaterialFileController.getSaleMaterialFiles);
+router.get('/search', saleMaterialFileController.searchSaleMaterialFiles);
 
 /**
  * @swagger

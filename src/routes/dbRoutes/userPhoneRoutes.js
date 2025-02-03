@@ -68,6 +68,7 @@ router.post('/', userPhoneController.createUserPhone);
  *                 $ref: '#/components/schemas/UserPhone'
  */
 router.get('/', userPhoneController.getUserPhones);
+router.get('/search', userPhoneController.searchUserPhones);
 
 /**
  * @swagger

@@ -1,32 +1,35 @@
 module.exports = (sequelize, DataTypes) => {
-    const Test = sequelize.define('Test', {
-      TestId: {
-        type: DataTypes.INTEGER,
-        autoIncrement: true,
-        primaryKey: true,
+  const Test = sequelize.define('Test', {
+    TestId: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    TestName: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      validate: {
+        notEmpty: { msg: 'TestName cannot be empty' },
+        len: { args: [1, 255], msg: 'TestName must be between 1 and 255 characters' },
       },
-      TestName: {
-        type: DataTypes.STRING,
-        allowNull: false
+    },
+    TestDescription: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      validate: {
+        len: { args: [1, 1000], msg: 'TestDescription must be between 1 and 1000 characters' },
       },
-      TestDescription: {
-        type: DataTypes.TEXT,
-        allowNull: true
+    },
+    CreatedDate: {
+      type: DataTypes.DATE,
+      defaultValue: DataTypes.NOW,
+      validate: {
+        isDate: { msg: 'CreatedDate must be a valid date' },
       },
-      CreatedDate: {
-        type: DataTypes.DATE,
-        defaultValue: DataTypes.NOW
-      }
-    }, {
-      timestamps: false,
-    });
-  
-    Test.associate = (models) => {
-      Test.belongsTo(models.Group, {
-        foreignKey: 'GroupId',
-        as: 'Groups'
-      });
-    };
-  
-    return Test;
-  };  
+    }
+  }, {
+    timestamps: false,
+  });
+
+  return Test;
+};  

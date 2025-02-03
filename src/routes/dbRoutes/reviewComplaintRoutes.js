@@ -69,6 +69,7 @@ router.post('/', reviewComplaintController.createReviewComplaint);
  *                 $ref: '#/components/schemas/ReviewComplaint'
  */
 router.get('/', reviewComplaintController.getReviewComplaints);
+router.get('/search', reviewComplaintController.searchReviewComplaints);
 
 /**
  * @swagger

@@ -69,6 +69,7 @@ router.post('/', userComplaintController.createUserComplaint);
  *                 $ref: '#/components/schemas/UserComplaint'
  */
 router.get('/', userComplaintController.getUserComplaints);
+router.get('/search', userComplaintController.searchUserComplaints);
 
 /**
  * @swagger

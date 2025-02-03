@@ -69,6 +69,7 @@ router.post('/', doneHometaskController.createDoneHometask);
  *                 $ref: '#/components/schemas/DoneHomeTask'
  */
 router.get('/', doneHometaskController.getDoneHometasks);
+router.get('/search', doneHometaskController.searchDoneHomeTasks);
 
 /**
  * @swagger

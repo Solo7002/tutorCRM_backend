@@ -39,6 +39,7 @@ module.exports = {
           key: 'GroupId',
         },
         onDelete: 'CASCADE',
+        onUpdate: 'CASCADE',
       },
     });
   },

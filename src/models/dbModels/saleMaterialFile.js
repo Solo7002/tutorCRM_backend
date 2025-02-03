@@ -1,36 +1,36 @@
 module.exports = (sequelize, DataTypes) => {
-    const SaleMaterialFile = sequelize.define('SaleMaterialFile', {
-      SaleMaterialFileId: {
-        type: DataTypes.INTEGER,
-        primaryKey: true,
-        autoIncrement: true
+  const SaleMaterialFile = sequelize.define('SaleMaterialFile', {
+    SaleMaterialFileId: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true
+    },
+    FilePath: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      validate: {
+        notEmpty: { msg: 'FilePath cannot be empty' },
+        isUrl: { msg: 'FilePath must be a valid URL' },
       },
-      FilePath: {
-        type: DataTypes.STRING,
-        allowNull: false
+    },
+    FileName: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      validate: {
+        notEmpty: { msg: 'FileName cannot be empty' },
+        len: { args: [1, 255], msg: 'FileName must be between 1 and 255 characters' },
       },
-      FileName: {
-        type: DataTypes.STRING,
-        allowNull: false
+    },
+    AppearedDate: {
+      type: DataTypes.DATE,
+      defaultValue: DataTypes.NOW,
+      validate: {
+        isDate: { msg: 'AppearedDate must be a valid date' },
       },
-      AppearedDate: {
-        type: DataTypes.DATE,
-        defaultValue: DataTypes.NOW
-      }
-    }, {
-      timestamps: false,
-    });
-  
-    SaleMaterialFile.associate = (models) => {
-      SaleMaterialFile.belongsTo(models.SaleMaterial, {
-        foreignKey: 'SaleMaterialId',
-        as: 'SaleMaterial'
-      });
-      SaleMaterialFile.belongsTo(models.PurchasedMaterial, {
-        foreignKey: 'PurchasedMaterialId',
-        as: 'PurchasedMaterial'
-      });
-    };
-  
-    return SaleMaterialFile;
-  };  
+    }
+  }, {
+    timestamps: false,
+  });
+
+  return SaleMaterialFile;
+};  

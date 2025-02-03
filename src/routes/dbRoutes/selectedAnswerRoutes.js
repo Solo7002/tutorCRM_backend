@@ -62,6 +62,7 @@ router.post('/', selectedAnswerController.createSelectedAnswer);
  *                 $ref: '#/components/schemas/SelectedAnswer'
  */
 router.get('/', selectedAnswerController.getSelectedAnswers);
+router.get('/search', selectedAnswerController.searchSelectedAnswers);
 
 /**
  * @swagger

@@ -59,6 +59,7 @@ router.post('/', subjectController.createSubject);
  *                 $ref: '#/components/schemas/Subject'
  */
 router.get('/', subjectController.getSubjects);
+router.get('/search', subjectController.searchSubjects);
 
 /**
  * @swagger

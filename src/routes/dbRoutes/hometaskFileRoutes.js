@@ -65,6 +65,7 @@ router.post('/', hometaskFileController.createHometaskFile);
  *                 $ref: '#/components/schemas/HomeTaskFile'
  */
 router.get('/', hometaskFileController.getHometaskFiles);
+router.get('/search', hometaskFileController.searchHomeTaskFiles);
 
 /**
  * @swagger

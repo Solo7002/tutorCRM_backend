@@ -72,6 +72,7 @@ router.post('/', markHistoryController.createMarkHistory);
  *                 $ref: '#/components/schemas/MarkHistory'
  */
 router.get('/', markHistoryController.getMarkHistories);
+router.get('/search', markHistoryController.searchMarkHistory);
 
 /**
  * @swagger

@@ -79,6 +79,7 @@ router.post('/', hometaskController.createHomeTask);
  *                 $ref: '#/components/schemas/HomeTask'
  */
 router.get('/', hometaskController.getHomeTasks);
+router.get('/search', hometaskController.searchHomeTasks);
 
 /**
  * @swagger

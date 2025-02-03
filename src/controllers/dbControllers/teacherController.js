@@ -1,4 +1,6 @@
 const { Teacher } = require('../../models/dbModels');
+const { parseQueryParams } = require('../../utils/dbUtils/queryUtils');
+const { Op } = require('sequelize');
 
 exports.createTeacher = async (req, res) => {
   try {
@@ -11,7 +13,8 @@ exports.createTeacher = async (req, res) => {
 
 exports.getTeachers = async (req, res) => {
   try {
-    const teachers = await Teacher.findAll();
+    const { where, order } = parseQueryParams(req.query);
+    const teachers = await Teacher.findAll({ where: where || undefined, order: order || undefined });
     res.status(200).json(teachers);
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -24,7 +27,31 @@ exports.getTeacherById = async (req, res) => {
     if (!teacher) return res.status(404).json({ message: 'Teacher not found' });
     res.status(200).json(teacher);
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    console.error('Error in getTeacherById:', error);
+    return res.status(400).json({ error: error.message });
+  }
+};
+
+exports.searchTeachers = async (req, res) => {
+  try {
+    const { lessonType, meetingType, aboutTeacher } = req.query;
+    let whereConditions = {};
+    if (lessonType) whereConditions.LessonType = lessonType;
+    if (meetingType) whereConditions.MeetingType = meetingType;
+    if (aboutTeacher) whereConditions.AboutTeacher = { [Op.like]: `%${aboutTeacher}%` };
+
+    const teachers = await Teacher.findAll({
+      where: whereConditions,
+    });
+
+    if (!teachers.length) {
+      return res.status(404).json({ success: false, message: 'No teachers found.' });
+    }
+
+    return res.status(200).json({ success: true, data: teachers });
+  } catch (error) {
+    console.error('Error in searchTeachers:', error);
+    return res.status(500).json({ success: false, message: 'Server error.' });
   }
 };
 

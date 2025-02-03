@@ -66,6 +66,7 @@ router.post('/', subscriptionController.createSubscription);
  *                 $ref: '#/components/schemas/Subscription'
  */
 router.get('/', subscriptionController.getSubscriptions);
+router.get('/search', subscriptionController.searchSubscriptions);
 
 /**
  * @swagger

@@ -66,6 +66,7 @@ router.post('/', groupController.createGroup);
  *                 $ref: '#/components/schemas/Group'
  */
 router.get('/', groupController.getGroups);
+router.get('/search', groupController.searchGroups);
 
 /**
  * @swagger

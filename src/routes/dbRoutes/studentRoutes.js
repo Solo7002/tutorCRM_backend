@@ -65,6 +65,7 @@ router.post('/', studentController.createStudent);
  *                 $ref: '#/components/schemas/Student'
  */
 router.get('/', studentController.getStudents);
+router.get('/search', studentController.searchStudents);
 
 /**
  * @swagger

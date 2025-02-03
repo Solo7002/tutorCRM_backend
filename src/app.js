@@ -18,6 +18,8 @@ const app = express();
 dotenv.config();
 connectRedis();
 
+const app = express();
+
 app.use(express.json());
 app.use(bodyParser.json());
 app.use(metricsMiddleware);
@@ -68,7 +70,7 @@ exec('npx sequelize-cli db:migrate', (err, stdout, stderr) => {
  *                 type: string
  */
 app.get('/metrics', async (req, res) => {
-    res.setHeader('Content-type', register.contentType);
+    res.setHeader('Content-Type', register.contentType);
     res.end(await register.metrics());
 });
 
@@ -132,7 +134,6 @@ app.get('/cpu-load', (req, res) => {
 app.get('/memory-load', (req, res) => {
     const iterations = parseInt(req.query.iterations) || 100;
     const memoryHog = [];
-
     for (let i = 0; i < iterations; i++) {
         const largeString = 'x'.repeat(1024 * 1024);
         memoryHog.push(largeString);
@@ -154,7 +155,7 @@ app.get('/memory-load', (req, res) => {
  *               type: string
  */
 app.get('/', (req, res) => {
-    const randomStatusCode = Math.floor(Math.random() * 400) + 200;
+    const randomStatusCode = Math.floor(Math.random() * 100) + 200;
     res.status(randomStatusCode).send(`Response with status code: ${randomStatusCode}`);
 });
 

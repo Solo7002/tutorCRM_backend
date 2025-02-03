@@ -59,6 +59,7 @@ router.post('/', materialVisibilityStudentController.createMaterialVisibilityStu
  *                 $ref: '#/components/schemas/MaterialVisibilityStudent'
  */
 router.get('/', materialVisibilityStudentController.getMaterialVisibilityStudents);
+router.get('/search', materialVisibilityStudentController.searchMaterialVisibility);
 
 /**
  * @swagger

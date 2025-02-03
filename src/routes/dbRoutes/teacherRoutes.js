@@ -71,6 +71,7 @@ router.post('/', teacherController.createTeacher);
  *                 $ref: '#/components/schemas/Teacher'
  */
 router.get('/', teacherController.getTeachers);
+router.get('/search', teacherController.searchTeachers);
 
 /**
  * @swagger

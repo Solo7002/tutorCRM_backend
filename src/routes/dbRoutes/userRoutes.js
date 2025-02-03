@@ -78,6 +78,7 @@ router.post('/', userController.createUser);
  *                 $ref: '#/components/schemas/User'
  */
 router.get('/', userController.getUsers);
+router.get('/search', userController.searchUsers);
 
 /**
  * @swagger

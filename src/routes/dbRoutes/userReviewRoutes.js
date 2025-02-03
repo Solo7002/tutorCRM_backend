@@ -72,6 +72,7 @@ router.post('/', userReviewController.createUserReview);
  *                 $ref: '#/components/schemas/UserReview'
  */
 router.get('/', userReviewController.getUserReviews);
+router.get('/search', userReviewController.searchUserReviews);
 
 /**
  * @swagger

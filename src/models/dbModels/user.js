@@ -1,3 +1,5 @@
+const bcrypt = require('bcrypt');
+
 module.exports = (sequelize, DataTypes) => {
     const User = sequelize.define('User', {
         UserId: {
@@ -8,28 +10,58 @@ module.exports = (sequelize, DataTypes) => {
         Username: {
             type: DataTypes.STRING,
             allowNull: false,
-            unique: true
+            unique: true,
+            validate: {
+                notEmpty: { msg: 'Username cannot be empty' },
+                len: { args: [3, 50], msg: 'Username must be between 3 and 50 characters' },
+            },
         },
         Password: {
             type: DataTypes.STRING,
-            allowNull: false
+            allowNull: false,
+            validate: {
+                notEmpty: { msg: 'Password cannot be empty' },
+                len: { args: [6, 100], msg: 'Password must be at least 6 characters long' },
+                is: {
+                    args: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/,
+                    msg: 'Password must contain at least one lowercase letter, one uppercase letter, one digit, one special character, and be at least 8 characters long.'
+                },
+                isNotUsername(value) {
+                    if (value === this.Username) {
+                        throw new Error('Password cannot be the same as the Username');
+                    }
+                }
+            },
         },
         LastName: {
             type: DataTypes.STRING,
-            allowNull: false
+            allowNull: false,
+            validate: {
+                notEmpty: { msg: 'LastName cannot be empty' },
+            },
         },
         FirstName: {
             type: DataTypes.STRING,
-            allowNull: false
+            allowNull: false,
+            validate: {
+                notEmpty: { msg: 'FirstName cannot be empty' },
+            },
         },
         Email: {
             type: DataTypes.STRING,
             allowNull: false,
-            unique: true
+            unique: true,
+            validate: {
+                isEmail: { msg: 'Email must be a valid email address' },
+                notEmpty: { msg: 'Email cannot be empty' },
+            },
         },
         ImageFilePath: {
             type: DataTypes.STRING,
-            allowNull: true
+            allowNull: true,
+            validate: {
+                isUrl: { msg: 'ImageFilePath must be a valid URL' },
+            },
         },
         CreateDate: {
             type: DataTypes.DATE,
@@ -38,17 +70,6 @@ module.exports = (sequelize, DataTypes) => {
     }, {
         timestamps: false,
     });
-
-    User.associate = (models) => {
-        User.hasOne(models.Student, {
-            foreignKey: 'UserId',
-            as: 'Student'
-        });
-        User.hasOne(models.Teacher, {
-            foreignKey: 'UserId',
-            as: 'Teacher'
-        });
-    };
 
     return User;
 };  

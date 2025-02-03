@@ -8,29 +8,36 @@ module.exports = (sequelize, DataTypes) => {
     TestQuestionHeader: {
       type: DataTypes.STRING,
       allowNull: false,
+      validate: {
+        notEmpty: { msg: 'TestQuestionHeader cannot be empty' },
+        len: { args: [1, 255], msg: 'TestQuestionHeader must be between 1 and 255 characters' },
+      },
     },
     TestQuestionDescription: {
       type: DataTypes.TEXT,
       allowNull: false,
+      validate: {
+        notEmpty: { msg: 'TestQuestionDescription cannot be empty' },
+        len: { args: [1, 1000], msg: 'TestQuestionDescription must be between 1 and 1000 characters' },
+      },
     },
     ImagePath: {
       type: DataTypes.STRING,
       allowNull: true,
+      validate: {
+        isUrl: { msg: 'ImagePath must be a valid URL' },
+      },
     },
     AudioPath: {
       type: DataTypes.STRING,
       allowNull: true,
+      validate: {
+        isUrl: { msg: 'AudioPath must be a valid URL' },
+      },
     }
   }, {
     timestamps: false,
   });
-
-  TestQuestion.associate = (models) => {
-    TestQuestion.belongsTo(models.Test, {
-      foreignKey: 'TestId',
-      as: 'Test',
-    });
-  };
-
+  
   return TestQuestion;
 };

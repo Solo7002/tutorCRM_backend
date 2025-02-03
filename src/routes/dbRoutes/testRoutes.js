@@ -69,6 +69,7 @@ router.post('/', testController.createTest);
  *                 $ref: '#/components/schemas/Test'
  */
 router.get('/', testController.getTests);
+router.get('/search', testController.searchTests);
 
 /**
  * @swagger

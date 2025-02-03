@@ -72,6 +72,7 @@ router.post('/', plannedLessonController.createPlannedLesson);
  *                 $ref: '#/components/schemas/PlannedLesson'
  */
 router.get('/', plannedLessonController.getPlannedLessons);
+router.get('/search', plannedLessonController.searchPlannedLessons);
 
 /**
  * @swagger

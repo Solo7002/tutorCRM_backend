@@ -68,6 +68,7 @@ router.post('/', materialController.createMaterial);
  *                 $ref: '#/components/schemas/Material'
  */
 router.get('/', materialController.getMaterials);
+router.get('/search', materialController.searchMaterials);
 
 /**
  * @swagger

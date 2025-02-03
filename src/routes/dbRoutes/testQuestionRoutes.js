@@ -71,6 +71,7 @@ router.post('/', testQuestionController.createTestQuestion);
  *                 $ref: '#/components/schemas/TestQuestion'
  */
 router.get('/', testQuestionController.getTestQuestions);
+router.get('/search', testQuestionController.searchTestQuestions);
 
 /**
  * @swagger
