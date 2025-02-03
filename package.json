@@ -12,6 +12,9 @@
   "description": "",
   "dependencies": {
     "@azure/storage-blob": "^12.26.0",
+    "amqplib": "^0.10.5",
+    "axios": "^1.7.9",
+    "@azure/storage-blob": "^12.26.0",
     "@types/jest": "^29.5.14",
     "bcrypt": "^5.1.1",
     "@azure/storage-blob": "^12.26.0",
@@ -43,6 +46,8 @@
     "sinon": "^19.0.2",
     "supertest": "^7.0.0",
     "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1",
+    "winston": "^3.17.0"
     "swagger-ui-express": "^5.0.1",
     "ts-jest": "^29.2.5"
     "swagger-ui-express": "^5.0.1",

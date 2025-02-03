@@ -1,6 +1,9 @@
 const nodemailer = require('nodemailer');
 const fs = require('fs').promises;
 const path = require('path');
+const logger = require('../utils/logger');
+const sendToQueue = require('../queues/emailQueue');
+
 require('dotenv').config();
 
 const BREVO_SMTP_KEY = process.env.BREVO_API_KEY;
@@ -8,7 +11,9 @@ const BREVO_SMTP_USER = process.env.BREVO_API_USER;
 const EMAIL_FROM = process.env.SMTP_EMAIL_FROM;
 
 if (!BREVO_SMTP_KEY) {
-  throw new Error("Brevo API Key is not configured.");
+  const errorMessage = "Brevo API Key is not configured.";
+  logger.error(errorMessage);
+  throw new Error(errorMessage);
 }
 
 const transporter = nodemailer.createTransport({
@@ -19,8 +24,6 @@ const transporter = nodemailer.createTransport({
     user: BREVO_SMTP_USER,
     pass: BREVO_SMTP_KEY,
   },
-  logger: false, // Включение логирования
-  debug: false,  // Включение отладки
 });
 
 /**
@@ -39,7 +42,7 @@ async function renderTemplate(templateName, variables) {
     }
     return content;
   } catch (error) {
-    console.error(`Ошибка при рендеринге шаблона ${templateName}:`, error.message);
+    logger.error(`Ошибка при рендеринге шаблона ${templateName}: ${error.message}`);
     throw error;
   }
 }
@@ -61,10 +64,9 @@ async function sendEmail(to, subject, text, html = null) {
   };
 
   try {
-    const info = await transporter.sendMail(mailOptions);
-    console.log(`Email sent: ${info.messageId}`);
+    return await transporter.sendMail(mailOptions);
   } catch (error) {
-    console.error('Failed to send email:', error.message);
+    throw error;
   }
 }
 
@@ -76,8 +78,17 @@ async function sendEmail(to, subject, text, html = null) {
  */
 async function sendRegistrationEmail(email, username, activationLink) {
   const htmlContent = await renderTemplate('registration', { username, link: activationLink });
-  await sendEmail(email, 'Регистрация завершена', 'Спасибо за регистрацию!', htmlContent);
+
+  const emailData = {
+    to: email,
+    subject: 'Регистрация завершена',
+    text: 'Спасибо за регистрацию!',
+    html: htmlContent,
+  };
+
+  await sendToQueue(emailData); 
 }
+
 
 /**
  * Отправка письма о сбросе пароля
@@ -86,19 +97,43 @@ async function sendRegistrationEmail(email, username, activationLink) {
  * @param {string} resetLink - Ссылка для сброса пароля
  */
 async function sendResetPasswordEmail(email, username, resetLink) {
-  const htmlContent = await renderTemplate('reset_password', { username, link: resetLink });
-  await sendEmail(email, 'Сброс пароля', 'Инструкции по сбросу пароля', htmlContent);
+  try {
+    const htmlContent = await renderTemplate('reset_password', { username, link: resetLink });
+    const emailData = {
+      to: email,
+      subject: 'Сброс пароля',
+      text: 'Инструкции по сбросу пароля',
+      html: htmlContent,
+    };
+  
+    await sendToQueue(emailData); 
+  } catch (error) {
+    logger.error(`Ошибка отправки письма сброса пароля на почту ${email}: ${error.message}`);
+    throw error;
+  }
 }
 
 /**
- * Отправка письма о сбросе пароля
+ * Отправка письма о входе
  * @param {string} email - Email получателя
  * @param {string} username - Имя пользователя
  * @param {string} cancelLink - Ссылка для отмены
  */
 async function sendLoginEmail(email, username, cancelLink) {
-  const htmlContent = await renderTemplate('login', { username, link: cancelLink });
-  await sendEmail(email, 'Новый вход', 'Был совершен новый вход', htmlContent);
+  try {
+    const htmlContent = await renderTemplate('login', { username, link: cancelLink });
+    const emailData = {
+      to: email,
+      subject: 'Новый вход',
+      text: 'Был совершен новый вход',
+      html: htmlContent,
+    };
+  
+    await sendToQueue(emailData); 
+  } catch (error) {
+    logger.error(`Ошибка отправки уведомления о входе на почту ${email}: ${error.message}`);
+    throw error;
+  }
 }
 
 module.exports = {
