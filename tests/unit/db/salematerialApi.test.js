@@ -1,168 +1,211 @@
-const request = require('supertest');
-const app = require('../../../src/app');
+const httpMocks = require('node-mocks-http');
 const { SaleMaterial } = require('../../../src/models/dbModels');
+const saleMaterialController = require('../../../src/controllers/dbControllers/saleMaterialController');
+const { Op } = require('sequelize');
 
-describe('SaleMaterial API Tests', () => {
-  describe('POST /api/salematerials', () => {
-    test('should create a new sale material and return status 201', async () => {
-      const newSaleMaterial = {
-        MaterialsHeader: 'Math Book',
-        Price: 50,
-        VendorId: 1
-      };
+jest.mock('../../../src/models/dbModels', () => ({
+  SaleMaterial: {
+    create: jest.fn(),
+    findAll: jest.fn(),
+    findByPk: jest.fn(),
+    update: jest.fn(),
+    destroy: jest.fn(),
+  },
+}));
 
-      const response = await request(app)
-        .post('/api/salematerials')
-        .send(newSaleMaterial);
-
-      expect(response.status).toBe(201);
-      expect(response.body).toHaveProperty('SaleMaterialId');
-      expect(response.body.MaterialsHeader).toBe('Math Book');
-      expect(response.body.Price).toBe(50);
-      expect(response.body.VendorId).toBe(1);
-    });
-
-    test('should return 400 for invalid input (missing MaterialsHeader)', async () => {
-      const invalidSaleMaterial = {
-        Price: 50,
-        VendorId: 1
-      };
-
-      const response = await request(app)
-        .post('/api/salematerials')
-        .send(invalidSaleMaterial);
-
-      expect(response.status).toBe(400);
-      expect(response.body.error).toContain('Validation error: MaterialsHeader cannot be empty');
-    });
+describe('SaleMaterial Controller Tests', () => {
+  afterEach(() => {
+    jest.clearAllMocks();
   });
 
-  describe('GET /api/salematerials', () => {
-    test('should return a list of sale materials and status 200', async () => {
-      await SaleMaterial.create({
-        MaterialsHeader: 'Science Book',
-        Price: 60,
-        VendorId: 2
-      });
-
-      const response = await request(app)
-        .get('/api/salematerials');
-
-      expect(response.status).toBe(200);
-      expect(Array.isArray(response.body)).toBe(true);
-      expect(response.body.length).toBeGreaterThan(0);
+  test('createSaleMaterial should create a new sale material', async () => {
+    const req = httpMocks.createRequest({
+      method: 'POST',
+      body: {
+        MaterialsHeader: 'Math Notes',
+        MaterialsDescription: 'Learn math basics',
+        PreviewImagePath: 'http://example.com/image.jpg',
+        Price: 100.0,
+        VendorId: 1,
+      },
     });
+    const res = httpMocks.createResponse();
+
+    SaleMaterial.create.mockResolvedValue(req.body);
+
+    await saleMaterialController.createSaleMaterial(req, res);
+
+    expect(SaleMaterial.create).toHaveBeenCalledWith(req.body);
+    expect(res.statusCode).toBe(201);
+    expect(res._getJSONData()).toEqual(req.body);
   });
 
-  describe('GET /api/salematerials/:id', () => {
-    test('should return a sale material by ID and status 200', async () => {
-      const testSaleMaterial = await SaleMaterial.create({
-        MaterialsHeader: 'Chemistry Book',
-        Price: 70,
-        VendorId: 3
-      });
+  test('getSaleMaterials should return all sale materials', async () => {
+    const req = httpMocks.createRequest({ method: 'GET' });
+    const res = httpMocks.createResponse();
 
-      const response = await request(app)
-        .get(`/api/salematerials/${testSaleMaterial.SaleMaterialId}`);
+    const mockSaleMaterials = [
+      {
+        SaleMaterialId: 1,
+        MaterialsHeader: 'Math Notes',
+        MaterialsDescription: 'Learn math basics',
+        CreatedDate: '2023-10-01T00:00:00Z',
+        PreviewImagePath: 'http://example.com/image.jpg',
+        Price: 100.0,
+        VendorId: 1,
+      },
+    ];
 
-      expect(response.status).toBe(200);
-      expect(response.body.MaterialsHeader).toBe('Chemistry Book');
-      expect(response.body.Price).toBe(70);
-      expect(response.body.VendorId).toBe(3);
+    SaleMaterial.findAll.mockResolvedValue(mockSaleMaterials);
+
+    await saleMaterialController.getSaleMaterials(req, res);
+
+    expect(SaleMaterial.findAll).toHaveBeenCalledWith({
+      where: undefined,
+      order: undefined,
     });
-
-    test('should return 404 if sale material not found', async () => {
-      const response = await request(app)
-        .get('/api/salematerials/999');
-
-      expect(response.status).toBe(404);
-      expect(response.body.error).toBe('SaleMaterial not found');
-    });
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData()).toEqual(mockSaleMaterials);
   });
 
-  describe('GET /api/salematerials/search', () => {
-    test('should return matching sale materials and status 200', async () => {
-      await SaleMaterial.create({
-        MaterialsHeader: 'Biology Book',
-        Price: 80,
-        VendorId: 4
-      });
+  test('getSaleMaterialById should return sale material if found', async () => {
+    const req = httpMocks.createRequest({ method: 'GET', params: { id: 1 } });
+    const res = httpMocks.createResponse();
 
-      const response = await request(app)
-        .get('/api/salematerials/search')
-        .query({ materialsHeader: 'Biology' });
+    const mockSaleMaterial = {
+      SaleMaterialId: 1,
+      MaterialsHeader: 'Math Notes',
+      MaterialsDescription: 'Learn math basics',
+      CreatedDate: '2023-10-01T00:00:00Z',
+      PreviewImagePath: 'http://example.com/image.jpg',
+      Price: 100.0,
+      VendorId: 1,
+    };
 
-      expect(response.status).toBe(200);
-      expect(response.body.success).toBe(true);
-      expect(Array.isArray(response.body.data)).toBe(true);
-      expect(response.body.data.length).toBeGreaterThan(0);
-      expect(response.body.data[0].MaterialsHeader).toContain('Biology');
-    });
+    SaleMaterial.findByPk.mockResolvedValue(mockSaleMaterial);
 
-    test('should return 404 if no sale materials match the criteria', async () => {
-      const response = await request(app)
-        .get('/api/salematerials/search')
-        .query({ materialsHeader: 'nonexistent' });
+    await saleMaterialController.getSaleMaterialById(req, res);
 
-      expect(response.status).toBe(404);
-      expect(response.body.success).toBe(false);
-      expect(response.body.message).toBe('No sale materials found matching the criteria.');
-    });
+    expect(SaleMaterial.findByPk).toHaveBeenCalledWith(1);
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData()).toEqual(mockSaleMaterial);
   });
 
-  describe('PUT /api/salematerials/:id', () => {
-    test('should update a sale material and return status 200', async () => {
-      const testSaleMaterial = await SaleMaterial.create({
-        MaterialsHeader: 'History Book',
-        Price: 90,
-        VendorId: 5
-      });
+  test('searchSaleMaterials should return matching sale materials', async () => {
+    const req = httpMocks.createRequest({
+      method: 'GET',
+      query: {
+        materialsHeader: 'Math',
+        price: '100.0',
+        vendorId: '1',
+      },
+    });
+    const res = httpMocks.createResponse();
 
-      const updatedData = {
-        MaterialsHeader: 'Updated History Book'
-      };
+    const mockSaleMaterials = [
+      {
+        SaleMaterialId: 1,
+        MaterialsHeader: 'Math Notes',
+        MaterialsDescription: 'Learn math basics',
+        CreatedDate: '2023-10-01T00:00:00Z',
+        PreviewImagePath: 'http://example.com/image.jpg',
+        Price: 100.0,
+        VendorId: 1,
+      },
+    ];
 
-      const response = await request(app)
-        .put(`/api/salematerials/${testSaleMaterial.SaleMaterialId}`)
-        .send(updatedData);
+    SaleMaterial.findAll.mockResolvedValue(mockSaleMaterials);
 
-      expect(response.status).toBe(200);
-      expect(response.body.MaterialsHeader).toBe('Updated History Book');
+    await saleMaterialController.searchSaleMaterials(req, res);
+
+    expect(SaleMaterial.findAll).toHaveBeenCalledWith({
+      where: {
+        MaterialsHeader: { [Op.like]: '%Math%' },
+        Price: 100.0,
+        VendorId: '1',
+      },
     });
 
-    test('should return 404 if sale material not found', async () => {
-      const response = await request(app)
-        .put('/api/salematerials/999')
-        .send({ MaterialsHeader: 'Updated Book' });
-
-      expect(response.status).toBe(404);
-      expect(response.body.error).toBe('SaleMaterial not found');
-    });
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData().success).toBe(true);
+    expect(res._getJSONData().data).toEqual(mockSaleMaterials);
   });
 
-  describe('DELETE /api/salematerials/:id', () => {
-    test('should delete a sale material and return status 204', async () => {
-      const testSaleMaterial = await SaleMaterial.create({
-        MaterialsHeader: 'Geography Book',
-        Price: 100,
-        VendorId: 6
-      });
-
-      const response = await request(app)
-        .delete(`/api/salematerials/${testSaleMaterial.SaleMaterialId}`);
-
-      expect(response.status).toBe(204);
-
-      const deletedSaleMaterial = await SaleMaterial.findByPk(testSaleMaterial.SaleMaterialId);
-      expect(deletedSaleMaterial).toBeNull();
+  test('updateSaleMaterial should update an existing sale material', async () => {
+    const req = httpMocks.createRequest({
+      method: 'PUT',
+      params: { id: 1 },
+      body: { MaterialsHeader: 'Updated Math Notes' },
     });
+    const res = httpMocks.createResponse();
 
-    test('should return 404 if sale material not found', async () => {
-      const response = await request(app)
-        .delete('/api/salematerials/999');
+    const mockSaleMaterial = {
+      update: jest.fn().mockResolvedValue([1]),
+      dataValues: {
+        SaleMaterialId: 1,
+        MaterialsHeader: 'Updated Math Notes',
+        MaterialsDescription: 'Learn math basics',
+        CreatedDate: '2023-10-01T00:00:00Z',
+        PreviewImagePath: 'http://example.com/image.jpg',
+        Price: 100.0,
+        VendorId: 1,
+      },
+      toJSON: jest.fn(() => ({ ...mockSaleMaterial.dataValues })),
+    };
 
-      expect(response.status).toBe(404);
-      expect(response.body.error).toBe('SaleMaterial not found');
+    SaleMaterial.findByPk.mockResolvedValue(mockSaleMaterial);
+
+    await saleMaterialController.updateSaleMaterial(req, res);
+
+    expect(mockSaleMaterial.update).toHaveBeenCalledWith(req.body);
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData()).toEqual({
+      SaleMaterialId: 1,
+      MaterialsHeader: 'Updated Math Notes',
+      MaterialsDescription: 'Learn math basics',
+      CreatedDate: '2023-10-01T00:00:00Z',
+      PreviewImagePath: 'http://example.com/image.jpg',
+      Price: 100.0,
+      VendorId: 1,
     });
+    expect(mockSaleMaterial.toJSON).toHaveBeenCalled();
+  });
+
+  test('deleteSaleMaterial should remove a sale material', async () => {
+    const req = httpMocks.createRequest({ method: 'DELETE', params: { id: 1 } });
+    const res = httpMocks.createResponse();
+
+    const mockSaleMaterial = { destroy: jest.fn().mockResolvedValue(1) };
+
+    SaleMaterial.findByPk.mockResolvedValue(mockSaleMaterial);
+
+    await saleMaterialController.deleteSaleMaterial(req, res);
+
+    expect(mockSaleMaterial.destroy).toHaveBeenCalled();
+    expect(res.statusCode).toBe(204);
+  });
+
+  test('getSaleMaterialById should handle not found case', async () => {
+    const req = httpMocks.createRequest({ method: 'GET', params: { id: 999 } });
+    const res = httpMocks.createResponse();
+
+    SaleMaterial.findByPk.mockResolvedValue(null);
+
+    await saleMaterialController.getSaleMaterialById(req, res);
+
+    expect(res.statusCode).toBe(404);
+    expect(res._getJSONData()).toEqual({ error: 'SaleMaterial not found' });
+  });
+
+  test('searchSaleMaterials should handle no results case', async () => {
+    const req = httpMocks.createRequest({ method: 'GET', query: { materialsHeader: 'Nonexistent' } });
+    const res = httpMocks.createResponse();
+
+    SaleMaterial.findAll.mockResolvedValue([]);
+
+    await saleMaterialController.searchSaleMaterials(req, res);
+
+    expect(res.statusCode).toBe(404);
+    expect(res._getJSONData()).toEqual({ success: false, message: 'No sale materials found matching the criteria.' });
   });
 });

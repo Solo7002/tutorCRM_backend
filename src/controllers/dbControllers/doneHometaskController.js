@@ -1,4 +1,4 @@
-const { DoneHomeTask } = require('../../models/dbModels');
+const { DoneHomeTask, HomeTask, Student } = require('../../models/dbModels');
 const { parseQueryParams } = require('../../utils/dbUtils/queryUtils');
 const { Op } = require('sequelize');
 
@@ -14,7 +14,10 @@ exports.createDoneHometask = async (req, res) => {
 exports.getDoneHometasks = async (req, res) => {
   try {
     const { where, order } = parseQueryParams(req.query);
-    const doneHometasks = await DoneHometask.findAll({ where: where || undefined, order: order || undefined });
+    const doneHometasks = await DoneHomeTask.findAll({
+      where: where || undefined,
+      order: order || undefined,
+    });
     res.status(200).json(doneHometasks);
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -45,13 +48,17 @@ exports.searchDoneHomeTasks = async (req, res) => {
       where: whereConditions,
       include: [
         { model: HomeTask, as: 'HomeTask', attributes: ['HomeTaskId', 'TaskName'] },
-        { model: Student, as: 'Student', attributes: ['StudentId', 'FullName'] }
-      ]
+        { model: Student, as: 'Student', attributes: ['StudentId', 'FullName'] },
+      ],
     });
 
-    if (!tasks.length) return res.status(404).json({ success: false, message: 'No tasks found matching the criteria.' });
+    if (!tasks.length) {
+      return res.status(404).json({ success: false, message: 'No tasks found matching the criteria.' });
+    }
+
     return res.status(200).json({ success: true, data: tasks });
   } catch (error) {
+    console.error('Error in searchDoneHomeTasks:', error);
     return res.status(500).json({ success: false, message: 'Server error, please try again later.' });
   }
 };

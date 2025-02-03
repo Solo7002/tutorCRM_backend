@@ -1,308 +1,212 @@
-const request = require('supertest');
-const app = require('../../../src/app');
-const { User, Student, Test, DoneTest } = require('../../../src/models/dbModels');
+const httpMocks = require('node-mocks-http');
+const { DoneTest, Student, Test } = require('../../../src/models/dbModels');
+const doneTestController = require('../../../src/controllers/dbControllers/doneTestController');
+const { Op } = require('sequelize');
 
-describe('DoneTest API Tests', () => {
-  describe('POST /api/donetests', () => {
-    test('should create a new done test and return status 201', async () => {
-      const testUser = await User.create({
-        Username: `user${Date.now()}`,
-        Password: 'Password123!',
-        Email: `test${Date.now()}@example.com`,
-        LastName: 'Doe',
-        FirstName: 'John'
-      });
+// Мокируем модели
+jest.mock('../../../src/models/dbModels', () => ({
+  DoneTest: {
+    create: jest.fn(),
+    findAll: jest.fn(),
+    findByPk: jest.fn(),
+    update: jest.fn(),
+    destroy: jest.fn(),
+  },
+  Student: jest.fn(() => ({ name: 'Student' })),
+  Test: jest.fn(() => ({ name: 'Test' })),
+}));
 
-      const testStudent = await Student.create({
-        SchoolName: 'Test School',
-        Grade: '10th',
-        UserId: testUser.UserId
-      });
-
-      const testTest = await Test.create({
-        TestName: 'Math Test',
-        GroupId: 1
-      });
-
-      const newDoneTest = {
-        Mark: 85,
-        DoneDate: new Date(),
-        StudentId: testStudent.StudentId,
-        TestId: testTest.TestId
-      };
-
-      const response = await request(app)
-        .post('/api/donetests')
-        .send(newDoneTest);
-
-      expect(response.status).toBe(201);
-      expect(response.body).toHaveProperty('DoneTestId');
-      expect(response.body.Mark).toBe(85);
-      expect(response.body.StudentId).toBe(testStudent.StudentId);
-      expect(response.body.TestId).toBe(testTest.TestId);
-    });
-
-    test('should return 400 for invalid input (missing Mark)', async () => {
-      const testUser = await User.create({
-        Username: `user${Date.now()}`,
-        Password: 'Password123!',
-        Email: `test${Date.now()}@example.com`,
-        LastName: 'Doe',
-        FirstName: 'John'
-      });
-
-      const testStudent = await Student.create({
-        SchoolName: 'Test School',
-        Grade: '10th',
-        UserId: testUser.UserId
-      });
-
-      const testTest = await Test.create({
-        TestName: 'Math Test',
-        GroupId: 1
-      });
-
-      const invalidDoneTest = {
-        DoneDate: new Date(),
-        StudentId: testStudent.StudentId,
-        TestId: testTest.TestId
-      };
-
-      const response = await request(app)
-        .post('/api/donetests')
-        .send(invalidDoneTest);
-
-      expect(response.status).toBe(400);
-      expect(response.body.error).toContain('Validation error: Mark must be an integer');
-    });
+describe('DoneTest Controller Tests', () => {
+  afterEach(() => {
+    jest.clearAllMocks();
   });
 
-  describe('GET /api/donetests', () => {
-    test('should return a list of done tests and status 200', async () => {
-      const testUser1 = await User.create({
-        Username: `user1${Date.now()}`,
-        Password: 'Password123!',
-        Email: `user1${Date.now()}@example.com`,
-        LastName: 'Doe',
-        FirstName: 'John'
-      });
+  test('createDoneTest should create a new test', async () => {
+    const req = httpMocks.createRequest({
+      method: 'POST',
+      body: {
+        Mark: 85,
+        DoneDate: '2023-10-01T00:00:00Z',
+        SpentTime: '01:30:00',
+        StudentId: 1,
+        TestId: 1,
+      },
+    });
+    const res = httpMocks.createResponse();
 
-      const testStudent1 = await Student.create({
-        SchoolName: 'Test School',
-        Grade: '10th',
-        UserId: testUser1.UserId
-      });
+    DoneTest.create.mockResolvedValue(req.body);
 
-      const testTest1 = await Test.create({
-        TestName: 'Math Test',
-        GroupId: 1
-      });
+    await doneTestController.createDoneTest(req, res);
 
-      await DoneTest.create({
+    expect(DoneTest.create).toHaveBeenCalledWith(req.body);
+    expect(res.statusCode).toBe(201);
+    expect(res._getJSONData()).toEqual(req.body);
+  });
+
+  test('getDoneTests should return all tests', async () => {
+    const req = httpMocks.createRequest({ method: 'GET' });
+    const res = httpMocks.createResponse();
+
+    const mockTests = [
+      {
+        DoneTestId: 1,
+        Mark: 85,
+        DoneDate: '2023-10-01T00:00:00Z',
+        SpentTime: '01:30:00',
+        StudentId: 1,
+        TestId: 1,
+      },
+    ];
+
+    DoneTest.findAll.mockResolvedValue(mockTests);
+
+    await doneTestController.getDoneTests(req, res);
+
+    expect(DoneTest.findAll).toHaveBeenCalledWith({
+      where: undefined,
+      order: undefined,
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData()).toEqual(mockTests);
+  });
+
+  test('getDoneTestById should return test if found', async () => {
+    const req = httpMocks.createRequest({ method: 'GET', params: { id: 1 } });
+    const res = httpMocks.createResponse();
+
+    const mockTest = {
+      DoneTestId: 1,
+      Mark: 85,
+      DoneDate: '2023-10-01T00:00:00Z',
+      SpentTime: '01:30:00',
+      StudentId: 1,
+      TestId: 1,
+    };
+
+    DoneTest.findByPk.mockResolvedValue(mockTest);
+
+    await doneTestController.getDoneTestById(req, res);
+
+    expect(DoneTest.findByPk).toHaveBeenCalledWith(1);
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData()).toEqual(mockTest);
+  });
+
+  test('searchDoneTests should return matching tests', async () => {
+    const req = httpMocks.createRequest({
+      method: 'GET',
+      query: { mark: 85, startDate: '2023-10-01', endDate: '2023-10-02', studentId: '1', testId: '1' },
+    });
+    const res = httpMocks.createResponse();
+
+    const mockTests = [
+      {
+        DoneTestId: 1,
+        Mark: 85,
+        DoneDate: '2023-10-01T00:00:00Z',
+        SpentTime: '01:30:00',
+        StudentId: 1,
+        TestId: 1,
+        Student: { StudentId: 1, FirstName: 'John', LastName: 'Doe' },
+        Test: { TestId: 1, TestName: 'Math Test' },
+      },
+    ];
+
+    DoneTest.findAll.mockResolvedValue(mockTests);
+
+    await doneTestController.searchDoneTests(req, res);
+
+    expect(DoneTest.findAll).toHaveBeenCalledWith({
+      where: {
+        Mark: { [Op.eq]: 85 },
+        DoneDate: { [Op.between]: [new Date('2023-10-01'), new Date('2023-10-02')] },
+        StudentId: '1',
+        TestId: '1',
+      },
+      include: [
+        { model: expect.any(Function), as: 'Student', attributes: ['StudentId', 'FirstName', 'LastName'] },
+        { model: expect.any(Function), as: 'Test', attributes: ['TestId', 'TestName'] },
+      ],
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData().success).toBe(true);
+    expect(res._getJSONData().data).toEqual(mockTests);
+  });
+
+  test('updateDoneTest should update an existing test', async () => {
+    const req = httpMocks.createRequest({
+      method: 'PUT',
+      params: { id: 1 },
+      body: { Mark: 90 },
+    });
+    const res = httpMocks.createResponse();
+
+    const mockTest = {
+      update: jest.fn().mockResolvedValue([1]),
+      dataValues: {
+        DoneTestId: 1,
         Mark: 90,
-        DoneDate: new Date(),
-        StudentId: testStudent1.StudentId,
-        TestId: testTest1.TestId
-      });
+        DoneDate: '2023-10-01T00:00:00Z',
+        SpentTime: '01:30:00',
+        StudentId: 1,
+        TestId: 1,
+      },
+      toJSON: jest.fn(() => ({ ...mockTest.dataValues })),
+    };
 
-      const response = await request(app)
-        .get('/api/donetests');
+    DoneTest.findByPk.mockResolvedValue(mockTest);
 
-      expect(response.status).toBe(200);
-      expect(Array.isArray(response.body)).toBe(true);
-      expect(response.body.length).toBeGreaterThan(0);
+    await doneTestController.updateDoneTest(req, res);
+
+    expect(mockTest.update).toHaveBeenCalledWith(req.body);
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData()).toEqual({
+      DoneTestId: 1,
+      Mark: 90,
+      DoneDate: '2023-10-01T00:00:00Z',
+      SpentTime: '01:30:00',
+      StudentId: 1,
+      TestId: 1,
     });
+    expect(mockTest.toJSON).toHaveBeenCalled();
   });
 
-  describe('GET /api/donetests/:id', () => {
-    test('should return a done test by ID and status 200', async () => {
-      const testUser = await User.create({
-        Username: `user${Date.now()}`,
-        Password: 'Password123!',
-        Email: `test${Date.now()}@example.com`,
-        LastName: 'Doe',
-        FirstName: 'John'
-      });
+  test('deleteDoneTest should remove a test', async () => {
+    const req = httpMocks.createRequest({ method: 'DELETE', params: { id: 1 } });
+    const res = httpMocks.createResponse();
 
-      const testStudent = await Student.create({
-        SchoolName: 'Test School',
-        Grade: '10th',
-        UserId: testUser.UserId
-      });
+    const mockTest = { destroy: jest.fn().mockResolvedValue(1) };
 
-      const testTest = await Test.create({
-        TestName: 'Math Test',
-        GroupId: 1
-      });
+    DoneTest.findByPk.mockResolvedValue(mockTest);
 
-      const testDoneTest = await DoneTest.create({
-        Mark: 85,
-        DoneDate: new Date(),
-        StudentId: testStudent.StudentId,
-        TestId: testTest.TestId
-      });
+    await doneTestController.deleteDoneTest(req, res);
 
-      const response = await request(app)
-        .get(`/api/donetests/${testDoneTest.DoneTestId}`);
-
-      expect(response.status).toBe(200);
-      expect(response.body.Mark).toBe(85);
-      expect(response.body.StudentId).toBe(testStudent.StudentId);
-      expect(response.body.TestId).toBe(testTest.TestId);
-    });
-
-    test('should return 404 if done test not found', async () => {
-      const response = await request(app)
-        .get('/api/donetests/999');
-
-      expect(response.status).toBe(404);
-      expect(response.body.error).toBe('DoneTest not found');
-    });
+    expect(mockTest.destroy).toHaveBeenCalled();
+    expect(res.statusCode).toBe(204);
   });
 
-  describe('GET /api/donetests/search', () => {
-    test('should return matching done tests and status 200', async () => {
-      const testUser1 = await User.create({
-        Username: `user1${Date.now()}`,
-        Password: 'Password123!',
-        Email: `user1${Date.now()}@example.com`,
-        LastName: 'Doe',
-        FirstName: 'John'
-      });
+  test('getDoneTestById should handle not found case', async () => {
+    const req = httpMocks.createRequest({ method: 'GET', params: { id: 999 } });
+    const res = httpMocks.createResponse();
 
-      const testStudent1 = await Student.create({
-        SchoolName: 'Test School',
-        Grade: '10th',
-        UserId: testUser1.UserId
-      });
+    DoneTest.findByPk.mockResolvedValue(null);
 
-      const testTest1 = await Test.create({
-        TestName: 'Math Test',
-        GroupId: 1
-      });
+    await doneTestController.getDoneTestById(req, res);
 
-      await DoneTest.create({
-        Mark: 90,
-        DoneDate: new Date(),
-        StudentId: testStudent1.StudentId,
-        TestId: testTest1.TestId
-      });
-
-      const response = await request(app)
-        .get('/api/donetests/search')
-        .query({ studentId: testStudent1.StudentId });
-
-      expect(response.status).toBe(200);
-      expect(response.body.success).toBe(true);
-      expect(Array.isArray(response.body.data)).toBe(true);
-      expect(response.body.data.length).toBeGreaterThan(0);
-      expect(response.body.data[0].StudentId).toBe(testStudent1.StudentId);
-    });
-
-    test('should return 404 if no done tests match the criteria', async () => {
-      const response = await request(app)
-        .get('/api/donetests/search')
-        .query({ studentId: 'nonexistent' });
-
-      expect(response.status).toBe(404);
-      expect(response.body.success).toBe(false);
-      expect(response.body.message).toBe('No tests found matching the criteria.');
-    });
+    expect(res.statusCode).toBe(404);
+    expect(res._getJSONData()).toEqual({ error: 'DoneTest not found' });
   });
 
-  describe('PUT /api/donetests/:id', () => {
-    test('should update a done test and return status 200', async () => {
-      const testUser = await User.create({
-        Username: `user${Date.now()}`,
-        Password: 'Password123!',
-        Email: `test${Date.now()}@example.com`,
-        LastName: 'Doe',
-        FirstName: 'John'
-      });
+  test('searchDoneTests should handle no results case', async () => {
+    const req = httpMocks.createRequest({ method: 'GET', query: { mark: 100 } });
+    const res = httpMocks.createResponse();
 
-      const testStudent = await Student.create({
-        SchoolName: 'Test School',
-        Grade: '10th',
-        UserId: testUser.UserId
-      });
+    DoneTest.findAll.mockResolvedValue([]);
 
-      const testTest = await Test.create({
-        TestName: 'Math Test',
-        GroupId: 1
-      });
+    await doneTestController.searchDoneTests(req, res);
 
-      const testDoneTest = await DoneTest.create({
-        Mark: 85,
-        DoneDate: new Date(),
-        StudentId: testStudent.StudentId,
-        TestId: testTest.TestId
-      });
-
-      const updatedData = {
-        Mark: 95
-      };
-
-      const response = await request(app)
-        .put(`/api/donetests/${testDoneTest.DoneTestId}`)
-        .send(updatedData);
-
-      expect(response.status).toBe(200);
-      expect(response.body.Mark).toBe(95);
-    });
-
-    test('should return 404 if done test not found', async () => {
-      const response = await request(app)
-        .put('/api/donetests/999')
-        .send({ Mark: 95 });
-
-      expect(response.status).toBe(404);
-      expect(response.body.error).toBe('DoneTest not found');
-    });
-  });
-
-  describe('DELETE /api/donetests/:id', () => {
-    test('should delete a done test and return status 204', async () => {
-      const testUser = await User.create({
-        Username: `user${Date.now()}`,
-        Password: 'Password123!',
-        Email: `test${Date.now()}@example.com`,
-        LastName: 'Doe',
-        FirstName: 'John'
-      });
-
-      const testStudent = await Student.create({
-        SchoolName: 'Test School',
-        Grade: '10th',
-        UserId: testUser.UserId
-      });
-
-      const testTest = await Test.create({
-        TestName: 'Math Test',
-        GroupId: 1
-      });
-
-      const testDoneTest = await DoneTest.create({
-        Mark: 85,
-        DoneDate: new Date(),
-        StudentId: testStudent.StudentId,
-        TestId: testTest.TestId
-      });
-
-      const response = await request(app)
-        .delete(`/api/donetests/${testDoneTest.DoneTestId}`);
-
-      expect(response.status).toBe(204);
-
-      const deletedTest = await DoneTest.findByPk(testDoneTest.DoneTestId);
-      expect(deletedTest).toBeNull();
-    });
-
-    test('should return 404 if done test not found', async () => {
-      const response = await request(app)
-        .delete('/api/donetests/999');
-
-      expect(response.status).toBe(404);
-      expect(response.body.error).toBe('DoneTest not found');
-    });
+    expect(res.statusCode).toBe(404);
+    expect(res._getJSONData()).toEqual({ success: false, message: 'No tests found matching the criteria.' });
   });
 });

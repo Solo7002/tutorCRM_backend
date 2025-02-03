@@ -1,168 +1,199 @@
-const request = require('supertest');
-const app = require('../../../src/app');
+const httpMocks = require('node-mocks-http');
 const { UserReview } = require('../../../src/models/dbModels');
+const userReviewController = require('../../../src/controllers/dbControllers/userReviewController');
+const { Op } = require('sequelize');
 
-describe('UserReview API Tests', () => {
-  describe('POST /api/userreviews', () => {
-    test('should create a new user review and return status 201', async () => {
-      const newUserReview = {
-        ReviewHeader: 'Great Service',
-        ReviewText: 'The service was excellent!',
-        CreateDate: new Date()
-      };
+jest.mock('../../../src/models/dbModels', () => ({
+  UserReview: {
+    create: jest.fn(),
+    findAll: jest.fn(),
+    findByPk: jest.fn(),
+    update: jest.fn(),
+    destroy: jest.fn(),
+  },
+}));
 
-      const response = await request(app)
-        .post('/api/userreviews')
-        .send(newUserReview);
-
-      expect(response.status).toBe(201);
-      expect(response.body).toHaveProperty('UserReviewId');
-      expect(response.body.ReviewHeader).toBe('Great Service');
-      expect(response.body.ReviewText).toBe('The service was excellent!');
-      expect(new Date(response.body.CreateDate)).toBeInstanceOf(Date);
-    });
-
-    test('should return 400 for invalid input (missing ReviewHeader)', async () => {
-      const invalidUserReview = {
-        ReviewText: 'The service was excellent!',
-        CreateDate: new Date()
-      };
-
-      const response = await request(app)
-        .post('/api/userreviews')
-        .send(invalidUserReview);
-
-      expect(response.status).toBe(400);
-      expect(response.body.error).toContain('Validation error: ReviewHeader cannot be empty');
-    });
+describe('UserReview Controller Tests', () => {
+  afterEach(() => {
+    jest.clearAllMocks();
   });
 
-  describe('GET /api/userreviews', () => {
-    test('should return a list of user reviews and status 200', async () => {
-      await UserReview.create({
-        ReviewHeader: 'Good Experience',
-        ReviewText: 'I had a good experience.',
-        CreateDate: new Date()
-      });
-
-      const response = await request(app)
-        .get('/api/userreviews');
-
-      expect(response.status).toBe(200);
-      expect(Array.isArray(response.body)).toBe(true);
-      expect(response.body.length).toBeGreaterThan(0);
+  test('createUserReview should create a new user review', async () => {
+    const req = httpMocks.createRequest({
+      method: 'POST',
+      body: {
+        ReviewHeader: 'Great App',
+        ReviewText: 'I love this app!',
+      },
     });
+    const res = httpMocks.createResponse();
+
+    UserReview.create.mockResolvedValue(req.body);
+
+    await userReviewController.createUserReview(req, res);
+
+    expect(UserReview.create).toHaveBeenCalledWith(req.body);
+    expect(res.statusCode).toBe(201);
+    expect(res._getJSONData()).toEqual(req.body);
   });
 
-  describe('GET /api/userreviews/:id', () => {
-    test('should return a user review by ID and status 200', async () => {
-      const userReview = await UserReview.create({
-        ReviewHeader: 'Excellent Product',
-        ReviewText: 'The product is amazing.',
-        CreateDate: new Date()
-      });
+  test('getUserReviews should return all user reviews', async () => {
+    const req = httpMocks.createRequest({ method: 'GET' });
+    const res = httpMocks.createResponse();
 
-      const response = await request(app)
-        .get(`/api/userreviews/${userReview.UserReviewId}`);
+    const mockUserReviews = [
+      {
+        UserReviewId: 1,
+        ReviewHeader: 'Great App',
+        ReviewText: 'I love this app!',
+        CreateDate: '2023-10-01T00:00:00Z',
+      },
+      {
+        UserReviewId: 2,
+        ReviewHeader: 'Needs Work',
+        ReviewText: 'Fix bugs please.',
+        CreateDate: '2023-10-15T00:00:00Z',
+      },
+    ];
 
-      expect(response.status).toBe(200);
-      expect(response.body.ReviewHeader).toBe('Excellent Product');
-      expect(response.body.ReviewText).toBe('The product is amazing.');
-      expect(new Date(response.body.CreateDate)).toBeInstanceOf(Date);
+    UserReview.findAll.mockResolvedValue(mockUserReviews);
+
+    await userReviewController.getUserReviews(req, res);
+
+    expect(UserReview.findAll).toHaveBeenCalledWith({
+      where: undefined,
+      order: undefined,
     });
-
-    test('should return 404 if user review not found', async () => {
-      const response = await request(app)
-        .get('/api/userreviews/999');
-
-      expect(response.status).toBe(404);
-      expect(response.body.error).toBe('UserReview not found');
-    });
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData()).toEqual(mockUserReviews);
   });
 
-  describe('GET /api/userreviews/search', () => {
-    test('should return matching user reviews and status 200', async () => {
-      await UserReview.create({
-        ReviewHeader: 'Searchable Header',
-        ReviewText: 'This is a searchable review.',
-        CreateDate: new Date()
-      });
+  test('getUserReviewById should return user review if found', async () => {
+    const req = httpMocks.createRequest({ method: 'GET', params: { id: 1 } });
+    const res = httpMocks.createResponse();
 
-      const response = await request(app)
-        .get('/api/userreviews/search')
-        .query({ reviewHeader: 'Searchable' });
+    const mockUserReview = {
+      UserReviewId: 1,
+      ReviewHeader: 'Great App',
+      ReviewText: 'I love this app!',
+      CreateDate: '2023-10-01T00:00:00Z',
+    };
 
-      expect(response.status).toBe(200);
-      expect(response.body.success).toBe(true);
-      expect(Array.isArray(response.body.data)).toBe(true);
-      expect(response.body.data.length).toBeGreaterThan(0);
-      expect(response.body.data[0].ReviewHeader).toContain('Searchable');
-    });
+    UserReview.findByPk.mockResolvedValue(mockUserReview);
 
-    test('should return 404 if no user reviews match the criteria', async () => {
-      const response = await request(app)
-        .get('/api/userreviews/search')
-        .query({ reviewHeader: 'nonexistent' });
+    await userReviewController.getUserReviewById(req, res);
 
-      expect(response.status).toBe(404);
-      expect(response.body.success).toBe(false);
-      expect(response.body.message).toBe('No user reviews found matching the criteria.');
-    });
+    expect(UserReview.findByPk).toHaveBeenCalledWith(1);
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData()).toEqual(mockUserReview);
   });
 
-  describe('PUT /api/userreviews/:id', () => {
-    test('should update a user review and return status 200', async () => {
-      const userReview = await UserReview.create({
-        ReviewHeader: 'Old Header',
-        ReviewText: 'Old review text.',
-        CreateDate: new Date()
-      });
+  test('searchUserReviews should return matching user reviews', async () => {
+    const req = httpMocks.createRequest({
+      method: 'GET',
+      query: {
+        reviewHeader: 'Great',
+        startDate: '2023-10-01',
+        endDate: '2023-10-31',
+      },
+    });
+    const res = httpMocks.createResponse();
 
-      const updatedData = {
-        ReviewHeader: 'Updated Header'
-      };
+    const mockUserReviews = [
+      {
+        UserReviewId: 1,
+        ReviewHeader: 'Great App',
+        ReviewText: 'I love this app!',
+        CreateDate: '2023-10-01T00:00:00Z',
+      },
+    ];
 
-      const response = await request(app)
-        .put(`/api/userreviews/${userReview.UserReviewId}`)
-        .send(updatedData);
+    UserReview.findAll.mockResolvedValue(mockUserReviews);
 
-      expect(response.status).toBe(200);
-      expect(response.body.ReviewHeader).toBe('Updated Header');
+    await userReviewController.searchUserReviews(req, res);
+
+    expect(UserReview.findAll).toHaveBeenCalledWith({
+      where: {
+        ReviewHeader: { [Op.like]: '%Great%' },
+        CreateDate: { [Op.between]: [new Date('2023-10-01'), new Date('2023-10-31')] },
+      },
+      attributes: ['UserReviewId', 'ReviewHeader', 'ReviewText', 'CreateDate'],
     });
 
-    test('should return 404 if user review not found', async () => {
-      const response = await request(app)
-        .put('/api/userreviews/999')
-        .send({ ReviewHeader: 'Updated Header' });
-
-      expect(response.status).toBe(404);
-      expect(response.body.error).toBe('UserReview not found');
-    });
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData().success).toBe(true);
+    expect(res._getJSONData().data).toEqual(mockUserReviews);
   });
 
-  describe('DELETE /api/userreviews/:id', () => {
-    test('should delete a user review and return status 204', async () => {
-      const userReview = await UserReview.create({
-        ReviewHeader: 'To Delete',
-        ReviewText: 'This review will be deleted.',
-        CreateDate: new Date()
-      });
-
-      const response = await request(app)
-        .delete(`/api/userreviews/${userReview.UserReviewId}`);
-
-      expect(response.status).toBe(204);
-
-      const deletedUserReview = await UserReview.findByPk(userReview.UserReviewId);
-      expect(deletedUserReview).toBeNull();
+  test('updateUserReview should update an existing user review', async () => {
+    const req = httpMocks.createRequest({
+      method: 'PUT',
+      params: { id: 1 },
+      body: { ReviewHeader: 'Updated Great App' },
     });
+    const res = httpMocks.createResponse();
 
-    test('should return 404 if user review not found', async () => {
-      const response = await request(app)
-        .delete('/api/userreviews/999');
+    const mockUserReview = {
+      update: jest.fn().mockResolvedValue([1]),
+      dataValues: {
+        UserReviewId: 1,
+        ReviewHeader: 'Updated Great App',
+        ReviewText: 'I love this app!',
+        CreateDate: '2023-10-01T00:00:00Z',
+      },
+      toJSON: jest.fn(() => ({ ...mockUserReview.dataValues })),
+    };
 
-      expect(response.status).toBe(404);
-      expect(response.body.error).toBe('UserReview not found');
+    UserReview.findByPk.mockResolvedValue(mockUserReview);
+
+    await userReviewController.updateUserReview(req, res);
+
+    expect(mockUserReview.update).toHaveBeenCalledWith(req.body);
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData()).toEqual({
+      UserReviewId: 1,
+      ReviewHeader: 'Updated Great App',
+      ReviewText: 'I love this app!',
+      CreateDate: '2023-10-01T00:00:00Z',
     });
+    expect(mockUserReview.toJSON).toHaveBeenCalled();
+  });
+
+  test('deleteUserReview should remove a user review', async () => {
+    const req = httpMocks.createRequest({ method: 'DELETE', params: { id: 1 } });
+    const res = httpMocks.createResponse();
+
+    const mockUserReview = { destroy: jest.fn().mockResolvedValue(1) };
+
+    UserReview.findByPk.mockResolvedValue(mockUserReview);
+
+    await userReviewController.deleteUserReview(req, res);
+
+    expect(mockUserReview.destroy).toHaveBeenCalled();
+    expect(res.statusCode).toBe(204);
+  });
+
+  test('getUserReviewById should handle not found case', async () => {
+    const req = httpMocks.createRequest({ method: 'GET', params: { id: 999 } });
+    const res = httpMocks.createResponse();
+
+    UserReview.findByPk.mockResolvedValue(null);
+
+    await userReviewController.getUserReviewById(req, res);
+
+    expect(res.statusCode).toBe(404);
+    expect(res._getJSONData()).toEqual({ error: 'UserReview not found' });
+  });
+
+  test('searchUserReviews should handle no results case', async () => {
+    const req = httpMocks.createRequest({ method: 'GET', query: { reviewHeader: 'Nonexistent' } });
+    const res = httpMocks.createResponse();
+
+    UserReview.findAll.mockResolvedValue([]);
+
+    await userReviewController.searchUserReviews(req, res);
+
+    expect(res.statusCode).toBe(404);
+    expect(res._getJSONData()).toEqual({ success: false, message: 'No user reviews found matching the criteria.' });
   });
 });

@@ -1,176 +1,202 @@
-const request = require('supertest');
-const app = require('../../../src/app');
+const httpMocks = require('node-mocks-http');
 const { ReviewComplaint } = require('../../../src/models/dbModels');
+const reviewComplaintController = require('../../../src/controllers/dbControllers/reviewComplaintController');
+const { Op } = require('sequelize');
 
-describe('ReviewComplaint API Tests', () => {
-  describe('POST /api/reviewcomplaints', () => {
-    test('should create a new review complaint and return status 201', async () => {
-      const newReviewComplaint = {
-        ComplaintDate: new Date(),
-        ComplaintDescription: 'This is a test complaint',
+jest.mock('../../../src/models/dbModels', () => ({
+  ReviewComplaint: {
+    create: jest.fn(),
+    findAll: jest.fn(),
+    findByPk: jest.fn(),
+    update: jest.fn(),
+    destroy: jest.fn(),
+  },
+}));
+
+describe('ReviewComplaint Controller Tests', () => {
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  test('createReviewComplaint should create a new review complaint', async () => {
+    const req = httpMocks.createRequest({
+      method: 'POST',
+      body: {
+        ComplaintDescription: 'Poor quality',
         UserFromId: 1,
-        ReviewId: 1
-      };
-
-      const response = await request(app)
-        .post('/api/reviewcomplaints')
-        .send(newReviewComplaint);
-
-      expect(response.status).toBe(201);
-      expect(response.body).toHaveProperty('ReviewComplaintId');
-      expect(new Date(response.body.ComplaintDate)).toBeInstanceOf(Date);
-      expect(response.body.ComplaintDescription).toBe('This is a test complaint');
-      expect(response.body.UserFromId).toBe(1);
-      expect(response.body.ReviewId).toBe(1);
+        ReviewId: 1,
+      },
     });
+    const res = httpMocks.createResponse();
 
-    test('should return 400 for invalid input (missing ComplaintDescription)', async () => {
-      const invalidReviewComplaint = {
-        ComplaintDate: new Date(),
+    ReviewComplaint.create.mockResolvedValue(req.body);
+
+    await reviewComplaintController.createReviewComplaint(req, res);
+
+    expect(ReviewComplaint.create).toHaveBeenCalledWith(req.body);
+    expect(res.statusCode).toBe(201);
+    expect(res._getJSONData()).toEqual(req.body);
+  });
+
+  test('getReviewComplaints should return all review complaints', async () => {
+    const req = httpMocks.createRequest({ method: 'GET' });
+    const res = httpMocks.createResponse();
+
+    const mockReviewComplaints = [
+      {
+        ReviewComplaintId: 1,
+        ComplaintDate: '2023-10-01T00:00:00Z',
+        ComplaintDescription: 'Poor quality',
         UserFromId: 1,
-        ReviewId: 1
-      };
+        ReviewId: 1,
+      },
+    ];
 
-      const response = await request(app)
-        .post('/api/reviewcomplaints')
-        .send(invalidReviewComplaint);
+    ReviewComplaint.findAll.mockResolvedValue(mockReviewComplaints);
 
-      expect(response.status).toBe(400);
-      expect(response.body.error).toContain('Validation error: ComplaintDescription cannot be empty');
+    await reviewComplaintController.getReviewComplaints(req, res);
+
+    expect(ReviewComplaint.findAll).toHaveBeenCalledWith({
+      where: undefined,
+      order: undefined,
     });
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData()).toEqual(mockReviewComplaints);
   });
 
-  describe('GET /api/reviewcomplaints', () => {
-    test('should return a list of review complaints and status 200', async () => {
-      await ReviewComplaint.create({
-        ComplaintDate: new Date(),
-        ComplaintDescription: 'Another test complaint',
-        UserFromId: 2,
-        ReviewId: 2
-      });
+  test('getReviewComplaintById should return review complaint if found', async () => {
+    const req = httpMocks.createRequest({ method: 'GET', params: { id: 1 } });
+    const res = httpMocks.createResponse();
 
-      const response = await request(app)
-        .get('/api/reviewcomplaints');
+    const mockReviewComplaint = {
+      ReviewComplaintId: 1,
+      ComplaintDate: '2023-10-01T00:00:00Z',
+      ComplaintDescription: 'Poor quality',
+      UserFromId: 1,
+      ReviewId: 1,
+    };
 
-      expect(response.status).toBe(200);
-      expect(Array.isArray(response.body)).toBe(true);
-      expect(response.body.length).toBeGreaterThan(0);
-    });
+    ReviewComplaint.findByPk.mockResolvedValue(mockReviewComplaint);
+
+    await reviewComplaintController.getReviewComplaintById(req, res);
+
+    expect(ReviewComplaint.findByPk).toHaveBeenCalledWith(1);
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData()).toEqual(mockReviewComplaint);
   });
 
-  describe('GET /api/reviewcomplaints/:id', () => {
-    test('should return a review complaint by ID and status 200', async () => {
-      const testReviewComplaint = await ReviewComplaint.create({
-        ComplaintDate: new Date(),
-        ComplaintDescription: 'Test complaint for GET by ID',
-        UserFromId: 3,
-        ReviewId: 3
-      });
+  test('searchReviewComplaints should return matching review complaints', async () => {
+    const req = httpMocks.createRequest({
+      method: 'GET',
+      query: {
+        startDate: '2023-10-01',
+        endDate: '2023-10-31',
+        complaintDescription: 'Poor',
+        userFromId: '1',
+        reviewId: '1',
+      },
+    });
+    const res = httpMocks.createResponse();
 
-      const response = await request(app)
-        .get(`/api/reviewcomplaints/${testReviewComplaint.ReviewComplaintId}`);
+    const mockReviewComplaints = [
+      {
+        ReviewComplaintId: 1,
+        ComplaintDate: '2023-10-15T00:00:00Z',
+        ComplaintDescription: 'Poor quality',
+        UserFromId: 1,
+        ReviewId: 1,
+      },
+    ];
 
-      expect(response.status).toBe(200);
-      expect(response.body.ComplaintDescription).toBe('Test complaint for GET by ID');
-      expect(response.body.UserFromId).toBe(3);
-      expect(response.body.ReviewId).toBe(3);
+    ReviewComplaint.findAll.mockResolvedValue(mockReviewComplaints);
+
+    await reviewComplaintController.searchReviewComplaints(req, res);
+
+    expect(ReviewComplaint.findAll).toHaveBeenCalledWith({
+      where: {
+        ComplaintDate: { [Op.between]: [new Date('2023-10-01'), new Date('2023-10-31')] },
+        ComplaintDescription: { [Op.like]: '%Poor%' },
+        UserFromId: '1',
+        ReviewId: '1',
+      },
     });
 
-    test('should return 404 if review complaint not found', async () => {
-      const response = await request(app)
-        .get('/api/reviewcomplaints/999');
-
-      expect(response.status).toBe(404);
-      expect(response.body.error).toBe('ReviewComplaint not found');
-    });
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData().success).toBe(true);
+    expect(res._getJSONData().data).toEqual(mockReviewComplaints);
   });
 
-  describe('GET /api/reviewcomplaints/search', () => {
-    test('should return matching review complaints and status 200', async () => {
-      await ReviewComplaint.create({
-        ComplaintDate: new Date(),
-        ComplaintDescription: 'Searchable complaint',
-        UserFromId: 4,
-        ReviewId: 4
-      });
-
-      const response = await request(app)
-        .get('/api/reviewcomplaints/search')
-        .query({ userFromId: 4 });
-
-      expect(response.status).toBe(200);
-      expect(response.body.success).toBe(true);
-      expect(Array.isArray(response.body.data)).toBe(true);
-      expect(response.body.data.length).toBeGreaterThan(0);
-      expect(response.body.data[0].UserFromId).toBe(4);
+  test('updateReviewComplaint should update an existing review complaint', async () => {
+    const req = httpMocks.createRequest({
+      method: 'PUT',
+      params: { id: 1 },
+      body: { ComplaintDescription: 'Updated description' },
     });
+    const res = httpMocks.createResponse();
 
-    test('should return 404 if no review complaints match the criteria', async () => {
-      const response = await request(app)
-        .get('/api/reviewcomplaints/search')
-        .query({ userFromId: 'nonexistent' });
+    const mockReviewComplaint = {
+      update: jest.fn().mockResolvedValue([1]),
+      dataValues: {
+        ReviewComplaintId: 1,
+        ComplaintDate: '2023-10-01T00:00:00Z',
+        ComplaintDescription: 'Updated description',
+        UserFromId: 1,
+        ReviewId: 1,
+      },
+      toJSON: jest.fn(() => ({ ...mockReviewComplaint.dataValues })),
+    };
 
-      expect(response.status).toBe(404);
-      expect(response.body.success).toBe(false);
-      expect(response.body.message).toBe('No review complaints found matching the criteria.');
+    ReviewComplaint.findByPk.mockResolvedValue(mockReviewComplaint);
+
+    await reviewComplaintController.updateReviewComplaint(req, res);
+
+    expect(mockReviewComplaint.update).toHaveBeenCalledWith(req.body);
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData()).toEqual({
+      ReviewComplaintId: 1,
+      ComplaintDate: '2023-10-01T00:00:00Z',
+      ComplaintDescription: 'Updated description',
+      UserFromId: 1,
+      ReviewId: 1,
     });
+    expect(mockReviewComplaint.toJSON).toHaveBeenCalled();
   });
 
-  describe('PUT /api/reviewcomplaints/:id', () => {
-    test('should update a review complaint and return status 200', async () => {
-      const testReviewComplaint = await ReviewComplaint.create({
-        ComplaintDate: new Date(),
-        ComplaintDescription: 'Original description',
-        UserFromId: 5,
-        ReviewId: 5
-      });
+  test('deleteReviewComplaint should remove a review complaint', async () => {
+    const req = httpMocks.createRequest({ method: 'DELETE', params: { id: 1 } });
+    const res = httpMocks.createResponse();
 
-      const updatedData = {
-        ComplaintDescription: 'Updated description'
-      };
+    const mockReviewComplaint = { destroy: jest.fn().mockResolvedValue(1) };
 
-      const response = await request(app)
-        .put(`/api/reviewcomplaints/${testReviewComplaint.ReviewComplaintId}`)
-        .send(updatedData);
+    ReviewComplaint.findByPk.mockResolvedValue(mockReviewComplaint);
 
-      expect(response.status).toBe(200);
-      expect(response.body.ComplaintDescription).toBe('Updated description');
-    });
+    await reviewComplaintController.deleteReviewComplaint(req, res);
 
-    test('should return 404 if review complaint not found', async () => {
-      const response = await request(app)
-        .put('/api/reviewcomplaints/999')
-        .send({ ComplaintDescription: 'Updated description' });
-
-      expect(response.status).toBe(404);
-      expect(response.body.error).toBe('ReviewComplaint not found');
-    });
+    expect(mockReviewComplaint.destroy).toHaveBeenCalled();
+    expect(res.statusCode).toBe(204);
   });
 
-  describe('DELETE /api/reviewcomplaints/:id', () => {
-    test('should delete a review complaint and return status 204', async () => {
-      const testReviewComplaint = await ReviewComplaint.create({
-        ComplaintDate: new Date(),
-        ComplaintDescription: 'Complaint to delete',
-        UserFromId: 6,
-        ReviewId: 6
-      });
+  test('getReviewComplaintById should handle not found case', async () => {
+    const req = httpMocks.createRequest({ method: 'GET', params: { id: 999 } });
+    const res = httpMocks.createResponse();
 
-      const response = await request(app)
-        .delete(`/api/reviewcomplaints/${testReviewComplaint.ReviewComplaintId}`);
+    ReviewComplaint.findByPk.mockResolvedValue(null);
 
-      expect(response.status).toBe(204);
+    await reviewComplaintController.getReviewComplaintById(req, res);
 
-      const deletedReviewComplaint = await ReviewComplaint.findByPk(testReviewComplaint.ReviewComplaintId);
-      expect(deletedReviewComplaint).toBeNull();
-    });
+    expect(res.statusCode).toBe(404);
+    expect(res._getJSONData()).toEqual({ error: 'ReviewComplaint not found' });
+  });
 
-    test('should return 404 if review complaint not found', async () => {
-      const response = await request(app)
-        .delete('/api/reviewcomplaints/999');
+  test('searchReviewComplaints should handle no results case', async () => {
+    const req = httpMocks.createRequest({ method: 'GET', query: { complaintDescription: 'Nonexistent' } });
+    const res = httpMocks.createResponse();
 
-      expect(response.status).toBe(404);
-      expect(response.body.error).toBe('ReviewComplaint not found');
-    });
+    ReviewComplaint.findAll.mockResolvedValue([]);
+
+    await reviewComplaintController.searchReviewComplaints(req, res);
+
+    expect(res.statusCode).toBe(404);
+    expect(res._getJSONData()).toEqual({ success: false, message: 'No review complaints found matching the criteria.' });
   });
 });

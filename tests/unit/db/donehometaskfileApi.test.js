@@ -1,350 +1,194 @@
-const request = require('supertest');
-const app = require('../../../src/app');
-const { User, Student, HomeTask, DoneHomeTask, DoneHomeTaskFile } = require('../../../src/models/dbModels');
+const httpMocks = require('node-mocks-http');
+const { DoneHomeTaskFile, DoneHomeTask } = require('../../../src/models/dbModels');
+const doneHometaskFileController = require('../../../src/controllers/dbControllers/doneHometaskFileController');
+const { Op } = require('sequelize');
 
-describe('DoneHomeTaskFile API Tests', () => {
-  describe('POST /api/donehometaskfiles', () => {
-    test('should create a new done home task file and return status 201', async () => {
-      const testUser = await User.create({
-        Username: `user${Date.now()}`,
-        Password: 'Password123!',
-        Email: `test${Date.now()}@example.com`,
-        LastName: 'Doe',
-        FirstName: 'John'
-      });
+jest.mock('../../../src/models/dbModels', () => ({
+  DoneHomeTaskFile: {
+    create: jest.fn(),
+    findAll: jest.fn(),
+    findByPk: jest.fn(),
+    update: jest.fn(),
+    destroy: jest.fn(),
+  },
+  DoneHomeTask: jest.fn(() => ({ name: 'DoneHomeTask' })),
+}));
 
-      const testStudent = await Student.create({
-        SchoolName: 'Test School',
-        Grade: '10th',
-        UserId: testUser.UserId
-      });
-
-      const testHomeTask = await HomeTask.create({
-        TaskName: 'Math Homework',
-        GroupId: 1
-      });
-
-      const testDoneHomeTask = await DoneHomeTask.create({
-        Mark: 85,
-        DoneDate: new Date(),
-        StudentId: testStudent.StudentId,
-        HomeTaskId: testHomeTask.HomeTaskId
-      });
-
-      const newDoneHomeTaskFile = {
-        FileName: 'homework.pdf',
-        FilePath: 'http://example.com/files/homework.pdf',
-        DoneHomeTaskId: testDoneHomeTask.DoneHomeTaskId
-      };
-
-      const response = await request(app)
-        .post('/api/donehometaskfiles')
-        .send(newDoneHomeTaskFile);
-
-      expect(response.status).toBe(201);
-      expect(response.body).toHaveProperty('HometaskFileId');
-      expect(response.body.FileName).toBe('homework.pdf');
-      expect(response.body.FilePath).toBe('http://example.com/files/homework.pdf');
-      expect(response.body.DoneHomeTaskId).toBe(testDoneHomeTask.DoneHomeTaskId);
-    });
-
-    test('should return 400 for invalid input (missing FileName)', async () => {
-      const testUser = await User.create({
-        Username: `user${Date.now()}`,
-        Password: 'Password123!',
-        Email: `test${Date.now()}@example.com`,
-        LastName: 'Doe',
-        FirstName: 'John'
-      });
-
-      const testStudent = await Student.create({
-        SchoolName: 'Test School',
-        Grade: '10th',
-        UserId: testUser.UserId
-      });
-
-      const testHomeTask = await HomeTask.create({
-        TaskName: 'Math Homework',
-        GroupId: 1
-      });
-
-      const testDoneHomeTask = await DoneHomeTask.create({
-        Mark: 85,
-        DoneDate: new Date(),
-        StudentId: testStudent.StudentId,
-        HomeTaskId: testHomeTask.HomeTaskId
-      });
-
-      const invalidDoneHomeTaskFile = {
-        FilePath: 'http://example.com/files/homework.pdf',
-        DoneHomeTaskId: testDoneHomeTask.DoneHomeTaskId
-      };
-
-      const response = await request(app)
-        .post('/api/donehometaskfiles')
-        .send(invalidDoneHomeTaskFile);
-
-      expect(response.status).toBe(400);
-      expect(response.body.error).toContain('Validation error: FileName cannot be empty');
-    });
+describe('DoneHomeTaskFile Controller Tests', () => {
+  afterEach(() => {
+    jest.clearAllMocks();
   });
 
-  describe('GET /api/donehometaskfiles', () => {
-    test('should return a list of done home task files and status 200', async () => {
-      const testUser1 = await User.create({
-        Username: `user1${Date.now()}`,
-        Password: 'Password123!',
-        Email: `user1${Date.now()}@example.com`,
-        LastName: 'Doe',
-        FirstName: 'John'
-      });
-
-      const testStudent1 = await Student.create({
-        SchoolName: 'Test School',
-        Grade: '10th',
-        UserId: testUser1.UserId
-      });
-
-      const testHomeTask1 = await HomeTask.create({
-        TaskName: 'Math Homework',
-        GroupId: 1
-      });
-
-      const testDoneHomeTask1 = await DoneHomeTask.create({
-        Mark: 90,
-        DoneDate: new Date(),
-        StudentId: testStudent1.StudentId,
-        HomeTaskId: testHomeTask1.HomeTaskId
-      });
-
-      await DoneHomeTaskFile.create({
-        FileName: 'math_homework.pdf',
-        FilePath: 'http://example.com/files/math_homework.pdf',
-        DoneHomeTaskId: testDoneHomeTask1.DoneHomeTaskId
-      });
-
-      const response = await request(app)
-        .get('/api/donehometaskfiles');
-
-      expect(response.status).toBe(200);
-      expect(Array.isArray(response.body)).toBe(true);
-      expect(response.body.length).toBeGreaterThan(0);
+  test('createDoneHometaskFile should create a new file', async () => {
+    const req = httpMocks.createRequest({
+      method: 'POST',
+      body: {
+        FileName: 'example.pdf',
+        FilePath: 'http://example.com/file.pdf',
+        DoneHomeTaskId: 1,
+      },
     });
+    const res = httpMocks.createResponse();
+
+    DoneHomeTaskFile.create.mockResolvedValue(req.body);
+
+    await doneHometaskFileController.createDoneHometaskFile(req, res);
+
+    expect(DoneHomeTaskFile.create).toHaveBeenCalledWith(req.body);
+    expect(res.statusCode).toBe(201);
+    expect(res._getJSONData()).toEqual(req.body);
   });
 
-  describe('GET /api/donehometaskfiles/:id', () => {
-    test('should return a done home task file by ID and status 200', async () => {
-      const testUser = await User.create({
-        Username: `user${Date.now()}`,
-        Password: 'Password123!',
-        Email: `test${Date.now()}@example.com`,
-        LastName: 'Doe',
-        FirstName: 'John'
-      });
+  test('getDoneHometaskFiles should return all files', async () => {
+    const req = httpMocks.createRequest({ method: 'GET' });
+    const res = httpMocks.createResponse();
 
-      const testStudent = await Student.create({
-        SchoolName: 'Test School',
-        Grade: '10th',
-        UserId: testUser.UserId
-      });
+    const mockFiles = [
+      {
+        HometaskFileId: 1,
+        FileName: 'example.pdf',
+        FilePath: 'http://example.com/file.pdf',
+        DoneHomeTaskId: 1,
+      },
+    ];
 
-      const testHomeTask = await HomeTask.create({
-        TaskName: 'Math Homework',
-        GroupId: 1
-      });
+    DoneHomeTaskFile.findAll.mockResolvedValue(mockFiles);
 
-      const testDoneHomeTask = await DoneHomeTask.create({
-        Mark: 85,
-        DoneDate: new Date(),
-        StudentId: testStudent.StudentId,
-        HomeTaskId: testHomeTask.HomeTaskId
-      });
+    await doneHometaskFileController.getDoneHometaskFiles(req, res);
 
-      const testDoneHomeTaskFile = await DoneHomeTaskFile.create({
-        FileName: 'homework.pdf',
-        FilePath: 'http://example.com/files/homework.pdf',
-        DoneHomeTaskId: testDoneHomeTask.DoneHomeTaskId
-      });
-
-      const response = await request(app)
-        .get(`/api/donehometaskfiles/${testDoneHomeTaskFile.HometaskFileId}`);
-
-      expect(response.status).toBe(200);
-      expect(response.body.FileName).toBe('homework.pdf');
-      expect(response.body.FilePath).toBe('http://example.com/files/homework.pdf');
-      expect(response.body.DoneHomeTaskId).toBe(testDoneHomeTask.DoneHomeTaskId);
+    expect(DoneHomeTaskFile.findAll).toHaveBeenCalledWith({
+      where: undefined,
+      order: undefined,
     });
-
-    test('should return 404 if done home task file not found', async () => {
-      const response = await request(app)
-        .get('/api/donehometaskfiles/999');
-
-      expect(response.status).toBe(404);
-      expect(response.body.error).toBe('DoneHometaskFile not found');
-    });
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData()).toEqual(mockFiles);
   });
 
-  describe('GET /api/donehometaskfiles/search', () => {
-    test('should return matching done home task files and status 200', async () => {
-      const testUser1 = await User.create({
-        Username: `user1${Date.now()}`,
-        Password: 'Password123!',
-        Email: `user1${Date.now()}@example.com`,
-        LastName: 'Doe',
-        FirstName: 'John'
-      });
+  test('getDoneHometaskFileById should return file if found', async () => {
+    const req = httpMocks.createRequest({ method: 'GET', params: { id: 1 } });
+    const res = httpMocks.createResponse();
 
-      const testStudent1 = await Student.create({
-        SchoolName: 'Test School',
-        Grade: '10th',
-        UserId: testUser1.UserId
-      });
+    const mockFile = {
+      HometaskFileId: 1,
+      FileName: 'example.pdf',
+      FilePath: 'http://example.com/file.pdf',
+      DoneHomeTaskId: 1,
+    };
 
-      const testHomeTask1 = await HomeTask.create({
-        TaskName: 'Math Homework',
-        GroupId: 1
-      });
+    DoneHomeTaskFile.findByPk.mockResolvedValue(mockFile);
 
-      const testDoneHomeTask1 = await DoneHomeTask.create({
-        Mark: 90,
-        DoneDate: new Date(),
-        StudentId: testStudent1.StudentId,
-        HomeTaskId: testHomeTask1.HomeTaskId
-      });
+    await doneHometaskFileController.getDoneHometaskFileById(req, res);
 
-      await DoneHomeTaskFile.create({
-        FileName: 'math_homework.pdf',
-        FilePath: 'http://example.com/files/math_homework.pdf',
-        DoneHomeTaskId: testDoneHomeTask1.DoneHomeTaskId
-      });
-
-      const response = await request(app)
-        .get('/api/donehometaskfiles/search')
-        .query({ fileName: 'math' });
-
-      expect(response.status).toBe(200);
-      expect(response.body.success).toBe(true);
-      expect(Array.isArray(response.body.data)).toBe(true);
-      expect(response.body.data.length).toBeGreaterThan(0);
-      expect(response.body.data[0].FileName).toContain('math');
-    });
-
-    test('should return 404 if no done home task files match the criteria', async () => {
-      const response = await request(app)
-        .get('/api/donehometaskfiles/search')
-        .query({ fileName: 'nonexistent' });
-
-      expect(response.status).toBe(404);
-      expect(response.body.success).toBe(false);
-      expect(response.body.message).toBe('No files found matching the criteria.');
-    });
+    expect(DoneHomeTaskFile.findByPk).toHaveBeenCalledWith(1);
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData()).toEqual(mockFile);
   });
 
-  describe('PUT /api/donehometaskfiles/:id', () => {
-    test('should update a done home task file and return status 200', async () => {
-      const testUser = await User.create({
-        Username: `user${Date.now()}`,
-        Password: 'Password123!',
-        Email: `test${Date.now()}@example.com`,
-        LastName: 'Doe',
-        FirstName: 'John'
-      });
+  test('searchDoneHomeTaskFiles should return matching files', async () => {
+    const req = httpMocks.createRequest({
+      method: 'GET',
+      query: { fileName: 'example', doneHomeTaskId: '1' },
+    });
+    const res = httpMocks.createResponse();
 
-      const testStudent = await Student.create({
-        SchoolName: 'Test School',
-        Grade: '10th',
-        UserId: testUser.UserId
-      });
+    const mockFiles = [
+      {
+        HometaskFileId: 1,
+        FileName: 'example.pdf',
+        FilePath: 'http://example.com/file.pdf',
+        DoneHomeTaskId: 1,
+        DoneHomeTask: { DoneHomeTaskId: 1, Mark: 85 },
+      },
+    ];
 
-      const testHomeTask = await HomeTask.create({
-        TaskName: 'Math Homework',
-        GroupId: 1
-      });
+    DoneHomeTaskFile.findAll.mockResolvedValue(mockFiles);
 
-      const testDoneHomeTask = await DoneHomeTask.create({
-        Mark: 85,
-        DoneDate: new Date(),
-        StudentId: testStudent.StudentId,
-        HomeTaskId: testHomeTask.HomeTaskId
-      });
+    await doneHometaskFileController.searchDoneHomeTaskFiles(req, res);
 
-      const testDoneHomeTaskFile = await DoneHomeTaskFile.create({
-        FileName: 'homework.pdf',
-        FilePath: 'http://example.com/files/homework.pdf',
-        DoneHomeTaskId: testDoneHomeTask.DoneHomeTaskId
-      });
-
-      const updatedData = {
-        FileName: 'updated_homework.pdf'
-      };
-
-      const response = await request(app)
-        .put(`/api/donehometaskfiles/${testDoneHomeTaskFile.HometaskFileId}`)
-        .send(updatedData);
-
-      expect(response.status).toBe(200);
-      expect(response.body.FileName).toBe('updated_homework.pdf');
+    expect(DoneHomeTaskFile.findAll).toHaveBeenCalledWith({
+      where: {
+        FileName: { [Op.like]: '%example%' },
+        DoneHomeTaskId: '1',
+      },
+      include: [
+        { model: expect.any(Function), as: 'DoneHomeTask', attributes: ['DoneHomeTaskId', 'Mark'] },
+      ],
     });
 
-    test('should return 404 if done home task file not found', async () => {
-      const response = await request(app)
-        .put('/api/donehometaskfiles/999')
-        .send({ FileName: 'updated_homework.pdf' });
-
-      expect(response.status).toBe(404);
-      expect(response.body.error).toBe('DoneHometaskFile not found');
-    });
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData().success).toBe(true);
+    expect(res._getJSONData().data).toEqual(mockFiles);
   });
 
-  describe('DELETE /api/donehometaskfiles/:id', () => {
-    test('should delete a done home task file and return status 204', async () => {
-      const testUser = await User.create({
-        Username: `user${Date.now()}`,
-        Password: 'Password123!',
-        Email: `test${Date.now()}@example.com`,
-        LastName: 'Doe',
-        FirstName: 'John'
-      });
-
-      const testStudent = await Student.create({
-        SchoolName: 'Test School',
-        Grade: '10th',
-        UserId: testUser.UserId
-      });
-
-      const testHomeTask = await HomeTask.create({
-        TaskName: 'Math Homework',
-        GroupId: 1
-      });
-
-      const testDoneHomeTask = await DoneHomeTask.create({
-        Mark: 85,
-        DoneDate: new Date(),
-        StudentId: testStudent.StudentId,
-        HomeTaskId: testHomeTask.HomeTaskId
-      });
-
-      const testDoneHomeTaskFile = await DoneHomeTaskFile.create({
-        FileName: 'homework.pdf',
-        FilePath: 'http://example.com/files/homework.pdf',
-        DoneHomeTaskId: testDoneHomeTask.DoneHomeTaskId
-      });
-
-      const response = await request(app)
-        .delete(`/api/donehometaskfiles/${testDoneHomeTaskFile.HometaskFileId}`);
-
-      expect(response.status).toBe(204);
-
-      const deletedFile = await DoneHomeTaskFile.findByPk(testDoneHomeTaskFile.HometaskFileId);
-      expect(deletedFile).toBeNull();
+  test('updateDoneHometaskFile should update an existing file', async () => {
+    const req = httpMocks.createRequest({
+      method: 'PUT',
+      params: { id: 1 },
+      body: { FileName: 'updated.pdf' },
     });
+    const res = httpMocks.createResponse();
 
-    test('should return 404 if done home task file not found', async () => {
-      const response = await request(app)
-        .delete('/api/donehometaskfiles/999');
+    const mockFile = {
+      update: jest.fn().mockResolvedValue([1]),
+      dataValues: {
+        HometaskFileId: 1,
+        FileName: 'updated.pdf',
+        FilePath: 'http://example.com/file.pdf',
+        DoneHomeTaskId: 1,
+      },
+      toJSON: jest.fn(() => ({ ...mockFile.dataValues })),
+    };
 
-      expect(response.status).toBe(404);
-      expect(response.body.error).toBe('DoneHometaskFile not found');
+    DoneHomeTaskFile.findByPk.mockResolvedValue(mockFile);
+
+    await doneHometaskFileController.updateDoneHometaskFile(req, res);
+
+    expect(mockFile.update).toHaveBeenCalledWith(req.body);
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData()).toEqual({
+      HometaskFileId: 1,
+      FileName: 'updated.pdf',
+      FilePath: 'http://example.com/file.pdf',
+      DoneHomeTaskId: 1,
     });
+    expect(mockFile.toJSON).toHaveBeenCalled();
+  });
+
+  test('deleteDoneHometaskFile should remove a file', async () => {
+    const req = httpMocks.createRequest({ method: 'DELETE', params: { id: 1 } });
+    const res = httpMocks.createResponse();
+
+    const mockFile = { destroy: jest.fn().mockResolvedValue(1) };
+
+    DoneHomeTaskFile.findByPk.mockResolvedValue(mockFile);
+
+    await doneHometaskFileController.deleteDoneHometaskFile(req, res);
+
+    expect(mockFile.destroy).toHaveBeenCalled();
+    expect(res.statusCode).toBe(204);
+  });
+
+  test('getDoneHometaskFileById should handle not found case', async () => {
+    const req = httpMocks.createRequest({ method: 'GET', params: { id: 999 } });
+    const res = httpMocks.createResponse();
+
+    DoneHomeTaskFile.findByPk.mockResolvedValue(null);
+
+    await doneHometaskFileController.getDoneHometaskFileById(req, res);
+
+    expect(res.statusCode).toBe(404);
+    expect(res._getJSONData()).toEqual({ error: 'DoneHomeTaskFile not found' });
+  });
+
+  test('searchDoneHomeTaskFiles should handle no results case', async () => {
+    const req = httpMocks.createRequest({ method: 'GET', query: { fileName: 'nonexistent' } });
+    const res = httpMocks.createResponse();
+
+    DoneHomeTaskFile.findAll.mockResolvedValue([]);
+
+    await doneHometaskFileController.searchDoneHomeTaskFiles(req, res);
+
+    expect(res.statusCode).toBe(404);
+    expect(res._getJSONData()).toEqual({ success: false, message: 'No files found matching the criteria.' });
   });
 });

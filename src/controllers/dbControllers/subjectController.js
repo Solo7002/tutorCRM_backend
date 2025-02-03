@@ -7,6 +7,7 @@ exports.createSubject = async (req, res) => {
     const subject = await Subject.create(req.body);
     res.status(201).json(subject);
   } catch (error) {
+    console.error('Error in createSubject:', error);
     res.status(400).json({ error: error.message });
   }
 };
@@ -14,9 +15,13 @@ exports.createSubject = async (req, res) => {
 exports.getSubjects = async (req, res) => {
   try {
     const { where, order } = parseQueryParams(req.query);
-    const subjects = await Subject.findAll({ where: where || undefined, order: order || undefined });
+    const subjects = await Subject.findAll({
+      where: where || undefined,
+      order: order || undefined,
+    });
     res.status(200).json(subjects);
   } catch (error) {
+    console.error('Error in getSubjects:', error);
     res.status(400).json({ error: error.message });
   }
 };
@@ -27,6 +32,7 @@ exports.getSubjectById = async (req, res) => {
     if (!subject) return res.status(404).json({ error: "Subject not found" });
     res.status(200).json(subject);
   } catch (error) {
+    console.error('Error in getSubjectById:', error);
     res.status(400).json({ error: error.message });
   }
 };
@@ -34,7 +40,7 @@ exports.getSubjectById = async (req, res) => {
 exports.searchSubjects = async (req, res) => {
   try {
     const { subjectName } = req.query;
-    let whereConditions = {};
+    const whereConditions = {};
 
     if (subjectName) whereConditions.SubjectName = { [Op.like]: `%${subjectName}%` };
 
@@ -49,7 +55,7 @@ exports.searchSubjects = async (req, res) => {
 
     return res.status(200).json({ success: true, data: subjects });
   } catch (error) {
-    console.error(error);
+    console.error('Error in searchSubjects:', error);
     return res.status(500).json({ success: false, message: 'Server error, please try again later.' });
   }
 };
@@ -58,10 +64,11 @@ exports.updateSubject = async (req, res) => {
   try {
     const subject = await Subject.findByPk(req.params.id);
     if (!subject) return res.status(404).json({ error: "Subject not found" });
-    
+
     await subject.update(req.body);
     res.status(200).json(subject);
   } catch (error) {
+    console.error('Error in updateSubject:', error);
     res.status(400).json({ error: error.message });
   }
 };
@@ -70,10 +77,11 @@ exports.deleteSubject = async (req, res) => {
   try {
     const subject = await Subject.findByPk(req.params.id);
     if (!subject) return res.status(404).json({ error: "Subject not found" });
-    
+
     await subject.destroy();
     res.status(204).send();
   } catch (error) {
+    console.error('Error in deleteSubject:', error);
     res.status(400).json({ error: error.message });
   }
 };

@@ -7,6 +7,7 @@ exports.createSubscription = async (req, res) => {
     const subscription = await Subscription.create(req.body);
     return res.status(201).json(subscription);
   } catch (error) {
+    console.error('Error in createSubscription:', error);
     return res.status(400).json({ error: error.message });
   }
 };
@@ -17,6 +18,7 @@ exports.getSubscriptions = async (req, res) => {
     const subscriptions = await Subscription.findAll({ where: where || undefined, order: order || undefined });
     return res.status(200).json(subscriptions);
   } catch (error) {
+    console.error('Error in getSubscriptions:', error);
     return res.status(400).json({ error: error.message });
   }
 };
@@ -27,6 +29,7 @@ exports.getSubscriptionById = async (req, res) => {
     if (!subscription) return res.status(404).json({ error: 'Subscription not found' });
     return res.status(200).json(subscription);
   } catch (error) {
+    console.error('Error in getSubscriptionById:', error);
     return res.status(400).json({ error: error.message });
   }
 };
@@ -34,20 +37,22 @@ exports.getSubscriptionById = async (req, res) => {
 exports.searchSubscriptions = async (req, res) => {
   try {
     const { subscriptionName, subscriptionPrice } = req.query;
-    let whereConditions = {};
+    const whereConditions = {};
 
     if (subscriptionName) whereConditions.SubscriptionName = { [Op.like]: `%${subscriptionName}%` };
-    if (subscriptionPrice) whereConditions.SubscriptionPrice = subscriptionPrice;
+    if (subscriptionPrice) whereConditions.SubscriptionPrice = parseFloat(subscriptionPrice);
 
     const subscriptions = await Subscription.findAll({
       where: whereConditions,
     });
 
-    if (!subscriptions.length) return res.status(404).json({ success: false, message: 'No subscriptions found.' });
+    if (!subscriptions.length) {
+      return res.status(404).json({ success: false, message: 'No subscriptions found.' });
+    }
 
     return res.status(200).json({ success: true, data: subscriptions });
   } catch (error) {
-    console.error(error);
+    console.error('Error in searchSubscriptions:', error);
     return res.status(500).json({ success: false, message: 'Server error.' });
   }
 };
@@ -59,6 +64,7 @@ exports.updateSubscription = async (req, res) => {
     await subscription.update(req.body);
     return res.status(200).json(subscription);
   } catch (error) {
+    console.error('Error in updateSubscription:', error);
     return res.status(400).json({ error: error.message });
   }
 };
@@ -70,6 +76,7 @@ exports.deleteSubscription = async (req, res) => {
     await subscription.destroy();
     return res.status(200).json({ message: 'Subscription deleted successfully' });
   } catch (error) {
+    console.error('Error in deleteSubscription:', error);
     return res.status(400).json({ error: error.message });
   }
 };

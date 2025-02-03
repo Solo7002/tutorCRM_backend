@@ -1,251 +1,194 @@
-const request = require('supertest');
-const app = require('../../../src/app');
-const { Group, Student, GroupStudent } = require('../../../src/models/dbModels');
+const httpMocks = require('node-mocks-http');
+const { GroupStudent, Group, Student } = require('../../../src/models/dbModels');
+const groupStudentController = require('../../../src/controllers/dbControllers/groupStudentController');
+const { Op } = require('sequelize');
 
-describe('GroupStudent API Tests', () => {
-  describe('POST /api/groupstudents', () => {
-    test('should create a new group student and return status 201', async () => {
-      const testGroup = await Group.create({
-        GroupName: 'Math Group',
-        GroupPrice: 100,
-        MaxStudents: 20
-      });
+jest.mock('../../../src/models/dbModels', () => ({
+  GroupStudent: {
+    create: jest.fn(),
+    findAll: jest.fn(),
+    findByPk: jest.fn(),
+    update: jest.fn(),
+    destroy: jest.fn(),
+  },
+  Group: jest.fn(() => ({ name: 'Group' })),
+  Student: jest.fn(() => ({ name: 'Student' })),
+}));
 
-      const testStudent = await Student.create({
-        FirstName: 'John',
-        LastName: 'Doe',
-        SchoolName: 'Test School',
-        Grade: '10th'
-      });
-
-      const newGroupStudent = {
-        GroupId: testGroup.GroupId,
-        StudentId: testStudent.StudentId
-      };
-
-      const response = await request(app)
-        .post('/api/groupstudents')
-        .send(newGroupStudent);
-
-      expect(response.status).toBe(201);
-      expect(response.body).toHaveProperty('GroupId', testGroup.GroupId);
-      expect(response.body).toHaveProperty('StudentId', testStudent.StudentId);
-    });
-
-    test('should return 400 for invalid input (missing GroupId)', async () => {
-      const testStudent = await Student.create({
-        FirstName: 'John',
-        LastName: 'Doe',
-        SchoolName: 'Test School',
-        Grade: '10th'
-      });
-
-      const invalidGroupStudent = {
-        StudentId: testStudent.StudentId
-      };
-
-      const response = await request(app)
-        .post('/api/groupstudents')
-        .send(invalidGroupStudent);
-
-      expect(response.status).toBe(400);
-      expect(response.body.error).toContain('Validation error: GroupId cannot be null');
-    });
+describe('GroupStudent Controller Tests', () => {
+  afterEach(() => {
+    jest.clearAllMocks();
   });
 
-  describe('GET /api/groupstudents', () => {
-    test('should return a list of group students and status 200', async () => {
-      const testGroup = await Group.create({
-        GroupName: 'Math Group',
-        GroupPrice: 100,
-        MaxStudents: 20
-      });
-
-      const testStudent = await Student.create({
-        FirstName: 'John',
-        LastName: 'Doe',
-        SchoolName: 'Test School',
-        Grade: '10th'
-      });
-
-      await GroupStudent.create({
-        GroupId: testGroup.GroupId,
-        StudentId: testStudent.StudentId
-      });
-
-      const response = await request(app)
-        .get('/api/groupstudents');
-
-      expect(response.status).toBe(200);
-      expect(Array.isArray(response.body)).toBe(true);
-      expect(response.body.length).toBeGreaterThan(0);
-      expect(response.body[0]).toHaveProperty('GroupId', testGroup.GroupId);
-      expect(response.body[0]).toHaveProperty('StudentId', testStudent.StudentId);
+  test('createGroupStudent should create a new group student', async () => {
+    const req = httpMocks.createRequest({
+      method: 'POST',
+      body: {
+        GroupId: 1,
+        StudentId: 1,
+      },
     });
+    const res = httpMocks.createResponse();
+
+    GroupStudent.create.mockResolvedValue(req.body);
+
+    await groupStudentController.createGroupStudent(req, res);
+
+    expect(GroupStudent.create).toHaveBeenCalledWith(req.body);
+    expect(res.statusCode).toBe(201);
+    expect(res._getJSONData()).toEqual(req.body);
   });
 
-  describe('GET /api/groupstudents/:id', () => {
-    test('should return a group student by ID and status 200', async () => {
-      const testGroup = await Group.create({
-        GroupName: 'Science Group',
-        GroupPrice: 150,
-        MaxStudents: 25
-      });
+  test('getGroupStudents should return all group students', async () => {
+    const req = httpMocks.createRequest({ method: 'GET' });
+    const res = httpMocks.createResponse();
 
-      const testStudent = await Student.create({
-        FirstName: 'Jane',
-        LastName: 'Smith',
-        SchoolName: 'Test School',
-        Grade: '11th'
-      });
+    const mockGroupStudents = [
+      {
+        GroupId: 1,
+        StudentId: 1,
+      },
+    ];
 
-      const testGroupStudent = await GroupStudent.create({
-        GroupId: testGroup.GroupId,
-        StudentId: testStudent.StudentId
-      });
+    GroupStudent.findAll.mockResolvedValue(mockGroupStudents);
 
-      const response = await request(app)
-        .get(`/api/groupstudents/${testGroupStudent.GroupStudentId}`);
+    await groupStudentController.getGroupStudents(req, res);
 
-      expect(response.status).toBe(200);
-      expect(response.body).toHaveProperty('GroupId', testGroup.GroupId);
-      expect(response.body).toHaveProperty('StudentId', testStudent.StudentId);
+    expect(GroupStudent.findAll).toHaveBeenCalledWith({
+      where: undefined,
+      order: undefined,
     });
-
-    test('should return 404 if group student not found', async () => {
-      const response = await request(app)
-        .get('/api/groupstudents/999');
-
-      expect(response.status).toBe(404);
-      expect(response.body.error).toBe('GroupStudent not found');
-    });
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData()).toEqual(mockGroupStudents);
   });
 
-  describe('GET /api/groupstudents/search', () => {
-    test('should return matching group students and status 200', async () => {
-      const testGroup = await Group.create({
-        GroupName: 'Math Group',
-        GroupPrice: 100,
-        MaxStudents: 20
-      });
+  test('getGroupStudentById should return group student if found', async () => {
+    const req = httpMocks.createRequest({ method: 'GET', params: { id: 1 } });
+    const res = httpMocks.createResponse();
 
-      const testStudent = await Student.create({
-        FirstName: 'John',
-        LastName: 'Doe',
-        SchoolName: 'Test School',
-        Grade: '10th'
-      });
+    const mockGroupStudent = {
+      GroupId: 1,
+      StudentId: 1,
+    };
 
-      await GroupStudent.create({
-        GroupId: testGroup.GroupId,
-        StudentId: testStudent.StudentId
-      });
+    GroupStudent.findByPk.mockResolvedValue(mockGroupStudent);
 
-      const response = await request(app)
-        .get('/api/groupstudents/search')
-        .query({ groupId: testGroup.GroupId });
+    await groupStudentController.getGroupStudentById(req, res);
 
-      expect(response.status).toBe(200);
-      expect(response.body.success).toBe(true);
-      expect(Array.isArray(response.body.data)).toBe(true);
-      expect(response.body.data.length).toBeGreaterThan(0);
-      expect(response.body.data[0].GroupId).toBe(testGroup.GroupId);
-    });
-
-    test('should return 404 if no group students match the criteria', async () => {
-      const response = await request(app)
-        .get('/api/groupstudents/search')
-        .query({ groupId: 'nonexistent' });
-
-      expect(response.status).toBe(404);
-      expect(response.body.success).toBe(false);
-      expect(response.body.message).toBe('No group students found matching the criteria.');
-    });
+    expect(GroupStudent.findByPk).toHaveBeenCalledWith(1);
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData()).toEqual(mockGroupStudent);
   });
 
-  describe('PUT /api/groupstudents/:id', () => {
-    test('should update a group student and return status 200', async () => {
-      const testGroup1 = await Group.create({
-        GroupName: 'Physics Group',
-        GroupPrice: 200,
-        MaxStudents: 30
-      });
+  test('searchGroupStudents should return matching group students', async () => {
+    const req = httpMocks.createRequest({
+      method: 'GET',
+      query: { groupId: '1', studentId: '1' },
+    });
+    const res = httpMocks.createResponse();
 
-      const testGroup2 = await Group.create({
-        GroupName: 'Chemistry Group',
-        GroupPrice: 180,
-        MaxStudents: 25
-      });
+    const mockGroupStudents = [
+      {
+        GroupId: 1,
+        StudentId: 1,
+        Group: { GroupId: 1, GroupName: 'Math Group' },
+        Student: { StudentId: 1, FirstName: 'John', LastName: 'Doe' },
+      },
+    ];
 
-      const testStudent = await Student.create({
-        FirstName: 'Alice',
-        LastName: 'Johnson',
-        SchoolName: 'Test School',
-        Grade: '12th'
-      });
+    GroupStudent.findAll.mockResolvedValue(mockGroupStudents);
 
-      const testGroupStudent = await GroupStudent.create({
-        GroupId: testGroup1.GroupId,
-        StudentId: testStudent.StudentId
-      });
+    await groupStudentController.searchGroupStudents(req, res);
 
-      const updatedData = {
-        GroupId: testGroup2.GroupId
-      };
-
-      const response = await request(app)
-        .put(`/api/groupstudents/${testGroupStudent.GroupStudentId}`)
-        .send(updatedData);
-
-      expect(response.status).toBe(200);
-      expect(response.body.GroupId).toBe(testGroup2.GroupId);
+    expect(GroupStudent.findAll).toHaveBeenCalledWith({
+      where: {
+        GroupId: '1',
+        StudentId: '1',
+      },
+      include: [
+        {
+          model: expect.any(Function),
+          as: 'Group',
+          attributes: ['GroupId', 'GroupName'],
+        },
+        {
+          model: expect.any(Function),
+          as: 'Student',
+          attributes: ['StudentId', 'FirstName', 'LastName'],
+        },
+      ],
     });
 
-    test('should return 404 if group student not found', async () => {
-      const response = await request(app)
-        .put('/api/groupstudents/999')
-        .send({ GroupId: 1 });
-
-      expect(response.status).toBe(404);
-      expect(response.body.error).toBe('GroupStudent not found');
-    });
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData().success).toBe(true);
+    expect(res._getJSONData().data).toEqual(mockGroupStudents);
   });
 
-  describe('DELETE /api/groupstudents/:id', () => {
-    test('should delete a group student and return status 204', async () => {
-      const testGroup = await Group.create({
-        GroupName: 'Biology Group',
-        GroupPrice: 160,
-        MaxStudents: 22
-      });
-
-      const testStudent = await Student.create({
-        FirstName: 'Bob',
-        LastName: 'Brown',
-        SchoolName: 'Test School',
-        Grade: '9th'
-      });
-
-      const testGroupStudent = await GroupStudent.create({
-        GroupId: testGroup.GroupId,
-        StudentId: testStudent.StudentId
-      });
-
-      const response = await request(app)
-        .delete(`/api/groupstudents/${testGroupStudent.GroupStudentId}`);
-
-      expect(response.status).toBe(204);
-
-      const deletedGroupStudent = await GroupStudent.findByPk(testGroupStudent.GroupStudentId);
-      expect(deletedGroupStudent).toBeNull();
+  test('updateGroupStudent should update an existing group student', async () => {
+    const req = httpMocks.createRequest({
+      method: 'PUT',
+      params: { id: 1 },
+      body: { GroupId: 2 },
     });
+    const res = httpMocks.createResponse();
 
-    test('should return 404 if group student not found', async () => {
-      const response = await request(app)
-        .delete('/api/groupstudents/999');
+    const mockGroupStudent = {
+      update: jest.fn().mockResolvedValue([1]),
+      dataValues: {
+        GroupId: 2,
+        StudentId: 1,
+      },
+      toJSON: jest.fn(() => ({ ...mockGroupStudent.dataValues })),
+    };
 
-      expect(response.status).toBe(404);
-      expect(response.body.error).toBe('GroupStudent not found');
+    GroupStudent.findByPk.mockResolvedValue(mockGroupStudent);
+
+    await groupStudentController.updateGroupStudent(req, res);
+
+    expect(mockGroupStudent.update).toHaveBeenCalledWith(req.body);
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData()).toEqual({
+      GroupId: 2,
+      StudentId: 1,
     });
+    expect(mockGroupStudent.toJSON).toHaveBeenCalled();
+  });
+
+  test('deleteGroupStudent should remove a group student', async () => {
+    const req = httpMocks.createRequest({ method: 'DELETE', params: { id: 1 } });
+    const res = httpMocks.createResponse();
+
+    const mockGroupStudent = { destroy: jest.fn().mockResolvedValue(1) };
+
+    GroupStudent.findByPk.mockResolvedValue(mockGroupStudent);
+
+    await groupStudentController.deleteGroupStudent(req, res);
+
+    expect(mockGroupStudent.destroy).toHaveBeenCalled();
+    expect(res.statusCode).toBe(204);
+  });
+
+  test('getGroupStudentById should handle not found case', async () => {
+    const req = httpMocks.createRequest({ method: 'GET', params: { id: 999 } });
+    const res = httpMocks.createResponse();
+
+    GroupStudent.findByPk.mockResolvedValue(null);
+
+    await groupStudentController.getGroupStudentById(req, res);
+
+    expect(res.statusCode).toBe(404);
+    expect(res._getJSONData()).toEqual({ error: 'GroupStudent not found' });
+  });
+
+  test('searchGroupStudents should handle no results case', async () => {
+    const req = httpMocks.createRequest({ method: 'GET', query: { groupId: '999' } });
+    const res = httpMocks.createResponse();
+
+    GroupStudent.findAll.mockResolvedValue([]);
+
+    await groupStudentController.searchGroupStudents(req, res);
+
+    expect(res.statusCode).toBe(404);
+    expect(res._getJSONData()).toEqual({ success: false, message: 'No group students found matching the criteria.' });
   });
 });

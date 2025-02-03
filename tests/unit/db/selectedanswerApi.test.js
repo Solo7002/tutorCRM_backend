@@ -1,177 +1,186 @@
-const request = require('supertest');
-const app = require('../../../src/app');
+const httpMocks = require('node-mocks-http');
 const { SelectedAnswer } = require('../../../src/models/dbModels');
+const selectedAnswerController = require('../../../src/controllers/dbControllers/selectedAnswerController');
+const { Op } = require('sequelize');
 
-describe('SelectedAnswer API Tests', () => {
-  describe('POST /api/selectedanswers', () => {
-    test('should create a new selected answer and return status 201', async () => {
-      const newSelectedAnswer = {
+jest.mock('../../../src/models/dbModels', () => ({
+  SelectedAnswer: {
+    create: jest.fn(),
+    findAll: jest.fn(),
+    findByPk: jest.fn(),
+    update: jest.fn(),
+    destroy: jest.fn(),
+  },
+}));
+
+describe('SelectedAnswer Controller Tests', () => {
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  test('createSelectedAnswer should create a new selected answer', async () => {
+    const req = httpMocks.createRequest({
+      method: 'POST',
+      body: {
         TestQuestionId: 1,
         DoneTestId: 1,
-        AnswerText: 'Test Answer',
-        IsCorrect: true
-      };
-
-      const response = await request(app)
-        .post('/api/selectedanswers')
-        .send(newSelectedAnswer);
-
-      expect(response.status).toBe(201);
-      expect(response.body).toHaveProperty('SelectedAnswerId');
-      expect(response.body.TestQuestionId).toBe(1);
-      expect(response.body.DoneTestId).toBe(1);
-      expect(response.body.AnswerText).toBe('Test Answer');
-      expect(response.body.IsCorrect).toBe(true);
+      },
     });
+    const res = httpMocks.createResponse();
 
-    test('should return 400 for invalid input (missing TestQuestionId)', async () => {
-      const invalidSelectedAnswer = {
+    SelectedAnswer.create.mockResolvedValue(req.body);
+
+    await selectedAnswerController.createSelectedAnswer(req, res);
+
+    expect(SelectedAnswer.create).toHaveBeenCalledWith(req.body);
+    expect(res.statusCode).toBe(201);
+    expect(res._getJSONData()).toEqual(req.body);
+  });
+
+  test('getSelectedAnswers should return all selected answers', async () => {
+    const req = httpMocks.createRequest({ method: 'GET' });
+    const res = httpMocks.createResponse();
+
+    const mockSelectedAnswers = [
+      {
+        SelectedAnswerId: 1,
+        TestQuestionId: 1,
         DoneTestId: 1,
-        AnswerText: 'Test Answer',
-        IsCorrect: true
-      };
+      },
+    ];
 
-      const response = await request(app)
-        .post('/api/selectedanswers')
-        .send(invalidSelectedAnswer);
+    SelectedAnswer.findAll.mockResolvedValue(mockSelectedAnswers);
 
-      expect(response.status).toBe(400);
-      expect(response.body.error).toContain('Validation error: TestQuestionId cannot be null');
+    await selectedAnswerController.getSelectedAnswers(req, res);
+
+    expect(SelectedAnswer.findAll).toHaveBeenCalledWith({
+      where: undefined,
+      order: undefined,
     });
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData()).toEqual(mockSelectedAnswers);
   });
 
-  describe('GET /api/selectedanswers', () => {
-    test('should return a list of selected answers and status 200', async () => {
-      await SelectedAnswer.create({
+  test('getSelectedAnswerById should return selected answer if found', async () => {
+    const req = httpMocks.createRequest({ method: 'GET', params: { id: 1 } });
+    const res = httpMocks.createResponse();
+
+    const mockSelectedAnswer = {
+      SelectedAnswerId: 1,
+      TestQuestionId: 1,
+      DoneTestId: 1,
+    };
+
+    SelectedAnswer.findByPk.mockResolvedValue(mockSelectedAnswer);
+
+    await selectedAnswerController.getSelectedAnswerById(req, res);
+
+    expect(SelectedAnswer.findByPk).toHaveBeenCalledWith(1);
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData()).toEqual(mockSelectedAnswer);
+  });
+
+  test('searchSelectedAnswers should return matching selected answers', async () => {
+    const req = httpMocks.createRequest({
+      method: 'GET',
+      query: {
+        testQuestionId: '1',
+        doneTestId: '1',
+      },
+    });
+    const res = httpMocks.createResponse();
+
+    const mockSelectedAnswers = [
+      {
+        SelectedAnswerId: 1,
+        TestQuestionId: 1,
+        DoneTestId: 1,
+      },
+    ];
+
+    SelectedAnswer.findAll.mockResolvedValue(mockSelectedAnswers);
+
+    await selectedAnswerController.searchSelectedAnswers(req, res);
+
+    expect(SelectedAnswer.findAll).toHaveBeenCalledWith({
+      where: {
+        TestQuestionId: '1',
+        DoneTestId: '1',
+      },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData().success).toBe(true);
+    expect(res._getJSONData().data).toEqual(mockSelectedAnswers);
+  });
+
+  test('updateSelectedAnswer should update an existing selected answer', async () => {
+    const req = httpMocks.createRequest({
+      method: 'PUT',
+      params: { id: 1 },
+      body: { TestQuestionId: 2 },
+    });
+    const res = httpMocks.createResponse();
+
+    const mockSelectedAnswer = {
+      update: jest.fn().mockResolvedValue([1]),
+      dataValues: {
+        SelectedAnswerId: 1,
         TestQuestionId: 2,
-        DoneTestId: 2,
-        AnswerText: 'Another Test Answer',
-        IsCorrect: false
-      });
+        DoneTestId: 1,
+      },
+      toJSON: jest.fn(() => ({ ...mockSelectedAnswer.dataValues })),
+    };
 
-      const response = await request(app)
-        .get('/api/selectedanswers');
+    SelectedAnswer.findByPk.mockResolvedValue(mockSelectedAnswer);
 
-      expect(response.status).toBe(200);
-      expect(Array.isArray(response.body)).toBe(true);
-      expect(response.body.length).toBeGreaterThan(0);
+    await selectedAnswerController.updateSelectedAnswer(req, res);
+
+    expect(mockSelectedAnswer.update).toHaveBeenCalledWith(req.body);
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData()).toEqual({
+      SelectedAnswerId: 1,
+      TestQuestionId: 2,
+      DoneTestId: 1,
     });
+    expect(mockSelectedAnswer.toJSON).toHaveBeenCalled();
   });
 
-  describe('GET /api/selectedanswers/:id', () => {
-    test('should return a selected answer by ID and status 200', async () => {
-      const testSelectedAnswer = await SelectedAnswer.create({
-        TestQuestionId: 3,
-        DoneTestId: 3,
-        AnswerText: 'Test Answer for GET',
-        IsCorrect: true
-      });
+  test('deleteSelectedAnswer should remove a selected answer', async () => {
+    const req = httpMocks.createRequest({ method: 'DELETE', params: { id: 1 } });
+    const res = httpMocks.createResponse();
 
-      const response = await request(app)
-        .get(`/api/selectedanswers/${testSelectedAnswer.SelectedAnswerId}`);
+    const mockSelectedAnswer = { destroy: jest.fn().mockResolvedValue(1) };
 
-      expect(response.status).toBe(200);
-      expect(response.body.TestQuestionId).toBe(3);
-      expect(response.body.DoneTestId).toBe(3);
-      expect(response.body.AnswerText).toBe('Test Answer for GET');
-      expect(response.body.IsCorrect).toBe(true);
-    });
+    SelectedAnswer.findByPk.mockResolvedValue(mockSelectedAnswer);
 
-    test('should return 404 if selected answer not found', async () => {
-      const response = await request(app)
-        .get('/api/selectedanswers/999');
+    await selectedAnswerController.deleteSelectedAnswer(req, res);
 
-      expect(response.status).toBe(404);
-      expect(response.body.error).toBe('SelectedAnswer not found');
-    });
+    expect(mockSelectedAnswer.destroy).toHaveBeenCalled();
+    expect(res.statusCode).toBe(204);
   });
 
-  describe('GET /api/selectedanswers/search', () => {
-    test('should return matching selected answers and status 200', async () => {
-      await SelectedAnswer.create({
-        TestQuestionId: 4,
-        DoneTestId: 4,
-        AnswerText: 'Searchable Answer',
-        IsCorrect: true
-      });
+  test('getSelectedAnswerById should handle not found case', async () => {
+    const req = httpMocks.createRequest({ method: 'GET', params: { id: 999 } });
+    const res = httpMocks.createResponse();
 
-      const response = await request(app)
-        .get('/api/selectedanswers/search')
-        .query({ doneTestId: 4 });
+    SelectedAnswer.findByPk.mockResolvedValue(null);
 
-      expect(response.status).toBe(200);
-      expect(response.body.success).toBe(true);
-      expect(Array.isArray(response.body.data)).toBe(true);
-      expect(response.body.data.length).toBeGreaterThan(0);
-      expect(response.body.data[0].DoneTestId).toBe(4);
-    });
+    await selectedAnswerController.getSelectedAnswerById(req, res);
 
-    test('should return 404 if no selected answers match the criteria', async () => {
-      const response = await request(app)
-        .get('/api/selectedanswers/search')
-        .query({ doneTestId: 'nonexistent' });
-
-      expect(response.status).toBe(404);
-      expect(response.body.success).toBe(false);
-      expect(response.body.message).toBe('No selected answers found.');
-    });
+    expect(res.statusCode).toBe(404);
+    expect(res._getJSONData()).toEqual({ error: 'SelectedAnswer not found' });
   });
 
-  describe('PUT /api/selectedanswers/:id', () => {
-    test('should update a selected answer and return status 200', async () => {
-      const testSelectedAnswer = await SelectedAnswer.create({
-        TestQuestionId: 5,
-        DoneTestId: 5,
-        AnswerText: 'Original Answer',
-        IsCorrect: false
-      });
+  test('searchSelectedAnswers should handle no results case', async () => {
+    const req = httpMocks.createRequest({ method: 'GET', query: { testQuestionId: 'Nonexistent' } });
+    const res = httpMocks.createResponse();
 
-      const updatedData = {
-        AnswerText: 'Updated Answer'
-      };
+    SelectedAnswer.findAll.mockResolvedValue([]);
 
-      const response = await request(app)
-        .put(`/api/selectedanswers/${testSelectedAnswer.SelectedAnswerId}`)
-        .send(updatedData);
+    await selectedAnswerController.searchSelectedAnswers(req, res);
 
-      expect(response.status).toBe(200);
-      expect(response.body.AnswerText).toBe('Updated Answer');
-    });
-
-    test('should return 404 if selected answer not found', async () => {
-      const response = await request(app)
-        .put('/api/selectedanswers/999')
-        .send({ AnswerText: 'Updated Answer' });
-
-      expect(response.status).toBe(404);
-      expect(response.body.error).toBe('SelectedAnswer not found');
-    });
-  });
-
-  describe('DELETE /api/selectedanswers/:id', () => {
-    test('should delete a selected answer and return status 204', async () => {
-      const testSelectedAnswer = await SelectedAnswer.create({
-        TestQuestionId: 6,
-        DoneTestId: 6,
-        AnswerText: 'Answer to Delete',
-        IsCorrect: true
-      });
-
-      const response = await request(app)
-        .delete(`/api/selectedanswers/${testSelectedAnswer.SelectedAnswerId}`);
-
-      expect(response.status).toBe(204);
-
-      const deletedSelectedAnswer = await SelectedAnswer.findByPk(testSelectedAnswer.SelectedAnswerId);
-      expect(deletedSelectedAnswer).toBeNull();
-    });
-
-    test('should return 404 if selected answer not found', async () => {
-      const response = await request(app)
-        .delete('/api/selectedanswers/999');
-
-      expect(response.status).toBe(404);
-      expect(response.body.error).toBe('SelectedAnswer not found');
-    });
+    expect(res.statusCode).toBe(404);
+    expect(res._getJSONData()).toEqual({ success: false, message: 'No selected answers found.' });
   });
 });

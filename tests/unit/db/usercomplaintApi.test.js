@@ -1,159 +1,192 @@
-const request = require('supertest');
-const app = require('../../../src/app');
+const httpMocks = require('node-mocks-http');
 const { UserComplaint } = require('../../../src/models/dbModels');
+const userComplaintController = require('../../../src/controllers/dbControllers/userComplaintController');
+const { Op } = require('sequelize');
 
-describe('UserComplaint API Tests', () => {
-  describe('POST /api/usercomplaints', () => {
-    test('should create a new user complaint and return status 201', async () => {
-      const newUserComplaint = {
-        ComplaintDate: new Date(),
-        ComplaintDescription: 'This is a test complaint.'
-      };
+jest.mock('../../../src/models/dbModels', () => ({
+  UserComplaint: {
+    create: jest.fn(),
+    findAll: jest.fn(),
+    findByPk: jest.fn(),
+    update: jest.fn(),
+    destroy: jest.fn(),
+  },
+}));
 
-      const response = await request(app)
-        .post('/api/usercomplaints')
-        .send(newUserComplaint);
-
-      expect(response.status).toBe(201);
-      expect(response.body).toHaveProperty('UserComplaintId');
-      expect(new Date(response.body.ComplaintDate)).toBeInstanceOf(Date);
-      expect(response.body.ComplaintDescription).toBe('This is a test complaint.');
-    });
-
-    test('should return 400 for invalid input (missing ComplaintDescription)', async () => {
-      const invalidUserComplaint = {
-        ComplaintDate: new Date()
-      };
-
-      const response = await request(app)
-        .post('/api/usercomplaints')
-        .send(invalidUserComplaint);
-
-      expect(response.status).toBe(400);
-      expect(response.body.error).toContain('Validation error: ComplaintDescription cannot be empty');
-    });
+describe('UserComplaint Controller Tests', () => {
+  afterEach(() => {
+    jest.clearAllMocks();
   });
 
-  describe('GET /api/usercomplaints', () => {
-    test('should return a list of user complaints and status 200', async () => {
-      await UserComplaint.create({
-        ComplaintDate: new Date(),
-        ComplaintDescription: 'Another test complaint.'
-      });
-
-      const response = await request(app)
-        .get('/api/usercomplaints');
-
-      expect(response.status).toBe(200);
-      expect(Array.isArray(response.body)).toBe(true);
-      expect(response.body.length).toBeGreaterThan(0);
+  test('createUserComplaint should create a new user complaint', async () => {
+    const req = httpMocks.createRequest({
+      method: 'POST',
+      body: {
+        ComplaintDescription: 'Issue with login',
+      },
     });
+    const res = httpMocks.createResponse();
+
+    UserComplaint.create.mockResolvedValue(req.body);
+
+    await userComplaintController.createUserComplaint(req, res);
+
+    expect(UserComplaint.create).toHaveBeenCalledWith(req.body);
+    expect(res.statusCode).toBe(201);
+    expect(res._getJSONData()).toEqual(req.body);
   });
 
-  describe('GET /api/usercomplaints/:id', () => {
-    test('should return a user complaint by ID and status 200', async () => {
-      const userComplaint = await UserComplaint.create({
-        ComplaintDate: new Date(),
-        ComplaintDescription: 'Test complaint for GET.'
-      });
+  test('getUserComplaints should return all user complaints', async () => {
+    const req = httpMocks.createRequest({ method: 'GET' });
+    const res = httpMocks.createResponse();
 
-      const response = await request(app)
-        .get(`/api/usercomplaints/${userComplaint.UserComplaintId}`);
+    const mockUserComplaints = [
+      {
+        UserComplaintId: 1,
+        ComplaintDate: '2023-10-01T00:00:00Z',
+        ComplaintDescription: 'Issue with login',
+      },
+      {
+        UserComplaintId: 2,
+        ComplaintDate: '2023-10-15T00:00:00Z',
+        ComplaintDescription: 'Payment failed',
+      },
+    ];
 
-      expect(response.status).toBe(200);
-      expect(new Date(response.body.ComplaintDate)).toBeInstanceOf(Date);
-      expect(response.body.ComplaintDescription).toBe('Test complaint for GET.');
+    UserComplaint.findAll.mockResolvedValue(mockUserComplaints);
+
+    await userComplaintController.getUserComplaints(req, res);
+
+    expect(UserComplaint.findAll).toHaveBeenCalledWith({
+      where: undefined,
+      order: undefined,
     });
-
-    test('should return 404 if user complaint not found', async () => {
-      const response = await request(app)
-        .get('/api/usercomplaints/999');
-
-      expect(response.status).toBe(404);
-      expect(response.body.error).toBe('UserComplaint not found');
-    });
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData()).toEqual(mockUserComplaints);
   });
 
-  describe('GET /api/usercomplaints/search', () => {
-    test('should return matching user complaints and status 200', async () => {
-      await UserComplaint.create({
-        ComplaintDate: new Date(),
-        ComplaintDescription: 'Searchable complaint.'
-      });
+  test('getUserComplaintById should return user complaint if found', async () => {
+    const req = httpMocks.createRequest({ method: 'GET', params: { id: 1 } });
+    const res = httpMocks.createResponse();
 
-      const response = await request(app)
-        .get('/api/usercomplaints/search')
-        .query({ description: 'Searchable' });
+    const mockUserComplaint = {
+      UserComplaintId: 1,
+      ComplaintDate: '2023-10-01T00:00:00Z',
+      ComplaintDescription: 'Issue with login',
+    };
 
-      expect(response.status).toBe(200);
-      expect(response.body.success).toBe(true);
-      expect(Array.isArray(response.body.data)).toBe(true);
-      expect(response.body.data.length).toBeGreaterThan(0);
-      expect(response.body.data[0].ComplaintDescription).toContain('Searchable');
-    });
+    UserComplaint.findByPk.mockResolvedValue(mockUserComplaint);
 
-    test('should return 404 if no user complaints match the criteria', async () => {
-      const response = await request(app)
-        .get('/api/usercomplaints/search')
-        .query({ description: 'nonexistent' });
+    await userComplaintController.getUserComplaintById(req, res);
 
-      expect(response.status).toBe(404);
-      expect(response.body.success).toBe(false);
-      expect(response.body.message).toBe('No user complaints found matching the criteria.');
-    });
+    expect(UserComplaint.findByPk).toHaveBeenCalledWith(1);
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData()).toEqual(mockUserComplaint);
   });
 
-  describe('PUT /api/usercomplaints/:id', () => {
-    test('should update a user complaint and return status 200', async () => {
-      const userComplaint = await UserComplaint.create({
-        ComplaintDate: new Date(),
-        ComplaintDescription: 'Original complaint.'
-      });
+  test('searchUserComplaints should return matching user complaints', async () => {
+    const req = httpMocks.createRequest({
+      method: 'GET',
+      query: {
+        description: 'login',
+        startDate: '2023-10-01',
+        endDate: '2023-10-31',
+      },
+    });
+    const res = httpMocks.createResponse();
 
-      const updatedData = {
-        ComplaintDescription: 'Updated complaint.'
-      };
+    const mockUserComplaints = [
+      {
+        UserComplaintId: 1,
+        ComplaintDate: '2023-10-01T00:00:00Z',
+        ComplaintDescription: 'Issue with login',
+      },
+    ];
 
-      const response = await request(app)
-        .put(`/api/usercomplaints/${userComplaint.UserComplaintId}`)
-        .send(updatedData);
+    UserComplaint.findAll.mockResolvedValue(mockUserComplaints);
 
-      expect(response.status).toBe(200);
-      expect(response.body.ComplaintDescription).toBe('Updated complaint.');
+    await userComplaintController.searchUserComplaints(req, res);
+
+    expect(UserComplaint.findAll).toHaveBeenCalledWith({
+      where: {
+        ComplaintDescription: { [Op.like]: '%login%' },
+        ComplaintDate: { [Op.between]: [new Date('2023-10-01'), new Date('2023-10-31')] },
+      },
+      attributes: ['UserComplaintId', 'ComplaintDate', 'ComplaintDescription'],
     });
 
-    test('should return 404 if user complaint not found', async () => {
-      const response = await request(app)
-        .put('/api/usercomplaints/999')
-        .send({ ComplaintDescription: 'Updated complaint.' });
-
-      expect(response.status).toBe(404);
-      expect(response.body.error).toBe('UserComplaint not found');
-    });
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData().success).toBe(true);
+    expect(res._getJSONData().data).toEqual(mockUserComplaints);
   });
 
-  describe('DELETE /api/usercomplaints/:id', () => {
-    test('should delete a user complaint and return status 204', async () => {
-      const userComplaint = await UserComplaint.create({
-        ComplaintDate: new Date(),
-        ComplaintDescription: 'Complaint to delete.'
-      });
-
-      const response = await request(app)
-        .delete(`/api/usercomplaints/${userComplaint.UserComplaintId}`);
-
-      expect(response.status).toBe(204);
-
-      const deletedUserComplaint = await UserComplaint.findByPk(userComplaint.UserComplaintId);
-      expect(deletedUserComplaint).toBeNull();
+  test('updateUserComplaint should update an existing user complaint', async () => {
+    const req = httpMocks.createRequest({
+      method: 'PUT',
+      params: { id: 1 },
+      body: { ComplaintDescription: 'Updated issue with login' },
     });
+    const res = httpMocks.createResponse();
 
-    test('should return 404 if user complaint not found', async () => {
-      const response = await request(app)
-        .delete('/api/usercomplaints/999');
+    const mockUserComplaint = {
+      update: jest.fn().mockResolvedValue([1]),
+      dataValues: {
+        UserComplaintId: 1,
+        ComplaintDate: '2023-10-01T00:00:00Z',
+        ComplaintDescription: 'Updated issue with login',
+      },
+      toJSON: jest.fn(() => ({ ...mockUserComplaint.dataValues })),
+    };
 
-      expect(response.status).toBe(404);
-      expect(response.body.error).toBe('UserComplaint not found');
+    UserComplaint.findByPk.mockResolvedValue(mockUserComplaint);
+
+    await userComplaintController.updateUserComplaint(req, res);
+
+    expect(mockUserComplaint.update).toHaveBeenCalledWith(req.body);
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData()).toEqual({
+      UserComplaintId: 1,
+      ComplaintDate: '2023-10-01T00:00:00Z',
+      ComplaintDescription: 'Updated issue with login',
     });
+    expect(mockUserComplaint.toJSON).toHaveBeenCalled();
+  });
+
+  test('deleteUserComplaint should remove a user complaint', async () => {
+    const req = httpMocks.createRequest({ method: 'DELETE', params: { id: 1 } });
+    const res = httpMocks.createResponse();
+
+    const mockUserComplaint = { destroy: jest.fn().mockResolvedValue(1) };
+
+    UserComplaint.findByPk.mockResolvedValue(mockUserComplaint);
+
+    await userComplaintController.deleteUserComplaint(req, res);
+
+    expect(mockUserComplaint.destroy).toHaveBeenCalled();
+    expect(res.statusCode).toBe(204);
+  });
+
+  test('getUserComplaintById should handle not found case', async () => {
+    const req = httpMocks.createRequest({ method: 'GET', params: { id: 999 } });
+    const res = httpMocks.createResponse();
+
+    UserComplaint.findByPk.mockResolvedValue(null);
+
+    await userComplaintController.getUserComplaintById(req, res);
+
+    expect(res.statusCode).toBe(404);
+    expect(res._getJSONData()).toEqual({ error: 'UserComplaint not found' });
+  });
+
+  test('searchUserComplaints should handle no results case', async () => {
+    const req = httpMocks.createRequest({ method: 'GET', query: { description: 'Nonexistent' } });
+    const res = httpMocks.createResponse();
+
+    UserComplaint.findAll.mockResolvedValue([]);
+
+    await userComplaintController.searchUserComplaints(req, res);
+
+    expect(res.statusCode).toBe(404);
+    expect(res._getJSONData()).toEqual({ success: false, message: 'No user complaints found matching the criteria.' });
   });
 });

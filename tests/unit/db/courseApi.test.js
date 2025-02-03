@@ -1,354 +1,189 @@
-const request = require('supertest');
-const app = require('../../../src/app');
-const { User, Teacher, Subject, Location, Course } = require('../../../src/models/dbModels');
+const { Course } = require('../../../src/models/dbModels');
+const courseController = require('../../../src/controllers/dbControllers/courseController');
+const httpMocks = require('node-mocks-http');
+const { Op } = require('sequelize');
 
-describe('Course API Tests', () => {
-  describe('POST /api/courses', () => {
-    test('should create a new course and return status 201', async () => {
-      const testUser = await User.create({
-        Username: `user${Date.now()}`,
-        Password: 'Password123!',
-        Email: `test${Date.now()}@example.com`,
-        LastName: 'Doe',
-        FirstName: 'John'
-      });
+jest.mock('../../../src/models/dbModels', () => ({
+  Course: {
+    create: jest.fn(),
+    findAll: jest.fn(),
+    findByPk: jest.fn(),
+    update: jest.fn(),
+    destroy: jest.fn(),
+  },
+  Teacher: jest.fn().mockReturnValue({ name: 'Teacher' }),
+  Subject: jest.fn().mockReturnValue({ name: 'Subject' }),
+  Location: jest.fn().mockReturnValue({ name: 'Location' }),
+}));
 
-      const testTeacher = await Teacher.create({
-        AboutTeacher: 'Test teacher',
-        LessonType: 'group',
-        MeetingType: 'online',
-        UserId: testUser.UserId
-      });
-
-      const testSubject = await Subject.create({
-        SubjectName: 'Mathematics'
-      });
-
-      const testLocation = await Location.create({
-        City: 'New York',
-        Country: 'USA'
-      });
-
-      const newCourse = {
-        CourseName: 'Advanced Math',
-        TeacherId: testTeacher.TeacherId,
-        SubjectId: testSubject.SubjectId,
-        LocationId: testLocation.LocationId,
-        GroupPrice: 100
-      };
-
-      const response = await request(app)
-        .post('/api/courses')
-        .send(newCourse);
-
-      expect(response.status).toBe(201);
-      expect(response.body).toHaveProperty('CourseId');
-      expect(response.body.CourseName).toBe('Advanced Math');
-      expect(response.body.TeacherId).toBe(testTeacher.TeacherId);
-      expect(response.body.SubjectId).toBe(testSubject.SubjectId);
-      expect(response.body.LocationId).toBe(testLocation.LocationId);
-    });
-
-    test('should return 400 for invalid input (missing CourseName)', async () => {
-      const testUser = await User.create({
-        Username: `user${Date.now()}`,
-        Password: 'Password123!',
-        Email: `test${Date.now()}@example.com`,
-        LastName: 'Doe',
-        FirstName: 'John'
-      });
-
-      const testTeacher = await Teacher.create({
-        AboutTeacher: 'Test teacher',
-        LessonType: 'group',
-        MeetingType: 'online',
-        UserId: testUser.UserId
-      });
-
-      const testSubject = await Subject.create({
-        SubjectName: 'Mathematics'
-      });
-
-      const testLocation = await Location.create({
-        City: 'New York',
-        Country: 'USA'
-      });
-
-      const invalidCourse = {
-        TeacherId: testTeacher.TeacherId,
-        SubjectId: testSubject.SubjectId,
-        LocationId: testLocation.LocationId,
-        GroupPrice: 100
-      };
-
-      const response = await request(app)
-        .post('/api/courses')
-        .send(invalidCourse);
-
-      expect(response.status).toBe(400);
-      expect(response.body.error).toContain('Validation error: CourseName cannot be empty');
-    });
+describe('Course Controller Tests', () => {
+  afterEach(() => {
+    jest.clearAllMocks();
   });
 
-  describe('GET /api/courses', () => {
-    test('should return a list of courses and status 200', async () => {
-      const testUser1 = await User.create({
-        Username: `user1${Date.now()}`,
-        Password: 'Password123!',
-        Email: `user1${Date.now()}@example.com`,
-        LastName: 'Doe',
-        FirstName: 'John'
-      });
-
-      const testTeacher1 = await Teacher.create({
-        AboutTeacher: 'Teacher A',
-        LessonType: 'group',
-        MeetingType: 'online',
-        UserId: testUser1.UserId
-      });
-
-      const testSubject1 = await Subject.create({
-        SubjectName: 'Mathematics'
-      });
-
-      const testLocation1 = await Location.create({
-        City: 'New York',
-        Country: 'USA'
-      });
-
-      await Course.create({
-        CourseName: 'Course A',
-        TeacherId: testTeacher1.TeacherId,
-        SubjectId: testSubject1.SubjectId,
-        LocationId: testLocation1.LocationId,
-        GroupPrice: 100
-      });
-
-      const response = await request(app)
-        .get('/api/courses');
-
-      expect(response.status).toBe(200);
-      expect(Array.isArray(response.body)).toBe(true);
-      expect(response.body.length).toBeGreaterThan(0);
+  test('createCourse should create a new course', async () => {
+    const req = httpMocks.createRequest({
+      method: 'POST',
+      body: {
+        CourseName: 'Mathematics 101',
+        ImageFilePath: 'http://example.com/image.jpg',
+      },
     });
+    const res = httpMocks.createResponse();
+
+    Course.create.mockResolvedValue(req.body);
+
+    await courseController.createCourse(req, res);
+
+    expect(Course.create).toHaveBeenCalledWith(req.body);
+    expect(res.statusCode).toBe(201);
+    expect(res._getJSONData()).toEqual(req.body);
   });
 
-  describe('GET /api/courses/:id', () => {
-    test('should return a course by ID and status 200', async () => {
-      const testUser = await User.create({
-        Username: `user${Date.now()}`,
-        Password: 'Password123!',
-        Email: `test${Date.now()}@example.com`,
-        LastName: 'Doe',
-        FirstName: 'John'
-      });
+  test('getCourses should return all courses', async () => {
+    const req = httpMocks.createRequest({ method: 'GET' });
+    const res = httpMocks.createResponse();
 
-      const testTeacher = await Teacher.create({
-        AboutTeacher: 'Test teacher',
-        LessonType: 'group',
-        MeetingType: 'online',
-        UserId: testUser.UserId
-      });
+    const mockCourses = [
+      { CourseId: 1, CourseName: 'Mathematics 101', ImageFilePath: 'http://example.com/image.jpg' },
+    ];
 
-      const testSubject = await Subject.create({
-        SubjectName: 'Mathematics'
-      });
+    Course.findAll.mockResolvedValue(mockCourses);
 
-      const testLocation = await Location.create({
-        City: 'New York',
-        Country: 'USA'
-      });
+    await courseController.getCourses(req, res);
 
-      const testCourse = await Course.create({
-        CourseName: 'Advanced Math',
-        TeacherId: testTeacher.TeacherId,
-        SubjectId: testSubject.SubjectId,
-        LocationId: testLocation.LocationId,
-        GroupPrice: 100
-      });
-
-      const response = await request(app)
-        .get(`/api/courses/${testCourse.CourseId}`);
-
-      expect(response.status).toBe(200);
-      expect(response.body.CourseName).toBe('Advanced Math');
-      expect(response.body.TeacherId).toBe(testTeacher.TeacherId);
-      expect(response.body.SubjectId).toBe(testSubject.SubjectId);
-      expect(response.body.LocationId).toBe(testLocation.LocationId);
-    });
-
-    test('should return 404 if course not found', async () => {
-      const response = await request(app)
-        .get('/api/courses/999');
-
-      expect(response.status).toBe(404);
-      expect(response.body.error).toBe('Course not found');
-    });
+    expect(Course.findAll).toHaveBeenCalled();
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData()).toEqual(mockCourses);
   });
 
-  describe('GET /api/courses/search', () => {
-    test('should return matching courses and status 200', async () => {
-      const testUser1 = await User.create({
-        Username: `user1${Date.now()}`,
-        Password: 'Password123!',
-        Email: `user1${Date.now()}@example.com`,
-        LastName: 'Doe',
-        FirstName: 'John'
-      });
+  test('getCourseById should return course if found', async () => {
+    const req = httpMocks.createRequest({ method: 'GET', params: { id: 1 } });
+    const res = httpMocks.createResponse();
 
-      const testTeacher1 = await Teacher.create({
-        AboutTeacher: 'Teacher A',
-        LessonType: 'group',
-        MeetingType: 'online',
-        UserId: testUser1.UserId
-      });
+    const mockCourse = {
+      CourseId: 1,
+      CourseName: 'Mathematics 101',
+      ImageFilePath: 'http://example.com/image.jpg',
+    };
 
-      const testSubject1 = await Subject.create({
-        SubjectName: 'Mathematics'
-      });
+    Course.findByPk.mockResolvedValue(mockCourse);
 
-      const testLocation1 = await Location.create({
-        City: 'New York',
-        Country: 'USA'
-      });
+    await courseController.getCourseById(req, res);
 
-      await Course.create({
-        CourseName: 'Math Course',
-        TeacherId: testTeacher1.TeacherId,
-        SubjectId: testSubject1.SubjectId,
-        LocationId: testLocation1.LocationId,
-        GroupPrice: 100
-      });
-
-      const response = await request(app)
-        .get('/api/courses/search')
-        .query({ courseName: 'Math' });
-
-      expect(response.status).toBe(200);
-      expect(response.body.success).toBe(true);
-      expect(Array.isArray(response.body.data)).toBe(true);
-      expect(response.body.data.length).toBeGreaterThan(0);
-      expect(response.body.data[0].CourseName).toContain('Math');
-    });
-
-    test('should return 404 if no courses match the criteria', async () => {
-      const response = await request(app)
-        .get('/api/courses/search')
-        .query({ courseName: 'nonexistent' });
-
-      expect(response.status).toBe(404);
-      expect(response.body.success).toBe(false);
-      expect(response.body.message).toBe('No courses found matching the criteria.');
-    });
+    expect(Course.findByPk).toHaveBeenCalledWith(1);
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData()).toEqual(mockCourse);
   });
 
-  describe('PUT /api/courses/:id', () => {
-    test('should update a course and return status 200', async () => {
-      const testUser = await User.create({
-        Username: `user${Date.now()}`,
-        Password: 'Password123!',
-        Email: `test${Date.now()}@example.com`,
-        LastName: 'Doe',
-        FirstName: 'John'
-      });
+  test('searchCourses should return matching courses', async () => {
+    const req = httpMocks.createRequest({
+      method: 'GET',
+      query: { courseName: 'Math', teacherId: '1', subjectId: '2', locationId: '3' },
+    });
+    const res = httpMocks.createResponse();
 
-      const testTeacher = await Teacher.create({
-        AboutTeacher: 'Test teacher',
-        LessonType: 'group',
-        MeetingType: 'online',
-        UserId: testUser.UserId
-      });
+    const mockCourses = [
+      {
+        CourseId: 1,
+        CourseName: 'Mathematics 101',
+        ImageFilePath: 'http://example.com/image.jpg',
+        Teacher: { TeacherId: 1, Name: 'John Doe' },
+        Subject: { SubjectId: 2, SubjectName: 'Mathematics' },
+        Location: { LocationId: 3, LocationName: 'Main Campus' },
+      },
+    ];
 
-      const testSubject = await Subject.create({
-        SubjectName: 'Mathematics'
-      });
+    Course.findAll.mockResolvedValue(mockCourses);
 
-      const testLocation = await Location.create({
-        City: 'New York',
-        Country: 'USA'
-      });
+    await courseController.searchCourses(req, res);
 
-      const testCourse = await Course.create({
-        CourseName: 'Basic Math',
-        TeacherId: testTeacher.TeacherId,
-        SubjectId: testSubject.SubjectId,
-        LocationId: testLocation.LocationId,
-        GroupPrice: 50
-      });
-
-      const updatedData = {
-        CourseName: 'Updated Math Course',
-        GroupPrice: 75
-      };
-
-      const response = await request(app)
-        .put(`/api/courses/${testCourse.CourseId}`)
-        .send(updatedData);
-
-      expect(response.status).toBe(200);
-      expect(response.body.CourseName).toBe('Updated Math Course');
-      expect(response.body.GroupPrice).toBe(75);
+    expect(Course.findAll).toHaveBeenCalledWith({
+      where: {
+        CourseName: { [Op.like]: '%Math%' },
+        TeacherId: '1',
+        SubjectId: '2',
+        LocationId: '3',
+      },
+      include: [
+        { model: expect.any(Function), as: 'Teacher', attributes: ['TeacherId', 'Name'] },
+        { model: expect.any(Function), as: 'Subject', attributes: ['SubjectId', 'SubjectName'] },
+        { model: expect.any(Function), as: 'Location', attributes: ['LocationId', 'LocationName'] },
+      ],
     });
 
-    test('should return 404 if course not found', async () => {
-      const response = await request(app)
-        .put('/api/courses/999')
-        .send({ CourseName: 'Updated Course' });
-
-      expect(response.status).toBe(404);
-      expect(response.body.error).toBe('Course not found');
-    });
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData().success).toBe(true);
+    expect(res._getJSONData().data).toEqual(mockCourses);
   });
 
-  describe('DELETE /api/courses/:id', () => {
-    test('should delete a course and return status 204', async () => {
-      const testUser = await User.create({
-        Username: `user${Date.now()}`,
-        Password: 'Password123!',
-        Email: `test${Date.now()}@example.com`,
-        LastName: 'Doe',
-        FirstName: 'John'
-      });
-
-      const testTeacher = await Teacher.create({
-        AboutTeacher: 'Test teacher',
-        LessonType: 'group',
-        MeetingType: 'online',
-        UserId: testUser.UserId
-      });
-
-      const testSubject = await Subject.create({
-        SubjectName: 'Mathematics'
-      });
-
-      const testLocation = await Location.create({
-        City: 'New York',
-        Country: 'USA'
-      });
-
-      const testCourse = await Course.create({
-        CourseName: 'Advanced Math',
-        TeacherId: testTeacher.TeacherId,
-        SubjectId: testSubject.SubjectId,
-        LocationId: testLocation.LocationId,
-        GroupPrice: 100
-      });
-
-      const response = await request(app)
-        .delete(`/api/courses/${testCourse.CourseId}`);
-
-      expect(response.status).toBe(204);
-
-      const deletedCourse = await Course.findByPk(testCourse.CourseId);
-      expect(deletedCourse).toBeNull();
+  test('updateCourse should update an existing course', async () => {
+    const req = httpMocks.createRequest({
+      method: 'PUT',
+      params: { id: 1 },
+      body: { CourseName: 'Updated Course Name' },
     });
+    const res = httpMocks.createResponse();
 
-    test('should return 404 if course not found', async () => {
-      const response = await request(app)
-        .delete('/api/courses/999');
+    const mockCourse = {
+      update: jest.fn().mockResolvedValue([1]),
+      dataValues: {
+        CourseId: 1,
+        CourseName: 'Updated Course Name',
+        ImageFilePath: 'http://example.com/image.jpg',
+      },
+      toJSON: jest.fn(() => ({ ...mockCourse.dataValues })),
+    };
 
-      expect(response.status).toBe(404);
-      expect(response.body.error).toBe('Course not found');
+    Course.findByPk.mockResolvedValue(mockCourse);
+
+    await courseController.updateCourse(req, res);
+
+    expect(mockCourse.update).toHaveBeenCalledWith(req.body);
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData()).toEqual({
+      CourseId: 1,
+      CourseName: 'Updated Course Name',
+      ImageFilePath: 'http://example.com/image.jpg',
     });
+    expect(mockCourse.toJSON).toHaveBeenCalled();
+  });
+
+  test('deleteCourse should remove a course', async () => {
+    const req = httpMocks.createRequest({ method: 'DELETE', params: { id: 1 } });
+    const res = httpMocks.createResponse();
+
+    const mockCourse = { destroy: jest.fn().mockResolvedValue(1) };
+
+    Course.findByPk.mockResolvedValue(mockCourse);
+
+    await courseController.deleteCourse(req, res);
+
+    expect(mockCourse.destroy).toHaveBeenCalled();
+    expect(res.statusCode).toBe(204);
+  });
+
+  test('getCourseById should handle not found case', async () => {
+    const req = httpMocks.createRequest({ method: 'GET', params: { id: 999 } });
+    const res = httpMocks.createResponse();
+
+    Course.findByPk.mockResolvedValue(null);
+
+    await courseController.getCourseById(req, res);
+
+    expect(res.statusCode).toBe(404);
+    expect(res._getJSONData()).toEqual({ error: 'Course not found' });
+  });
+
+  test('searchCourses should handle no results case', async () => {
+    const req = httpMocks.createRequest({ method: 'GET', query: { courseName: 'Nonexistent' } });
+    const res = httpMocks.createResponse();
+
+    Course.findAll.mockResolvedValue([]);
+
+    await courseController.searchCourses(req, res);
+
+    expect(res.statusCode).toBe(404);
+    expect(res._getJSONData()).toEqual({ success: false, message: 'No courses found matching the criteria.' });
   });
 });

@@ -7,6 +7,7 @@ exports.createTestAnswer = async (req, res) => {
     const testAnswer = await TestAnswer.create(req.body);
     res.status(201).json(testAnswer);
   } catch (error) {
+    console.error('Error in createTestAnswer:', error);
     res.status(400).json({ error: error.message });
   }
 };
@@ -14,9 +15,13 @@ exports.createTestAnswer = async (req, res) => {
 exports.getTestAnswers = async (req, res) => {
   try {
     const { where, order } = parseQueryParams(req.query);
-    const testAnswers = await TestAnswer.findAll({ where: where || undefined, order: order || undefined });
+    const testAnswers = await TestAnswer.findAll({
+      where: where || undefined,
+      order: order || undefined,
+    });
     res.status(200).json(testAnswers);
   } catch (error) {
+    console.error('Error in getTestAnswers:', error);
     res.status(400).json({ error: error.message });
   }
 };
@@ -27,6 +32,7 @@ exports.getTestAnswerById = async (req, res) => {
     if (!testAnswer) return res.status(404).json({ error: "TestAnswer not found" });
     res.status(200).json(testAnswer);
   } catch (error) {
+    console.error('Error in getTestAnswerById:', error);
     res.status(400).json({ error: error.message });
   }
 };
@@ -34,10 +40,12 @@ exports.getTestAnswerById = async (req, res) => {
 exports.searchTestAnswers = async (req, res) => {
   try {
     const { answerText, isRightAnswer } = req.query;
-    let whereConditions = {};
+    const whereConditions = {};
 
     if (answerText) whereConditions.AnswerText = { [Op.like]: `%${answerText}%` };
-    if (isRightAnswer !== undefined) whereConditions.IsRightAnswer = isRightAnswer === 'true';
+    if (isRightAnswer !== undefined) {
+      whereConditions.IsRightAnswer = ['true', '1'].includes(isRightAnswer.toLowerCase());
+    }
 
     const testAnswers = await TestAnswer.findAll({
       where: whereConditions,
@@ -50,7 +58,7 @@ exports.searchTestAnswers = async (req, res) => {
 
     return res.status(200).json({ success: true, data: testAnswers });
   } catch (error) {
-    console.error(error);
+    console.error('Error in searchTestAnswers:', error);
     return res.status(500).json({ success: false, message: 'Server error, please try again later.' });
   }
 };
@@ -59,10 +67,11 @@ exports.updateTestAnswer = async (req, res) => {
   try {
     const testAnswer = await TestAnswer.findByPk(req.params.id);
     if (!testAnswer) return res.status(404).json({ error: "TestAnswer not found" });
-    
+
     await testAnswer.update(req.body);
     res.status(200).json(testAnswer);
   } catch (error) {
+    console.error('Error in updateTestAnswer:', error);
     res.status(400).json({ error: error.message });
   }
 };
@@ -71,10 +80,11 @@ exports.deleteTestAnswer = async (req, res) => {
   try {
     const testAnswer = await TestAnswer.findByPk(req.params.id);
     if (!testAnswer) return res.status(404).json({ error: "TestAnswer not found" });
-    
+
     await testAnswer.destroy();
     res.status(204).send();
   } catch (error) {
+    console.error('Error in deleteTestAnswer:', error);
     res.status(400).json({ error: error.message });
   }
 };

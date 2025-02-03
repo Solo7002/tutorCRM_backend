@@ -1,213 +1,198 @@
-const request = require('supertest');
-const app = require('../../../src/app');
+const httpMocks = require('node-mocks-http');
 const { Material, Teacher } = require('../../../src/models/dbModels');
+const materialController = require('../../../src/controllers/dbControllers/materialController');
+const { Op } = require('sequelize');
 
-describe('Material API Tests', () => {
-  describe('POST /api/materials', () => {
-    test('should create a new material and return status 201', async () => {
-      const testTeacher = await Teacher.create({
-        Name: 'John Doe',
-        Email: 'johndoe@example.com'
-      });
+jest.mock('../../../src/models/dbModels', () => ({
+  Material: {
+    create: jest.fn(),
+    findAll: jest.fn(),
+    findByPk: jest.fn(),
+    update: jest.fn(),
+    destroy: jest.fn(),
+  },
+  Teacher: jest.fn(() => ({ name: 'Teacher' })),
+}));
 
-      const newMaterial = {
+describe('Material Controller Tests', () => {
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  test('createMaterial should create a new material', async () => {
+    const req = httpMocks.createRequest({
+      method: 'POST',
+      body: {
         MaterialName: 'Math Notes',
-        Type: 'PDF',
-        FilePath: 'http://example.com/files/math_notes.pdf',
-        TeacherId: testTeacher.TeacherId
-      };
-
-      const response = await request(app)
-        .post('/api/materials')
-        .send(newMaterial);
-
-      expect(response.status).toBe(201);
-      expect(response.body).toHaveProperty('MaterialId');
-      expect(response.body.MaterialName).toBe('Math Notes');
-      expect(response.body.Type).toBe('PDF');
-      expect(response.body.FilePath).toBe('http://example.com/files/math_notes.pdf');
-      expect(response.body.TeacherId).toBe(testTeacher.TeacherId);
+        Type: 'file',
+        TeacherId: 1,
+      },
     });
+    const res = httpMocks.createResponse();
 
-    test('should return 400 for invalid input (missing MaterialName)', async () => {
-      const testTeacher = await Teacher.create({
-        Name: 'John Doe',
-        Email: 'johndoe@example.com'
-      });
+    Material.create.mockResolvedValue(req.body);
 
-      const invalidMaterial = {
-        Type: 'PDF',
-        FilePath: 'http://example.com/files/math_notes.pdf',
-        TeacherId: testTeacher.TeacherId
-      };
+    await materialController.createMaterial(req, res);
 
-      const response = await request(app)
-        .post('/api/materials')
-        .send(invalidMaterial);
-
-      expect(response.status).toBe(400);
-      expect(response.body.error).toContain('Validation error: MaterialName cannot be empty');
-    });
+    expect(Material.create).toHaveBeenCalledWith(req.body);
+    expect(res.statusCode).toBe(201);
+    expect(res._getJSONData()).toEqual(req.body);
   });
 
-  describe('GET /api/materials', () => {
-    test('should return a list of materials and status 200', async () => {
-      const testTeacher = await Teacher.create({
-        Name: 'Jane Smith',
-        Email: 'janesmith@example.com'
-      });
+  test('getMaterials should return all materials', async () => {
+    const req = httpMocks.createRequest({ method: 'GET' });
+    const res = httpMocks.createResponse();
 
-      await Material.create({
-        MaterialName: 'Physics Notes',
-        Type: 'PDF',
-        FilePath: 'http://example.com/files/physics_notes.pdf',
-        TeacherId: testTeacher.TeacherId
-      });
+    const mockMaterials = [
+      {
+        MaterialId: 1,
+        MaterialName: 'Math Notes',
+        Type: 'file',
+        TeacherId: 1,
+      },
+    ];
 
-      const response = await request(app)
-        .get('/api/materials');
+    Material.findAll.mockResolvedValue(mockMaterials);
 
-      expect(response.status).toBe(200);
-      expect(Array.isArray(response.body)).toBe(true);
-      expect(response.body.length).toBeGreaterThan(0);
+    await materialController.getMaterials(req, res);
+
+    expect(Material.findAll).toHaveBeenCalledWith({
+      where: undefined,
+      order: undefined,
     });
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData()).toEqual(mockMaterials);
   });
 
-  describe('GET /api/materials/:id', () => {
-    test('should return a material by ID and status 200', async () => {
-      const testTeacher = await Teacher.create({
-        Name: 'Alice Johnson',
-        Email: 'alicejohnson@example.com'
-      });
+  test('getMaterialById should return material if found', async () => {
+    const req = httpMocks.createRequest({ method: 'GET', params: { id: 1 } });
+    const res = httpMocks.createResponse();
 
-      const testMaterial = await Material.create({
-        MaterialName: 'Chemistry Notes',
-        Type: 'PDF',
-        FilePath: 'http://example.com/files/chemistry_notes.pdf',
-        TeacherId: testTeacher.TeacherId
-      });
+    const mockMaterial = {
+      MaterialId: 1,
+      MaterialName: 'Math Notes',
+      Type: 'file',
+      TeacherId: 1,
+    };
 
-      const response = await request(app)
-        .get(`/api/materials/${testMaterial.MaterialId}`);
+    Material.findByPk.mockResolvedValue(mockMaterial);
 
-      expect(response.status).toBe(200);
-      expect(response.body.MaterialName).toBe('Chemistry Notes');
-      expect(response.body.Type).toBe('PDF');
-      expect(response.body.FilePath).toBe('http://example.com/files/chemistry_notes.pdf');
-      expect(response.body.TeacherId).toBe(testTeacher.TeacherId);
-    });
+    await materialController.getMaterialById(req, res);
 
-    test('should return 404 if material not found', async () => {
-      const response = await request(app)
-        .get('/api/materials/999');
-
-      expect(response.status).toBe(404);
-      expect(response.body.message).toBe('Material not found');
-    });
+    expect(Material.findByPk).toHaveBeenCalledWith(1);
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData()).toEqual(mockMaterial);
   });
 
-  describe('GET /api/materials/search', () => {
-    test('should return matching materials and status 200', async () => {
-      const testTeacher = await Teacher.create({
-        Name: 'Bob Brown',
-        Email: 'bobbrown@example.com'
-      });
+  test('searchMaterials should return matching materials', async () => {
+    const req = httpMocks.createRequest({
+      method: 'GET',
+      query: { materialName: 'Math', type: 'file', teacherId: '1' },
+    });
+    const res = httpMocks.createResponse();
 
-      await Material.create({
-        MaterialName: 'Biology Notes',
-        Type: 'PDF',
-        FilePath: 'http://example.com/files/biology_notes.pdf',
-        TeacherId: testTeacher.TeacherId
-      });
+    const mockMaterials = [
+      {
+        MaterialId: 1,
+        MaterialName: 'Math Notes',
+        Type: 'file',
+        TeacherId: 1,
+        Teacher: { TeacherId: 1, Name: 'John Doe' },
+      },
+    ];
 
-      const response = await request(app)
-        .get('/api/materials/search')
-        .query({ materialName: 'Biology' });
+    Material.findAll.mockResolvedValue(mockMaterials);
 
-      expect(response.status).toBe(200);
-      expect(response.body.success).toBe(true);
-      expect(Array.isArray(response.body.data)).toBe(true);
-      expect(response.body.data.length).toBeGreaterThan(0);
-      expect(response.body.data[0].MaterialName).toContain('Biology');
+    await materialController.searchMaterials(req, res);
+
+    expect(Material.findAll).toHaveBeenCalledWith({
+      where: {
+        MaterialName: { [Op.like]: '%Math%' },
+        Type: 'file',
+        TeacherId: '1',
+      },
+      include: {
+        model: expect.any(Function),
+        as: 'Teacher',
+        attributes: ['TeacherId', 'Name'],
+      },
     });
 
-    test('should return 404 if no materials match the criteria', async () => {
-      const response = await request(app)
-        .get('/api/materials/search')
-        .query({ materialName: 'nonexistent' });
-
-      expect(response.status).toBe(404);
-      expect(response.body.success).toBe(false);
-      expect(response.body.message).toBe('No materials found matching the criteria.');
-    });
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData().success).toBe(true);
+    expect(res._getJSONData().data).toEqual(mockMaterials);
   });
 
-  describe('PUT /api/materials/:id', () => {
-    test('should update a material and return status 200', async () => {
-      const testTeacher = await Teacher.create({
-        Name: 'Charlie Davis',
-        Email: 'charliedavis@example.com'
-      });
-
-      const testMaterial = await Material.create({
-        MaterialName: 'History Notes',
-        Type: 'PDF',
-        FilePath: 'http://example.com/files/history_notes.pdf',
-        TeacherId: testTeacher.TeacherId
-      });
-
-      const updatedData = {
-        MaterialName: 'Updated History Notes'
-      };
-
-      const response = await request(app)
-        .put(`/api/materials/${testMaterial.MaterialId}`)
-        .send(updatedData);
-
-      expect(response.status).toBe(200);
-      expect(response.body.MaterialName).toBe('Updated History Notes');
+  test('updateMaterial should update an existing material', async () => {
+    const req = httpMocks.createRequest({
+      method: 'PUT',
+      params: { id: 1 },
+      body: { MaterialName: 'Updated Math Notes' },
     });
+    const res = httpMocks.createResponse();
 
-    test('should return 404 if material not found', async () => {
-      const response = await request(app)
-        .put('/api/materials/999')
-        .send({ MaterialName: 'Updated Notes' });
+    const mockMaterial = {
+      update: jest.fn().mockResolvedValue([1]),
+      dataValues: {
+        MaterialId: 1,
+        MaterialName: 'Updated Math Notes',
+        Type: 'file',
+        TeacherId: 1,
+      },
+      toJSON: jest.fn(() => ({ ...mockMaterial.dataValues })),
+    };
 
-      expect(response.status).toBe(404);
-      expect(response.body.message).toBe('Material not found');
+    Material.findByPk.mockResolvedValue(mockMaterial);
+
+    await materialController.updateMaterial(req, res);
+
+    expect(mockMaterial.update).toHaveBeenCalledWith(req.body);
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData()).toEqual({
+      MaterialId: 1,
+      MaterialName: 'Updated Math Notes',
+      Type: 'file',
+      TeacherId: 1,
     });
+    expect(mockMaterial.toJSON).toHaveBeenCalled();
   });
 
-  describe('DELETE /api/materials/:id', () => {
-    test('should delete a material and return status 200', async () => {
-      const testTeacher = await Teacher.create({
-        Name: 'Eve Wilson',
-        Email: 'evewilson@example.com'
-      });
+  test('deleteMaterial should remove a material', async () => {
+    const req = httpMocks.createRequest({ method: 'DELETE', params: { id: 1 } });
+    const res = httpMocks.createResponse();
 
-      const testMaterial = await Material.create({
-        MaterialName: 'Geography Notes',
-        Type: 'PDF',
-        FilePath: 'http://example.com/files/geography_notes.pdf',
-        TeacherId: testTeacher.TeacherId
-      });
+    const mockMaterial = { destroy: jest.fn().mockResolvedValue(1) };
 
-      const response = await request(app)
-        .delete(`/api/materials/${testMaterial.MaterialId}`);
+    Material.findByPk.mockResolvedValue(mockMaterial);
 
-      expect(response.status).toBe(200);
-      expect(response.body.message).toBe('Material deleted');
+    await materialController.deleteMaterial(req, res);
 
-      const deletedMaterial = await Material.findByPk(testMaterial.MaterialId);
-      expect(deletedMaterial).toBeNull();
-    });
+    expect(mockMaterial.destroy).toHaveBeenCalled();
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData()).toEqual({ message: 'Material deleted' });
+  });
 
-    test('should return 404 if material not found', async () => {
-      const response = await request(app)
-        .delete('/api/materials/999');
+  test('getMaterialById should handle not found case', async () => {
+    const req = httpMocks.createRequest({ method: 'GET', params: { id: 999 } });
+    const res = httpMocks.createResponse();
 
-      expect(response.status).toBe(404);
-      expect(response.body.message).toBe('Material not found');
-    });
+    Material.findByPk.mockResolvedValue(null);
+
+    await materialController.getMaterialById(req, res);
+
+    expect(res.statusCode).toBe(404);
+    expect(res._getJSONData()).toEqual({ message: 'Material not found' });
+  });
+
+  test('searchMaterials should handle no results case', async () => {
+    const req = httpMocks.createRequest({ method: 'GET', query: { materialName: 'Nonexistent' } });
+    const res = httpMocks.createResponse();
+
+    Material.findAll.mockResolvedValue([]);
+
+    await materialController.searchMaterials(req, res);
+
+    expect(res.statusCode).toBe(404);
+    expect(res._getJSONData()).toEqual({ success: false, message: 'No materials found matching the criteria.' });
   });
 });

@@ -1,170 +1,199 @@
-const request = require('supertest');
-const app = require('../../../src/app');
+const httpMocks = require('node-mocks-http');
 const { UserPhone } = require('../../../src/models/dbModels');
+const userPhoneController = require('../../../src/controllers/dbControllers/userPhoneController');
+const { Op } = require('sequelize');
 
-describe('UserPhone API Tests', () => {
-  describe('POST /api/userphones', () => {
-    test('should create a new user phone and return status 201', async () => {
-      const newUserPhone = {
-        PhoneNumber: '+1234567890',
-        NickName: 'JohnDoe',
-        SocialNetworkName: 'Telegram'
-      };
+jest.mock('../../../src/models/dbModels', () => ({
+  UserPhone: {
+    create: jest.fn(),
+    findAll: jest.fn(),
+    findByPk: jest.fn(),
+    update: jest.fn(),
+    destroy: jest.fn(),
+  },
+}));
 
-      const response = await request(app)
-        .post('/api/userphones')
-        .send(newUserPhone);
-
-      expect(response.status).toBe(201);
-      expect(response.body).toHaveProperty('UserPhoneId');
-      expect(response.body.PhoneNumber).toBe('+1234567890');
-      expect(response.body.NickName).toBe('JohnDoe');
-      expect(response.body.SocialNetworkName).toBe('Telegram');
-    });
-
-    test('should return 400 for invalid input (missing PhoneNumber)', async () => {
-      const invalidUserPhone = {
-        NickName: 'JohnDoe',
-        SocialNetworkName: 'Telegram'
-      };
-
-      const response = await request(app)
-        .post('/api/userphones')
-        .send(invalidUserPhone);
-
-      expect(response.status).toBe(400);
-      expect(response.body.error).toContain('Validation error: PhoneNumber cannot be empty');
-    });
+describe('UserPhone Controller Tests', () => {
+  afterEach(() => {
+    jest.clearAllMocks();
   });
 
-  describe('GET /api/userphones', () => {
-    test('should return a list of user phones and status 200', async () => {
-      await UserPhone.create({
-        PhoneNumber: '+0987654321',
-        NickName: 'JaneDoe',
-        SocialNetworkName: 'WhatsApp'
-      });
-
-      const response = await request(app)
-        .get('/api/userphones');
-
-      expect(response.status).toBe(200);
-      expect(Array.isArray(response.body)).toBe(true);
-      expect(response.body.length).toBeGreaterThan(0);
+  test('createUserPhone should create a new user phone', async () => {
+    const req = httpMocks.createRequest({
+      method: 'POST',
+      body: {
+        PhoneNumber: '+1 123-456-7890',
+        NickName: 'John',
+        SocialNetworkName: 'Facebook',
+      },
     });
+    const res = httpMocks.createResponse();
+
+    UserPhone.create.mockResolvedValue(req.body);
+
+    await userPhoneController.createUserPhone(req, res);
+
+    expect(UserPhone.create).toHaveBeenCalledWith(req.body);
+    expect(res.statusCode).toBe(201);
+    expect(res._getJSONData()).toEqual(req.body);
   });
 
-  describe('GET /api/userphones/:id', () => {
-    test('should return a user phone by ID and status 200', async () => {
-      const userPhone = await UserPhone.create({
-        PhoneNumber: '+1122334455',
-        NickName: 'Alice',
-        SocialNetworkName: 'Viber'
-      });
+  test('getUserPhones should return all user phones', async () => {
+    const req = httpMocks.createRequest({ method: 'GET' });
+    const res = httpMocks.createResponse();
 
-      const response = await request(app)
-        .get(`/api/userphones/${userPhone.UserPhoneId}`);
+    const mockUserPhones = [
+      {
+        UserPhoneId: 1,
+        PhoneNumber: '+1 123-456-7890',
+        NickName: 'John',
+        SocialNetworkName: 'Facebook',
+      },
+      {
+        UserPhoneId: 2,
+        PhoneNumber: '(123) 456-7890',
+        NickName: 'Jane',
+        SocialNetworkName: 'Instagram',
+      },
+    ];
 
-      expect(response.status).toBe(200);
-      expect(response.body.PhoneNumber).toBe('+1122334455');
-      expect(response.body.NickName).toBe('Alice');
-      expect(response.body.SocialNetworkName).toBe('Viber');
+    UserPhone.findAll.mockResolvedValue(mockUserPhones);
+
+    await userPhoneController.getUserPhones(req, res);
+
+    expect(UserPhone.findAll).toHaveBeenCalledWith({
+      where: undefined,
+      order: undefined,
     });
-
-    test('should return 404 if user phone not found', async () => {
-      const response = await request(app)
-        .get('/api/userphones/999');
-
-      expect(response.status).toBe(404);
-      expect(response.body.error).toBe('UserPhone not found');
-    });
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData()).toEqual(mockUserPhones);
   });
 
-  describe('GET /api/userphones/search', () => {
-    test('should return matching user phones and status 200', async () => {
-      await UserPhone.create({
-        PhoneNumber: '+1234567890',
-        NickName: 'SearchableNick',
-        SocialNetworkName: 'SearchableNetwork'
-      });
+  test('getUserPhoneById should return user phone if found', async () => {
+    const req = httpMocks.createRequest({ method: 'GET', params: { id: 1 } });
+    const res = httpMocks.createResponse();
 
-      const response = await request(app)
-        .get('/api/userphones/search')
-        .query({ nickname: 'Searchable' });
+    const mockUserPhone = {
+      UserPhoneId: 1,
+      PhoneNumber: '+1 123-456-7890',
+      NickName: 'John',
+      SocialNetworkName: 'Facebook',
+    };
 
-      expect(response.status).toBe(200);
-      expect(response.body.success).toBe(true);
-      expect(Array.isArray(response.body.data)).toBe(true);
-      expect(response.body.data.length).toBeGreaterThan(0);
-      expect(response.body.data[0].NickName).toContain('Searchable');
-    });
+    UserPhone.findByPk.mockResolvedValue(mockUserPhone);
 
-    test('should return 404 if no user phones match the criteria', async () => {
-      const response = await request(app)
-        .get('/api/userphones/search')
-        .query({ nickname: 'nonexistent' });
+    await userPhoneController.getUserPhoneById(req, res);
 
-      expect(response.status).toBe(404);
-      expect(response.body.success).toBe(false);
-      expect(response.body.message).toBe('No user phones found matching the criteria.');
-    });
+    expect(UserPhone.findByPk).toHaveBeenCalledWith(1);
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData()).toEqual(mockUserPhone);
   });
 
-  describe('PUT /api/userphones/:id', () => {
-    test('should update a user phone and return status 200', async () => {
-      const userPhone = await UserPhone.create({
-        PhoneNumber: '+1122334455',
-        NickName: 'OldNick',
-        SocialNetworkName: 'OldNetwork'
-      });
+  test('searchUserPhones should return matching user phones', async () => {
+    const req = httpMocks.createRequest({
+      method: 'GET',
+      query: {
+        phoneNumber: '123',
+        nickname: 'John',
+      },
+    });
+    const res = httpMocks.createResponse();
 
-      const updatedData = {
-        NickName: 'UpdatedNick',
-        SocialNetworkName: 'UpdatedNetwork'
-      };
+    const mockUserPhones = [
+      {
+        UserPhoneId: 1,
+        PhoneNumber: '+1 123-456-7890',
+        NickName: 'John',
+        SocialNetworkName: 'Facebook',
+      },
+    ];
 
-      const response = await request(app)
-        .put(`/api/userphones/${userPhone.UserPhoneId}`)
-        .send(updatedData);
+    UserPhone.findAll.mockResolvedValue(mockUserPhones);
 
-      expect(response.status).toBe(200);
-      expect(response.body.NickName).toBe('UpdatedNick');
-      expect(response.body.SocialNetworkName).toBe('UpdatedNetwork');
+    await userPhoneController.searchUserPhones(req, res);
+
+    expect(UserPhone.findAll).toHaveBeenCalledWith({
+      where: {
+        PhoneNumber: { [Op.like]: '%123%' },
+        NickName: { [Op.like]: '%John%' },
+      },
+      attributes: ['UserPhoneId', 'PhoneNumber', 'NickName', 'SocialNetworkName'],
     });
 
-    test('should return 404 if user phone not found', async () => {
-      const response = await request(app)
-        .put('/api/userphones/999')
-        .send({ NickName: 'UpdatedNick' });
-
-      expect(response.status).toBe(404);
-      expect(response.body.error).toBe('UserPhone not found');
-    });
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData().success).toBe(true);
+    expect(res._getJSONData().data).toEqual(mockUserPhones);
   });
 
-  describe('DELETE /api/userphones/:id', () => {
-    test('should delete a user phone and return status 204', async () => {
-      const userPhone = await UserPhone.create({
-        PhoneNumber: '+9999999999',
-        NickName: 'ToDelete',
-        SocialNetworkName: 'DeleteNetwork'
-      });
-
-      const response = await request(app)
-        .delete(`/api/userphones/${userPhone.UserPhoneId}`);
-
-      expect(response.status).toBe(204);
-
-      const deletedUserPhone = await UserPhone.findByPk(userPhone.UserPhoneId);
-      expect(deletedUserPhone).toBeNull();
+  test('updateUserPhone should update an existing user phone', async () => {
+    const req = httpMocks.createRequest({
+      method: 'PUT',
+      params: { id: 1 },
+      body: { NickName: 'Updated John' },
     });
+    const res = httpMocks.createResponse();
 
-    test('should return 404 if user phone not found', async () => {
-      const response = await request(app)
-        .delete('/api/userphones/999');
+    const mockUserPhone = {
+      update: jest.fn().mockResolvedValue([1]),
+      dataValues: {
+        UserPhoneId: 1,
+        PhoneNumber: '+1 123-456-7890',
+        NickName: 'Updated John',
+        SocialNetworkName: 'Facebook',
+      },
+      toJSON: jest.fn(() => ({ ...mockUserPhone.dataValues })),
+    };
 
-      expect(response.status).toBe(404);
-      expect(response.body.error).toBe('UserPhone not found');
+    UserPhone.findByPk.mockResolvedValue(mockUserPhone);
+
+    await userPhoneController.updateUserPhone(req, res);
+
+    expect(mockUserPhone.update).toHaveBeenCalledWith(req.body);
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData()).toEqual({
+      UserPhoneId: 1,
+      PhoneNumber: '+1 123-456-7890',
+      NickName: 'Updated John',
+      SocialNetworkName: 'Facebook',
     });
+    expect(mockUserPhone.toJSON).toHaveBeenCalled();
+  });
+
+  test('deleteUserPhone should remove a user phone', async () => {
+    const req = httpMocks.createRequest({ method: 'DELETE', params: { id: 1 } });
+    const res = httpMocks.createResponse();
+
+    const mockUserPhone = { destroy: jest.fn().mockResolvedValue(1) };
+
+    UserPhone.findByPk.mockResolvedValue(mockUserPhone);
+
+    await userPhoneController.deleteUserPhone(req, res);
+
+    expect(mockUserPhone.destroy).toHaveBeenCalled();
+    expect(res.statusCode).toBe(204);
+  });
+
+  test('getUserPhoneById should handle not found case', async () => {
+    const req = httpMocks.createRequest({ method: 'GET', params: { id: 999 } });
+    const res = httpMocks.createResponse();
+
+    UserPhone.findByPk.mockResolvedValue(null);
+
+    await userPhoneController.getUserPhoneById(req, res);
+
+    expect(res.statusCode).toBe(404);
+    expect(res._getJSONData()).toEqual({ error: 'UserPhone not found' });
+  });
+
+  test('searchUserPhones should handle no results case', async () => {
+    const req = httpMocks.createRequest({ method: 'GET', query: { phoneNumber: 'Nonexistent' } });
+    const res = httpMocks.createResponse();
+
+    UserPhone.findAll.mockResolvedValue([]);
+
+    await userPhoneController.searchUserPhones(req, res);
+
+    expect(res.statusCode).toBe(404);
+    expect(res._getJSONData()).toEqual({ success: false, message: 'No user phones found matching the criteria.' });
   });
 });

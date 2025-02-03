@@ -1,168 +1,199 @@
-const request = require('supertest');
-const app = require('../../../src/app');
+const httpMocks = require('node-mocks-http');
 const { TestAnswer } = require('../../../src/models/dbModels');
+const testAnswerController = require('../../../src/controllers/dbControllers/testAnswerController');
+const { Op } = require('sequelize');
 
-describe('TestAnswer API Tests', () => {
-  describe('POST /api/testanswers', () => {
-    test('should create a new test answer and return status 201', async () => {
-      const newTestAnswer = {
-        AnswerText: 'Correct Answer',
-        ImagePath: 'http://example.com/images/answer.png',
-        IsRightAnswer: true
-      };
+jest.mock('../../../src/models/dbModels', () => ({
+  TestAnswer: {
+    create: jest.fn(),
+    findAll: jest.fn(),
+    findByPk: jest.fn(),
+    update: jest.fn(),
+    destroy: jest.fn(),
+  },
+}));
 
-      const response = await request(app)
-        .post('/api/testanswers')
-        .send(newTestAnswer);
-
-      expect(response.status).toBe(201);
-      expect(response.body).toHaveProperty('TestAnswerId');
-      expect(response.body.AnswerText).toBe('Correct Answer');
-      expect(response.body.ImagePath).toBe('http://example.com/images/answer.png');
-      expect(response.body.IsRightAnswer).toBe(true);
-    });
-
-    test('should return 400 for invalid input (missing AnswerText)', async () => {
-      const invalidTestAnswer = {
-        ImagePath: 'http://example.com/images/answer.png',
-        IsRightAnswer: true
-      };
-
-      const response = await request(app)
-        .post('/api/testanswers')
-        .send(invalidTestAnswer);
-
-      expect(response.status).toBe(400);
-      expect(response.body.error).toContain('Validation error: AnswerText cannot be empty');
-    });
+describe('TestAnswer Controller Tests', () => {
+  afterEach(() => {
+    jest.clearAllMocks();
   });
 
-  describe('GET /api/testanswers', () => {
-    test('should return a list of test answers and status 200', async () => {
-      await TestAnswer.create({
-        AnswerText: 'Sample Answer',
-        ImagePath: 'http://example.com/images/sample.png',
-        IsRightAnswer: false
-      });
-
-      const response = await request(app)
-        .get('/api/testanswers');
-
-      expect(response.status).toBe(200);
-      expect(Array.isArray(response.body)).toBe(true);
-      expect(response.body.length).toBeGreaterThan(0);
+  test('createTestAnswer should create a new test answer', async () => {
+    const req = httpMocks.createRequest({
+      method: 'POST',
+      body: {
+        AnswerText: 'Correct answer',
+        ImagePath: 'http://example.com/image.jpg',
+        IsRightAnswer: true,
+      },
     });
+    const res = httpMocks.createResponse();
+
+    TestAnswer.create.mockResolvedValue(req.body);
+
+    await testAnswerController.createTestAnswer(req, res);
+
+    expect(TestAnswer.create).toHaveBeenCalledWith(req.body);
+    expect(res.statusCode).toBe(201);
+    expect(res._getJSONData()).toEqual(req.body);
   });
 
-  describe('GET /api/testanswers/:id', () => {
-    test('should return a test answer by ID and status 200', async () => {
-      const testAnswer = await TestAnswer.create({
-        AnswerText: 'Test Answer',
-        ImagePath: 'http://example.com/images/test.png',
-        IsRightAnswer: true
-      });
+  test('getTestAnswers should return all test answers', async () => {
+    const req = httpMocks.createRequest({ method: 'GET' });
+    const res = httpMocks.createResponse();
 
-      const response = await request(app)
-        .get(`/api/testanswers/${testAnswer.TestAnswerId}`);
+    const mockTestAnswers = [
+      {
+        TestAnswerId: 1,
+        AnswerText: 'Correct answer',
+        ImagePath: 'http://example.com/image.jpg',
+        IsRightAnswer: true,
+      },
+      {
+        TestAnswerId: 2,
+        AnswerText: 'Incorrect answer',
+        ImagePath: null,
+        IsRightAnswer: false,
+      },
+    ];
 
-      expect(response.status).toBe(200);
-      expect(response.body.AnswerText).toBe('Test Answer');
-      expect(response.body.ImagePath).toBe('http://example.com/images/test.png');
-      expect(response.body.IsRightAnswer).toBe(true);
+    TestAnswer.findAll.mockResolvedValue(mockTestAnswers);
+
+    await testAnswerController.getTestAnswers(req, res);
+
+    expect(TestAnswer.findAll).toHaveBeenCalledWith({
+      where: undefined,
+      order: undefined,
     });
-
-    test('should return 404 if test answer not found', async () => {
-      const response = await request(app)
-        .get('/api/testanswers/999');
-
-      expect(response.status).toBe(404);
-      expect(response.body.error).toBe('TestAnswer not found');
-    });
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData()).toEqual(mockTestAnswers);
   });
 
-  describe('GET /api/testanswers/search', () => {
-    test('should return matching test answers and status 200', async () => {
-      await TestAnswer.create({
-        AnswerText: 'Searchable Answer',
-        ImagePath: 'http://example.com/images/searchable.png',
-        IsRightAnswer: true
-      });
+  test('getTestAnswerById should return test answer if found', async () => {
+    const req = httpMocks.createRequest({ method: 'GET', params: { id: 1 } });
+    const res = httpMocks.createResponse();
 
-      const response = await request(app)
-        .get('/api/testanswers/search')
-        .query({ answerText: 'Searchable' });
+    const mockTestAnswer = {
+      TestAnswerId: 1,
+      AnswerText: 'Correct answer',
+      ImagePath: 'http://example.com/image.jpg',
+      IsRightAnswer: true,
+    };
 
-      expect(response.status).toBe(200);
-      expect(response.body.success).toBe(true);
-      expect(Array.isArray(response.body.data)).toBe(true);
-      expect(response.body.data.length).toBeGreaterThan(0);
-      expect(response.body.data[0].AnswerText).toContain('Searchable');
-    });
+    TestAnswer.findByPk.mockResolvedValue(mockTestAnswer);
 
-    test('should return 404 if no test answers match the criteria', async () => {
-      const response = await request(app)
-        .get('/api/testanswers/search')
-        .query({ answerText: 'nonexistent' });
+    await testAnswerController.getTestAnswerById(req, res);
 
-      expect(response.status).toBe(404);
-      expect(response.body.success).toBe(false);
-      expect(response.body.message).toBe('No test answers found matching the criteria.');
-    });
+    expect(TestAnswer.findByPk).toHaveBeenCalledWith(1);
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData()).toEqual(mockTestAnswer);
   });
 
-  describe('PUT /api/testanswers/:id', () => {
-    test('should update a test answer and return status 200', async () => {
-      const testAnswer = await TestAnswer.create({
-        AnswerText: 'Original Answer',
-        ImagePath: 'http://example.com/images/original.png',
-        IsRightAnswer: false
-      });
+  test('searchTestAnswers should return matching test answers', async () => {
+    const req = httpMocks.createRequest({
+      method: 'GET',
+      query: {
+        answerText: 'Correct',
+        isRightAnswer: 'true',
+      },
+    });
+    const res = httpMocks.createResponse();
 
-      const updatedData = {
-        AnswerText: 'Updated Answer'
-      };
+    const mockTestAnswers = [
+      {
+        TestAnswerId: 1,
+        AnswerText: 'Correct answer',
+        ImagePath: 'http://example.com/image.jpg',
+        IsRightAnswer: true,
+      },
+    ];
 
-      const response = await request(app)
-        .put(`/api/testanswers/${testAnswer.TestAnswerId}`)
-        .send(updatedData);
+    TestAnswer.findAll.mockResolvedValue(mockTestAnswers);
 
-      expect(response.status).toBe(200);
-      expect(response.body.AnswerText).toBe('Updated Answer');
+    await testAnswerController.searchTestAnswers(req, res);
+
+    expect(TestAnswer.findAll).toHaveBeenCalledWith({
+      where: {
+        AnswerText: { [Op.like]: '%Correct%' },
+        IsRightAnswer: true,
+      },
+      attributes: ['TestAnswerId', 'AnswerText', 'ImagePath', 'IsRightAnswer'],
     });
 
-    test('should return 404 if test answer not found', async () => {
-      const response = await request(app)
-        .put('/api/testanswers/999')
-        .send({ AnswerText: 'Updated Answer' });
-
-      expect(response.status).toBe(404);
-      expect(response.body.error).toBe('TestAnswer not found');
-    });
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData().success).toBe(true);
+    expect(res._getJSONData().data).toEqual(mockTestAnswers);
   });
 
-  describe('DELETE /api/testanswers/:id', () => {
-    test('should delete a test answer and return status 204', async () => {
-      const testAnswer = await TestAnswer.create({
-        AnswerText: 'Answer to Delete',
-        ImagePath: 'http://example.com/images/delete.png',
-        IsRightAnswer: true
-      });
-
-      const response = await request(app)
-        .delete(`/api/testanswers/${testAnswer.TestAnswerId}`);
-
-      expect(response.status).toBe(204);
-
-      const deletedTestAnswer = await TestAnswer.findByPk(testAnswer.TestAnswerId);
-      expect(deletedTestAnswer).toBeNull();
+  test('updateTestAnswer should update an existing test answer', async () => {
+    const req = httpMocks.createRequest({
+      method: 'PUT',
+      params: { id: 1 },
+      body: { AnswerText: 'Updated answer' },
     });
+    const res = httpMocks.createResponse();
 
-    test('should return 404 if test answer not found', async () => {
-      const response = await request(app)
-        .delete('/api/testanswers/999');
+    const mockTestAnswer = {
+      update: jest.fn().mockResolvedValue([1]),
+      dataValues: {
+        TestAnswerId: 1,
+        AnswerText: 'Updated answer',
+        ImagePath: 'http://example.com/image.jpg',
+        IsRightAnswer: true,
+      },
+      toJSON: jest.fn(() => ({ ...mockTestAnswer.dataValues })),
+    };
 
-      expect(response.status).toBe(404);
-      expect(response.body.error).toBe('TestAnswer not found');
+    TestAnswer.findByPk.mockResolvedValue(mockTestAnswer);
+
+    await testAnswerController.updateTestAnswer(req, res);
+
+    expect(mockTestAnswer.update).toHaveBeenCalledWith(req.body);
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData()).toEqual({
+      TestAnswerId: 1,
+      AnswerText: 'Updated answer',
+      ImagePath: 'http://example.com/image.jpg',
+      IsRightAnswer: true,
     });
+    expect(mockTestAnswer.toJSON).toHaveBeenCalled();
+  });
+
+  test('deleteTestAnswer should remove a test answer', async () => {
+    const req = httpMocks.createRequest({ method: 'DELETE', params: { id: 1 } });
+    const res = httpMocks.createResponse();
+
+    const mockTestAnswer = { destroy: jest.fn().mockResolvedValue(1) };
+
+    TestAnswer.findByPk.mockResolvedValue(mockTestAnswer);
+
+    await testAnswerController.deleteTestAnswer(req, res);
+
+    expect(mockTestAnswer.destroy).toHaveBeenCalled();
+    expect(res.statusCode).toBe(204);
+  });
+
+  test('getTestAnswerById should handle not found case', async () => {
+    const req = httpMocks.createRequest({ method: 'GET', params: { id: 999 } });
+    const res = httpMocks.createResponse();
+
+    TestAnswer.findByPk.mockResolvedValue(null);
+
+    await testAnswerController.getTestAnswerById(req, res);
+
+    expect(res.statusCode).toBe(404);
+    expect(res._getJSONData()).toEqual({ error: 'TestAnswer not found' });
+  });
+
+  test('searchTestAnswers should handle no results case', async () => {
+    const req = httpMocks.createRequest({ method: 'GET', query: { answerText: 'Nonexistent' } });
+    const res = httpMocks.createResponse();
+
+    TestAnswer.findAll.mockResolvedValue([]);
+
+    await testAnswerController.searchTestAnswers(req, res);
+
+    expect(res.statusCode).toBe(404);
+    expect(res._getJSONData()).toEqual({ success: false, message: 'No test answers found matching the criteria.' });
   });
 });

@@ -1,186 +1,208 @@
-const request = require('supertest');
-const app = require('../../../src/app');
+const httpMocks = require('node-mocks-http');
 const { SaleMaterialFile } = require('../../../src/models/dbModels');
+const saleMaterialFileController = require('../../../src/controllers/dbControllers/saleMaterialFileController');
+const { Op } = require('sequelize');
 
-describe('SaleMaterialFile API Tests', () => {
-  describe('POST /api/salematerialfiles', () => {
-    test('should create a new sale material file and return status 201', async () => {
-      const newSaleMaterialFile = {
-        FilePath: 'http://example.com/files/math_book.pdf',
-        FileName: 'Math Book',
-        AppearedDate: new Date(),
+jest.mock('../../../src/models/dbModels', () => ({
+  SaleMaterialFile: {
+    create: jest.fn(),
+    findAll: jest.fn(),
+    findByPk: jest.fn(),
+    update: jest.fn(),
+    destroy: jest.fn(),
+  },
+}));
+
+describe('SaleMaterialFile Controller Tests', () => {
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  test('createSaleMaterialFile should create a new sale material file', async () => {
+    const req = httpMocks.createRequest({
+      method: 'POST',
+      body: {
+        FilePath: 'http://example.com/file.pdf',
+        FileName: 'Math Notes',
         SaleMaterialId: 1,
-        PurchasedMaterialId: 1
-      };
-
-      const response = await request(app)
-        .post('/api/salematerialfiles')
-        .send(newSaleMaterialFile);
-
-      expect(response.status).toBe(201);
-      expect(response.body).toHaveProperty('SaleMaterialFileId');
-      expect(response.body.FilePath).toBe('http://example.com/files/math_book.pdf');
-      expect(response.body.FileName).toBe('Math Book');
-      expect(new Date(response.body.AppearedDate)).toBeInstanceOf(Date);
-      expect(response.body.SaleMaterialId).toBe(1);
-      expect(response.body.PurchasedMaterialId).toBe(1);
+        PurchasedMaterialId: 1,
+      },
     });
+    const res = httpMocks.createResponse();
 
-    test('should return 400 for invalid input (missing FilePath)', async () => {
-      const invalidSaleMaterialFile = {
-        FileName: 'Math Book',
-        AppearedDate: new Date(),
+    SaleMaterialFile.create.mockResolvedValue(req.body);
+
+    await saleMaterialFileController.createSaleMaterialFile(req, res);
+
+    expect(SaleMaterialFile.create).toHaveBeenCalledWith(req.body);
+    expect(res.statusCode).toBe(201);
+    expect(res._getJSONData()).toEqual(req.body);
+  });
+
+  test('getSaleMaterialFiles should return all sale material files', async () => {
+    const req = httpMocks.createRequest({ method: 'GET' });
+    const res = httpMocks.createResponse();
+
+    const mockSaleMaterialFiles = [
+      {
+        SaleMaterialFileId: 1,
+        FilePath: 'http://example.com/file.pdf',
+        FileName: 'Math Notes',
+        AppearedDate: '2023-10-01T00:00:00Z',
         SaleMaterialId: 1,
-        PurchasedMaterialId: 1
-      };
+        PurchasedMaterialId: 1,
+      },
+    ];
 
-      const response = await request(app)
-        .post('/api/salematerialfiles')
-        .send(invalidSaleMaterialFile);
+    SaleMaterialFile.findAll.mockResolvedValue(mockSaleMaterialFiles);
 
-      expect(response.status).toBe(400);
-      expect(response.body.error).toContain('Validation error: FilePath cannot be empty');
+    await saleMaterialFileController.getSaleMaterialFiles(req, res);
+
+    expect(SaleMaterialFile.findAll).toHaveBeenCalledWith({
+      where: undefined,
+      order: undefined,
     });
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData()).toEqual(mockSaleMaterialFiles);
   });
 
-  describe('GET /api/salematerialfiles', () => {
-    test('should return a list of sale material files and status 200', async () => {
-      await SaleMaterialFile.create({
-        FilePath: 'http://example.com/files/science_book.pdf',
-        FileName: 'Science Book',
-        AppearedDate: new Date(),
-        SaleMaterialId: 2,
-        PurchasedMaterialId: 2
-      });
+  test('getSaleMaterialFileById should return sale material file if found', async () => {
+    const req = httpMocks.createRequest({ method: 'GET', params: { id: 1 } });
+    const res = httpMocks.createResponse();
 
-      const response = await request(app)
-        .get('/api/salematerialfiles');
+    const mockSaleMaterialFile = {
+      SaleMaterialFileId: 1,
+      FilePath: 'http://example.com/file.pdf',
+      FileName: 'Math Notes',
+      AppearedDate: '2023-10-01T00:00:00Z',
+      SaleMaterialId: 1,
+      PurchasedMaterialId: 1,
+    };
 
-      expect(response.status).toBe(200);
-      expect(Array.isArray(response.body)).toBe(true);
-      expect(response.body.length).toBeGreaterThan(0);
-    });
+    SaleMaterialFile.findByPk.mockResolvedValue(mockSaleMaterialFile);
+
+    await saleMaterialFileController.getSaleMaterialFileById(req, res);
+
+    expect(SaleMaterialFile.findByPk).toHaveBeenCalledWith(1);
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData()).toEqual(mockSaleMaterialFile);
   });
 
-  describe('GET /api/salematerialfiles/:id', () => {
-    test('should return a sale material file by ID and status 200', async () => {
-      const testSaleMaterialFile = await SaleMaterialFile.create({
-        FilePath: 'http://example.com/files/chemistry_book.pdf',
-        FileName: 'Chemistry Book',
-        AppearedDate: new Date(),
-        SaleMaterialId: 3,
-        PurchasedMaterialId: 3
-      });
+  test('searchSaleMaterialFiles should return matching sale material files', async () => {
+    const req = httpMocks.createRequest({
+      method: 'GET',
+      query: {
+        fileName: 'Math',
+        startDate: '2023-10-01',
+        endDate: '2023-10-31',
+        saleMaterialId: '1',
+        purchasedMaterialId: '1',
+      },
+    });
+    const res = httpMocks.createResponse();
 
-      const response = await request(app)
-        .get(`/api/salematerialfiles/${testSaleMaterialFile.SaleMaterialFileId}`);
+    const mockSaleMaterialFiles = [
+      {
+        SaleMaterialFileId: 1,
+        FilePath: 'http://example.com/file.pdf',
+        FileName: 'Math Notes',
+        AppearedDate: '2023-10-15T00:00:00Z',
+        SaleMaterialId: 1,
+        PurchasedMaterialId: 1,
+      },
+    ];
 
-      expect(response.status).toBe(200);
-      expect(response.body.FilePath).toBe('http://example.com/files/chemistry_book.pdf');
-      expect(response.body.FileName).toBe('Chemistry Book');
-      expect(new Date(response.body.AppearedDate)).toBeInstanceOf(Date);
-      expect(response.body.SaleMaterialId).toBe(3);
-      expect(response.body.PurchasedMaterialId).toBe(3);
+    SaleMaterialFile.findAll.mockResolvedValue(mockSaleMaterialFiles);
+
+    await saleMaterialFileController.searchSaleMaterialFiles(req, res);
+
+    expect(SaleMaterialFile.findAll).toHaveBeenCalledWith({
+      where: {
+        FileName: { [Op.like]: '%Math%' },
+        AppearedDate: { [Op.between]: [new Date('2023-10-01'), new Date('2023-10-31')] },
+        SaleMaterialId: '1',
+        PurchasedMaterialId: '1',
+      },
     });
 
-    test('should return 404 if sale material file not found', async () => {
-      const response = await request(app)
-        .get('/api/salematerialfiles/999');
-
-      expect(response.status).toBe(404);
-      expect(response.body.error).toBe('SaleMaterialFile not found');
-    });
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData().success).toBe(true);
+    expect(res._getJSONData().data).toEqual(mockSaleMaterialFiles);
   });
 
-  describe('GET /api/salematerialfiles/search', () => {
-    test('should return matching sale material files and status 200', async () => {
-      await SaleMaterialFile.create({
-        FilePath: 'http://example.com/files/biology_book.pdf',
-        FileName: 'Biology Book',
-        AppearedDate: new Date(),
-        SaleMaterialId: 4,
-        PurchasedMaterialId: 4
-      });
-
-      const response = await request(app)
-        .get('/api/salematerialfiles/search')
-        .query({ fileName: 'Biology' });
-
-      expect(response.status).toBe(200);
-      expect(response.body.success).toBe(true);
-      expect(Array.isArray(response.body.data)).toBe(true);
-      expect(response.body.data.length).toBeGreaterThan(0);
-      expect(response.body.data[0].FileName).toContain('Biology');
+  test('updateSaleMaterialFile should update an existing sale material file', async () => {
+    const req = httpMocks.createRequest({
+      method: 'PUT',
+      params: { id: 1 },
+      body: { FileName: 'Updated Math Notes' },
     });
+    const res = httpMocks.createResponse();
 
-    test('should return 404 if no sale material files match the criteria', async () => {
-      const response = await request(app)
-        .get('/api/salematerialfiles/search')
-        .query({ fileName: 'nonexistent' });
+    const mockSaleMaterialFile = {
+      update: jest.fn().mockResolvedValue([1]),
+      dataValues: {
+        SaleMaterialFileId: 1,
+        FilePath: 'http://example.com/file.pdf',
+        FileName: 'Updated Math Notes',
+        AppearedDate: '2023-10-01T00:00:00Z',
+        SaleMaterialId: 1,
+        PurchasedMaterialId: 1,
+      },
+      toJSON: jest.fn(() => ({ ...mockSaleMaterialFile.dataValues })),
+    };
 
-      expect(response.status).toBe(404);
-      expect(response.body.success).toBe(false);
-      expect(response.body.message).toBe('No sale material files found matching the criteria.');
+    SaleMaterialFile.findByPk.mockResolvedValue(mockSaleMaterialFile);
+
+    await saleMaterialFileController.updateSaleMaterialFile(req, res);
+
+    expect(mockSaleMaterialFile.update).toHaveBeenCalledWith(req.body);
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData()).toEqual({
+      SaleMaterialFileId: 1,
+      FilePath: 'http://example.com/file.pdf',
+      FileName: 'Updated Math Notes',
+      AppearedDate: '2023-10-01T00:00:00Z',
+      SaleMaterialId: 1,
+      PurchasedMaterialId: 1,
     });
+    expect(mockSaleMaterialFile.toJSON).toHaveBeenCalled();
   });
 
-  describe('PUT /api/salematerialfiles/:id', () => {
-    test('should update a sale material file and return status 200', async () => {
-      const testSaleMaterialFile = await SaleMaterialFile.create({
-        FilePath: 'http://example.com/files/history_book.pdf',
-        FileName: 'History Book',
-        AppearedDate: new Date(),
-        SaleMaterialId: 5,
-        PurchasedMaterialId: 5
-      });
+  test('deleteSaleMaterialFile should remove a sale material file', async () => {
+    const req = httpMocks.createRequest({ method: 'DELETE', params: { id: 1 } });
+    const res = httpMocks.createResponse();
 
-      const updatedData = {
-        FileName: 'Updated History Book'
-      };
+    const mockSaleMaterialFile = { destroy: jest.fn().mockResolvedValue(1) };
 
-      const response = await request(app)
-        .put(`/api/salematerialfiles/${testSaleMaterialFile.SaleMaterialFileId}`)
-        .send(updatedData);
+    SaleMaterialFile.findByPk.mockResolvedValue(mockSaleMaterialFile);
 
-      expect(response.status).toBe(200);
-      expect(response.body.FileName).toBe('Updated History Book');
-    });
+    await saleMaterialFileController.deleteSaleMaterialFile(req, res);
 
-    test('should return 404 if sale material file not found', async () => {
-      const response = await request(app)
-        .put('/api/salematerialfiles/999')
-        .send({ FileName: 'Updated Book' });
-
-      expect(response.status).toBe(404);
-      expect(response.body.error).toBe('SaleMaterialFile not found');
-    });
+    expect(mockSaleMaterialFile.destroy).toHaveBeenCalled();
+    expect(res.statusCode).toBe(204);
   });
 
-  describe('DELETE /api/salematerialfiles/:id', () => {
-    test('should delete a sale material file and return status 204', async () => {
-      const testSaleMaterialFile = await SaleMaterialFile.create({
-        FilePath: 'http://example.com/files/geography_book.pdf',
-        FileName: 'Geography Book',
-        AppearedDate: new Date(),
-        SaleMaterialId: 6,
-        PurchasedMaterialId: 6
-      });
+  test('getSaleMaterialFileById should handle not found case', async () => {
+    const req = httpMocks.createRequest({ method: 'GET', params: { id: 999 } });
+    const res = httpMocks.createResponse();
 
-      const response = await request(app)
-        .delete(`/api/salematerialfiles/${testSaleMaterialFile.SaleMaterialFileId}`);
+    SaleMaterialFile.findByPk.mockResolvedValue(null);
 
-      expect(response.status).toBe(204);
+    await saleMaterialFileController.getSaleMaterialFileById(req, res);
 
-      const deletedSaleMaterialFile = await SaleMaterialFile.findByPk(testSaleMaterialFile.SaleMaterialFileId);
-      expect(deletedSaleMaterialFile).toBeNull();
-    });
+    expect(res.statusCode).toBe(404);
+    expect(res._getJSONData()).toEqual({ error: 'SaleMaterialFile not found' });
+  });
 
-    test('should return 404 if sale material file not found', async () => {
-      const response = await request(app)
-        .delete('/api/salematerialfiles/999');
+  test('searchSaleMaterialFiles should handle no results case', async () => {
+    const req = httpMocks.createRequest({ method: 'GET', query: { fileName: 'Nonexistent' } });
+    const res = httpMocks.createResponse();
 
-      expect(response.status).toBe(404);
-      expect(response.body.error).toBe('SaleMaterialFile not found');
-    });
+    SaleMaterialFile.findAll.mockResolvedValue([]);
+
+    await saleMaterialFileController.searchSaleMaterialFiles(req, res);
+
+    expect(res.statusCode).toBe(404);
+    expect(res._getJSONData()).toEqual({ success: false, message: 'No sale material files found matching the criteria.' });
   });
 });

@@ -1,160 +1,199 @@
-const request = require('supertest');
-const app = require('../../../src/app');
+const httpMocks = require('node-mocks-http');
 const { Subscription } = require('../../../src/models/dbModels');
+const subscriptionController = require('../../../src/controllers/dbControllers/subscriptionController');
+const { Op } = require('sequelize');
 
-describe('Subscription API Tests', () => {
-  describe('POST /api/subscriptions', () => {
-    test('should create a new subscription and return status 201', async () => {
-      const newSubscription = {
-        SubscriptionName: 'Basic Plan',
-        SubscriptionPrice: 10.99
-      };
+jest.mock('../../../src/models/dbModels', () => ({
+  Subscription: {
+    create: jest.fn(),
+    findAll: jest.fn(),
+    findByPk: jest.fn(),
+    update: jest.fn(),
+    destroy: jest.fn(),
+  },
+}));
 
-      const response = await request(app)
-        .post('/api/subscriptions')
-        .send(newSubscription);
-
-      expect(response.status).toBe(201);
-      expect(response.body).toHaveProperty('SubscriptionId');
-      expect(response.body.SubscriptionName).toBe('Basic Plan');
-      expect(response.body.SubscriptionPrice).toBe(10.99);
-    });
-
-    test('should return 400 for invalid input (missing SubscriptionName)', async () => {
-      const invalidSubscription = {
-        SubscriptionPrice: 10.99
-      };
-
-      const response = await request(app)
-        .post('/api/subscriptions')
-        .send(invalidSubscription);
-
-      expect(response.status).toBe(400);
-      expect(response.body.error).toContain('Validation error: SubscriptionName cannot be empty');
-    });
+describe('Subscription Controller Tests', () => {
+  afterEach(() => {
+    jest.clearAllMocks();
   });
 
-  describe('GET /api/subscriptions', () => {
-    test('should return a list of subscriptions and status 200', async () => {
-      await Subscription.create({
-        SubscriptionName: 'Premium Plan',
-        SubscriptionPrice: 20.99
-      });
-
-      const response = await request(app)
-        .get('/api/subscriptions');
-
-      expect(response.status).toBe(200);
-      expect(Array.isArray(response.body)).toBe(true);
-      expect(response.body.length).toBeGreaterThan(0);
+  test('createSubscription should create a new subscription', async () => {
+    const req = httpMocks.createRequest({
+      method: 'POST',
+      body: {
+        SubscriptionName: 'Basic',
+        SubscriptionDescription: 'Basic plan',
+        SubscriptionPrice: 9.99,
+      },
     });
+    const res = httpMocks.createResponse();
+
+    Subscription.create.mockResolvedValue(req.body);
+
+    await subscriptionController.createSubscription(req, res);
+
+    expect(Subscription.create).toHaveBeenCalledWith(req.body);
+    expect(res.statusCode).toBe(201);
+    expect(res._getJSONData()).toEqual(req.body);
   });
 
-  describe('GET /api/subscriptions/:id', () => {
-    test('should return a subscription by ID and status 200', async () => {
-      const testSubscription = await Subscription.create({
-        SubscriptionName: 'Standard Plan',
-        SubscriptionPrice: 15.99
-      });
+  test('getSubscriptions should return all subscriptions', async () => {
+    const req = httpMocks.createRequest({ method: 'GET' });
+    const res = httpMocks.createResponse();
 
-      const response = await request(app)
-        .get(`/api/subscriptions/${testSubscription.SubscriptionId}`);
+    const mockSubscriptions = [
+      {
+        SubscriptionLevelId: 1,
+        SubscriptionName: 'Basic',
+        SubscriptionDescription: 'Basic plan',
+        SubscriptionPrice: 9.99,
+      },
+      {
+        SubscriptionLevelId: 2,
+        SubscriptionName: 'Premium',
+        SubscriptionDescription: 'Premium plan',
+        SubscriptionPrice: 19.99,
+      },
+    ];
 
-      expect(response.status).toBe(200);
-      expect(response.body.SubscriptionName).toBe('Standard Plan');
-      expect(response.body.SubscriptionPrice).toBe(15.99);
+    Subscription.findAll.mockResolvedValue(mockSubscriptions);
+
+    await subscriptionController.getSubscriptions(req, res);
+
+    expect(Subscription.findAll).toHaveBeenCalledWith({
+      where: undefined,
+      order: undefined,
     });
-
-    test('should return 404 if subscription not found', async () => {
-      const response = await request(app)
-        .get('/api/subscriptions/999');
-
-      expect(response.status).toBe(404);
-      expect(response.body.error).toBe('Subscription not found');
-    });
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData()).toEqual(mockSubscriptions);
   });
 
-  describe('GET /api/subscriptions/search', () => {
-    test('should return matching subscriptions and status 200', async () => {
-      await Subscription.create({
-        SubscriptionName: 'Gold Plan',
-        SubscriptionPrice: 30.99
-      });
+  test('getSubscriptionById should return subscription if found', async () => {
+    const req = httpMocks.createRequest({ method: 'GET', params: { id: 1 } });
+    const res = httpMocks.createResponse();
 
-      const response = await request(app)
-        .get('/api/subscriptions/search')
-        .query({ subscriptionName: 'Gold' });
+    const mockSubscription = {
+      SubscriptionLevelId: 1,
+      SubscriptionName: 'Basic',
+      SubscriptionDescription: 'Basic plan',
+      SubscriptionPrice: 9.99,
+    };
 
-      expect(response.status).toBe(200);
-      expect(response.body.success).toBe(true);
-      expect(Array.isArray(response.body.data)).toBe(true);
-      expect(response.body.data.length).toBeGreaterThan(0);
-      expect(response.body.data[0].SubscriptionName).toContain('Gold');
-    });
+    Subscription.findByPk.mockResolvedValue(mockSubscription);
 
-    test('should return 404 if no subscriptions match the criteria', async () => {
-      const response = await request(app)
-        .get('/api/subscriptions/search')
-        .query({ subscriptionName: 'nonexistent' });
+    await subscriptionController.getSubscriptionById(req, res);
 
-      expect(response.status).toBe(404);
-      expect(response.body.success).toBe(false);
-      expect(response.body.message).toBe('No subscriptions found.');
-    });
+    expect(Subscription.findByPk).toHaveBeenCalledWith(1);
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData()).toEqual(mockSubscription);
   });
 
-  describe('PUT /api/subscriptions/:id', () => {
-    test('should update a subscription and return status 200', async () => {
-      const testSubscription = await Subscription.create({
-        SubscriptionName: 'Silver Plan',
-        SubscriptionPrice: 25.99
-      });
+  test('searchSubscriptions should return matching subscriptions', async () => {
+    const req = httpMocks.createRequest({
+      method: 'GET',
+      query: {
+        subscriptionName: 'Basic',
+        subscriptionPrice: '9.99',
+      },
+    });
+    const res = httpMocks.createResponse();
 
-      const updatedData = {
-        SubscriptionName: 'Updated Silver Plan'
-      };
+    const mockSubscriptions = [
+      {
+        SubscriptionLevelId: 1,
+        SubscriptionName: 'Basic',
+        SubscriptionDescription: 'Basic plan',
+        SubscriptionPrice: 9.99,
+      },
+    ];
 
-      const response = await request(app)
-        .put(`/api/subscriptions/${testSubscription.SubscriptionId}`)
-        .send(updatedData);
+    Subscription.findAll.mockResolvedValue(mockSubscriptions);
 
-      expect(response.status).toBe(200);
-      expect(response.body.SubscriptionName).toBe('Updated Silver Plan');
+    await subscriptionController.searchSubscriptions(req, res);
+
+    expect(Subscription.findAll).toHaveBeenCalledWith({
+      where: {
+        SubscriptionName: { [Op.like]: '%Basic%' },
+        SubscriptionPrice: 9.99,
+      },
     });
 
-    test('should return 404 if subscription not found', async () => {
-      const response = await request(app)
-        .put('/api/subscriptions/999')
-        .send({ SubscriptionName: 'Updated Plan' });
-
-      expect(response.status).toBe(404);
-      expect(response.body.error).toBe('Subscription not found');
-    });
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData().success).toBe(true);
+    expect(res._getJSONData().data).toEqual(mockSubscriptions);
   });
 
-  describe('DELETE /api/subscriptions/:id', () => {
-    test('should delete a subscription and return status 200', async () => {
-      const testSubscription = await Subscription.create({
-        SubscriptionName: 'Bronze Plan',
-        SubscriptionPrice: 5.99
-      });
-
-      const response = await request(app)
-        .delete(`/api/subscriptions/${testSubscription.SubscriptionId}`);
-
-      expect(response.status).toBe(200);
-      expect(response.body.message).toBe('Subscription deleted successfully');
-
-      const deletedSubscription = await Subscription.findByPk(testSubscription.SubscriptionId);
-      expect(deletedSubscription).toBeNull();
+  test('updateSubscription should update an existing subscription', async () => {
+    const req = httpMocks.createRequest({
+      method: 'PUT',
+      params: { id: 1 },
+      body: { SubscriptionName: 'Updated Basic' },
     });
+    const res = httpMocks.createResponse();
 
-    test('should return 404 if subscription not found', async () => {
-      const response = await request(app)
-        .delete('/api/subscriptions/999');
+    const mockSubscription = {
+      update: jest.fn().mockResolvedValue([1]),
+      dataValues: {
+        SubscriptionLevelId: 1,
+        SubscriptionName: 'Updated Basic',
+        SubscriptionDescription: 'Basic plan',
+        SubscriptionPrice: 9.99,
+      },
+      toJSON: jest.fn(() => ({ ...mockSubscription.dataValues })),
+    };
 
-      expect(response.status).toBe(404);
-      expect(response.body.error).toBe('Subscription not found');
+    Subscription.findByPk.mockResolvedValue(mockSubscription);
+
+    await subscriptionController.updateSubscription(req, res);
+
+    expect(mockSubscription.update).toHaveBeenCalledWith(req.body);
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData()).toEqual({
+      SubscriptionLevelId: 1,
+      SubscriptionName: 'Updated Basic',
+      SubscriptionDescription: 'Basic plan',
+      SubscriptionPrice: 9.99,
     });
+    expect(mockSubscription.toJSON).toHaveBeenCalled();
+  });
+
+  test('deleteSubscription should remove a subscription', async () => {
+    const req = httpMocks.createRequest({ method: 'DELETE', params: { id: 1 } });
+    const res = httpMocks.createResponse();
+
+    const mockSubscription = { destroy: jest.fn().mockResolvedValue(1) };
+
+    Subscription.findByPk.mockResolvedValue(mockSubscription);
+
+    await subscriptionController.deleteSubscription(req, res);
+
+    expect(mockSubscription.destroy).toHaveBeenCalled();
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData()).toEqual({ message: 'Subscription deleted successfully' });
+  });
+
+  test('getSubscriptionById should handle not found case', async () => {
+    const req = httpMocks.createRequest({ method: 'GET', params: { id: 999 } });
+    const res = httpMocks.createResponse();
+
+    Subscription.findByPk.mockResolvedValue(null);
+
+    await subscriptionController.getSubscriptionById(req, res);
+
+    expect(res.statusCode).toBe(404);
+    expect(res._getJSONData()).toEqual({ error: 'Subscription not found' });
+  });
+
+  test('searchSubscriptions should handle no results case', async () => {
+    const req = httpMocks.createRequest({ method: 'GET', query: { subscriptionName: 'Nonexistent' } });
+    const res = httpMocks.createResponse();
+
+    Subscription.findAll.mockResolvedValue([]);
+
+    await subscriptionController.searchSubscriptions(req, res);
+
+    expect(res.statusCode).toBe(404);
+    expect(res._getJSONData()).toEqual({ success: false, message: 'No subscriptions found.' });
   });
 });

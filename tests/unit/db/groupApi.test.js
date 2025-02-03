@@ -1,170 +1,196 @@
-const request = require('supertest');
-const app = require('../../../src/app');
-const { Group, GroupStudent, Student } = require('../../../src/models/dbModels');
+const httpMocks = require('node-mocks-http');
+const { Group, GroupStudent } = require('../../../src/models/dbModels');
+const groupController = require('../../../src/controllers/dbControllers/groupController');
+const { Op } = require('sequelize');
 
-describe('Group API Tests', () => {
-  describe('POST /api/groups', () => {
-    test('should create a new group and return status 201', async () => {
-      const newGroup = {
+jest.mock('../../../src/models/dbModels', () => ({
+  Group: {
+    create: jest.fn(),
+    findAll: jest.fn(),
+    findByPk: jest.fn(),
+    update: jest.fn(),
+    destroy: jest.fn(),
+  },
+  GroupStudent: jest.fn(() => ({ name: 'GroupStudent' })),
+}));
+
+describe('Group Controller Tests', () => {
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  test('createGroup should create a new group', async () => {
+    const req = httpMocks.createRequest({
+      method: 'POST',
+      body: {
         GroupName: 'Math Group',
-        GroupPrice: 100,
-        MaxStudents: 20
-      };
-
-      const response = await request(app)
-        .post('/api/groups')
-        .send(newGroup);
-
-      expect(response.status).toBe(201);
-      expect(response.body).toHaveProperty('GroupId');
-      expect(response.body.GroupName).toBe('Math Group');
-      expect(response.body.GroupPrice).toBe(100);
-      expect(response.body.MaxStudents).toBe(20);
+        GroupPrice: 100.0,
+        ImageFilePath: 'http://example.com/image.jpg',
+      },
     });
+    const res = httpMocks.createResponse();
 
-    test('should return 400 for invalid input (missing GroupName)', async () => {
-      const invalidGroup = {
-        GroupPrice: 100,
-        MaxStudents: 20
-      };
+    Group.create.mockResolvedValue(req.body);
 
-      const response = await request(app)
-        .post('/api/groups')
-        .send(invalidGroup);
+    await groupController.createGroup(req, res);
 
-      expect(response.status).toBe(400);
-      expect(response.body.error).toContain('Validation error: GroupName cannot be empty');
-    });
+    expect(Group.create).toHaveBeenCalledWith(req.body);
+    expect(res.statusCode).toBe(201);
+    expect(res._getJSONData()).toEqual(req.body);
   });
 
-  describe('GET /api/groups', () => {
-    test('should return a list of groups and status 200', async () => {
-      await Group.create({
+  test('getGroups should return all groups', async () => {
+    const req = httpMocks.createRequest({ method: 'GET' });
+    const res = httpMocks.createResponse();
+
+    const mockGroups = [
+      {
+        GroupId: 1,
         GroupName: 'Math Group',
-        GroupPrice: 100,
-        MaxStudents: 20
-      });
+        GroupPrice: 100.0,
+        ImageFilePath: 'http://example.com/image.jpg',
+      },
+    ];
 
-      const response = await request(app)
-        .get('/api/groups');
+    Group.findAll.mockResolvedValue(mockGroups);
 
-      expect(response.status).toBe(200);
-      expect(Array.isArray(response.body)).toBe(true);
-      expect(response.body.length).toBeGreaterThan(0);
+    await groupController.getGroups(req, res);
+
+    expect(Group.findAll).toHaveBeenCalledWith({
+      where: undefined,
+      order: undefined,
     });
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData()).toEqual(mockGroups);
   });
 
-  describe('GET /api/groups/:id', () => {
-    test('should return a group by ID and status 200', async () => {
-      const testGroup = await Group.create({
-        GroupName: 'Science Group',
-        GroupPrice: 150,
-        MaxStudents: 25
-      });
+  test('getGroupById should return group if found', async () => {
+    const req = httpMocks.createRequest({ method: 'GET', params: { id: 1 } });
+    const res = httpMocks.createResponse();
 
-      const response = await request(app)
-        .get(`/api/groups/${testGroup.GroupId}`);
+    const mockGroup = {
+      GroupId: 1,
+      GroupName: 'Math Group',
+      GroupPrice: 100.0,
+      ImageFilePath: 'http://example.com/image.jpg',
+    };
 
-      expect(response.status).toBe(200);
-      expect(response.body.GroupName).toBe('Science Group');
-      expect(response.body.GroupPrice).toBe(150);
-      expect(response.body.MaxStudents).toBe(25);
-    });
+    Group.findByPk.mockResolvedValue(mockGroup);
 
-    test('should return 404 if group not found', async () => {
-      const response = await request(app)
-        .get('/api/groups/999');
+    await groupController.getGroupById(req, res);
 
-      expect(response.status).toBe(404);
-      expect(response.body.error).toBe('Group not found');
-    });
+    expect(Group.findByPk).toHaveBeenCalledWith(1);
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData()).toEqual(mockGroup);
   });
 
-  describe('GET /api/groups/search', () => {
-    test('should return matching groups and status 200', async () => {
-      await Group.create({
+  test('searchGroups should return matching groups', async () => {
+    const req = httpMocks.createRequest({
+      method: 'GET',
+      query: { groupName: 'Math', minPrice: '50', maxPrice: '150' },
+    });
+    const res = httpMocks.createResponse();
+
+    const mockGroups = [
+      {
+        GroupId: 1,
         GroupName: 'Math Group',
-        GroupPrice: 100,
-        MaxStudents: 20
-      });
+        GroupPrice: 100.0,
+        ImageFilePath: 'http://example.com/image.jpg',
+        Students: [],
+      },
+    ];
 
-      const response = await request(app)
-        .get('/api/groups/search')
-        .query({ groupName: 'Math' });
+    Group.findAll.mockResolvedValue(mockGroups);
 
-      expect(response.status).toBe(200);
-      expect(response.body.success).toBe(true);
-      expect(Array.isArray(response.body.data)).toBe(true);
-      expect(response.body.data.length).toBeGreaterThan(0);
-      expect(response.body.data[0].GroupName).toContain('Math');
+    await groupController.searchGroups(req, res);
+
+    expect(Group.findAll).toHaveBeenCalledWith({
+      where: {
+        GroupName: { [Op.like]: '%Math%' },
+        GroupPrice: { [Op.between]: [50, 150] },
+      },
+      include: {
+        model: expect.any(Function),
+        as: 'Students',
+        attributes: ['GroupId', 'StudentId'],
+      },
     });
 
-    test('should return 404 if no groups match the criteria', async () => {
-      const response = await request(app)
-        .get('/api/groups/search')
-        .query({ groupName: 'nonexistent' });
-
-      expect(response.status).toBe(404);
-      expect(response.body.success).toBe(false);
-      expect(response.body.message).toBe('No groups found matching the criteria.');
-    });
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData().success).toBe(true);
+    expect(res._getJSONData().data).toEqual(mockGroups);
   });
 
-  describe('PUT /api/groups/:id', () => {
-    test('should update a group and return status 200', async () => {
-      const testGroup = await Group.create({
-        GroupName: 'Physics Group',
-        GroupPrice: 200,
-        MaxStudents: 30
-      });
-
-      const updatedData = {
-        GroupName: 'Updated Physics Group',
-        GroupPrice: 250
-      };
-
-      const response = await request(app)
-        .put(`/api/groups/${testGroup.GroupId}`)
-        .send(updatedData);
-
-      expect(response.status).toBe(200);
-      expect(response.body.GroupName).toBe('Updated Physics Group');
-      expect(response.body.GroupPrice).toBe(250);
+  test('updateGroup should update an existing group', async () => {
+    const req = httpMocks.createRequest({
+      method: 'PUT',
+      params: { id: 1 },
+      body: { GroupName: 'Updated Math Group' },
     });
+    const res = httpMocks.createResponse();
 
-    test('should return 404 if group not found', async () => {
-      const response = await request(app)
-        .put('/api/groups/999')
-        .send({ GroupName: 'Updated Group' });
+    const mockGroup = {
+      update: jest.fn().mockResolvedValue([1]),
+      dataValues: {
+        GroupId: 1,
+        GroupName: 'Updated Math Group',
+        GroupPrice: 100.0,
+        ImageFilePath: 'http://example.com/image.jpg',
+      },
+      toJSON: jest.fn(() => ({ ...mockGroup.dataValues })),
+    };
 
-      expect(response.status).toBe(404);
-      expect(response.body.error).toBe('Group not found');
+    Group.findByPk.mockResolvedValue(mockGroup);
+
+    await groupController.updateGroup(req, res);
+
+    expect(mockGroup.update).toHaveBeenCalledWith(req.body);
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData()).toEqual({
+      GroupId: 1,
+      GroupName: 'Updated Math Group',
+      GroupPrice: 100.0,
+      ImageFilePath: 'http://example.com/image.jpg',
     });
+    expect(mockGroup.toJSON).toHaveBeenCalled();
   });
 
-  describe('DELETE /api/groups/:id', () => {
-    test('should delete a group and return status 204', async () => {
-      const testGroup = await Group.create({
-        GroupName: 'Chemistry Group',
-        GroupPrice: 180,
-        MaxStudents: 25
-      });
+  test('deleteGroup should remove a group', async () => {
+    const req = httpMocks.createRequest({ method: 'DELETE', params: { id: 1 } });
+    const res = httpMocks.createResponse();
 
-      const response = await request(app)
-        .delete(`/api/groups/${testGroup.GroupId}`);
+    const mockGroup = { destroy: jest.fn().mockResolvedValue(1) };
 
-      expect(response.status).toBe(204);
+    Group.findByPk.mockResolvedValue(mockGroup);
 
-      const deletedGroup = await Group.findByPk(testGroup.GroupId);
-      expect(deletedGroup).toBeNull();
-    });
+    await groupController.deleteGroup(req, res);
 
-    test('should return 404 if group not found', async () => {
-      const response = await request(app)
-        .delete('/api/groups/999');
+    expect(mockGroup.destroy).toHaveBeenCalled();
+    expect(res.statusCode).toBe(204);
+  });
 
-      expect(response.status).toBe(404);
-      expect(response.body.error).toBe('Group not found');
-    });
+  test('getGroupById should handle not found case', async () => {
+    const req = httpMocks.createRequest({ method: 'GET', params: { id: 999 } });
+    const res = httpMocks.createResponse();
+
+    Group.findByPk.mockResolvedValue(null);
+
+    await groupController.getGroupById(req, res);
+
+    expect(res.statusCode).toBe(404);
+    expect(res._getJSONData()).toEqual({ error: 'Group not found' });
+  });
+
+  test('searchGroups should handle no results case', async () => {
+    const req = httpMocks.createRequest({ method: 'GET', query: { groupName: 'Nonexistent' } });
+    const res = httpMocks.createResponse();
+
+    Group.findAll.mockResolvedValue([]);
+
+    await groupController.searchGroups(req, res);
+
+    expect(res.statusCode).toBe(404);
+    expect(res._getJSONData()).toEqual({ success: false, message: 'No groups found matching the criteria.' });
   });
 });

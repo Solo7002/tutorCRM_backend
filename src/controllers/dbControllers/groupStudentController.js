@@ -7,6 +7,7 @@ exports.createGroupStudent = async (req, res) => {
     const groupStudent = await GroupStudent.create(req.body);
     res.status(201).json(groupStudent);
   } catch (error) {
+    console.error('Error in createGroupStudent:', error);
     res.status(400).json({ error: error.message });
   }
 };
@@ -14,22 +15,24 @@ exports.createGroupStudent = async (req, res) => {
 exports.getGroupStudents = async (req, res) => {
   try {
     const { where, order } = parseQueryParams(req.query);
-    const groupStudents = await GroupStudent.findAll({ attributes: ['GroupId', 'StudentId'], where: where || undefined, order: order || undefined });
+    const groupStudents = await GroupStudent.findAll({
+      where: where || undefined,
+      order: order || undefined,
+    });
     res.status(200).json(groupStudents);
   } catch (error) {
+    console.error('Error in getGroupStudents:', error);
     res.status(400).json({ error: error.message });
   }
 };
 
 exports.getGroupStudentById = async (req, res) => {
   try {
-    const groupStudent = await GroupStudent.findByPk(req.params.id, {
-      attributes: ['GroupId', 'StudentId']
-    });
-
+    const groupStudent = await GroupStudent.findByPk(req.params.id);
     if (!groupStudent) return res.status(404).json({ error: "GroupStudent not found" });
     res.status(200).json(groupStudent);
   } catch (error) {
+    console.error('Error in getGroupStudentById:', error);
     res.status(400).json({ error: error.message });
   }
 };
@@ -37,7 +40,7 @@ exports.getGroupStudentById = async (req, res) => {
 exports.searchGroupStudents = async (req, res) => {
   try {
     const { groupId, studentId } = req.query;
-    let whereConditions = {};
+    const whereConditions = {};
 
     if (groupId) whereConditions.GroupId = groupId;
     if (studentId) whereConditions.StudentId = studentId;
@@ -54,15 +57,17 @@ exports.searchGroupStudents = async (req, res) => {
           model: Student,
           as: 'Student',
           attributes: ['StudentId', 'FirstName', 'LastName'],
-        }
-      ]
+        },
+      ],
     });
 
-    if (!groupStudents.length) return res.status(404).json({ success: false, message: 'No group students found matching the criteria.' });
+    if (!groupStudents.length) {
+      return res.status(404).json({ success: false, message: 'No group students found matching the criteria.' });
+    }
 
     return res.status(200).json({ success: true, data: groupStudents });
   } catch (error) {
-    console.error(error);
+    console.error('Error in searchGroupStudents:', error);
     return res.status(500).json({ success: false, message: 'Server error, please try again later.' });
   }
 };
@@ -75,6 +80,7 @@ exports.updateGroupStudent = async (req, res) => {
     await groupStudent.update(req.body);
     res.status(200).json(groupStudent);
   } catch (error) {
+    console.error('Error in updateGroupStudent:', error);
     res.status(400).json({ error: error.message });
   }
 };
@@ -87,6 +93,7 @@ exports.deleteGroupStudent = async (req, res) => {
     await groupStudent.destroy();
     res.status(204).send();
   } catch (error) {
+    console.error('Error in deleteGroupStudent:', error);
     res.status(400).json({ error: error.message });
   }
 };

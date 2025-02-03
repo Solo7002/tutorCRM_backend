@@ -1,4 +1,4 @@
-const { DoneHomeTaskFile } = require('../../models/dbModels');
+const { DoneHomeTaskFile, DoneHomeTask } = require('../../models/dbModels');
 const { parseQueryParams } = require('../../utils/dbUtils/queryUtils');
 const { Op } = require('sequelize');
 
@@ -7,6 +7,7 @@ exports.createDoneHometaskFile = async (req, res) => {
     const doneHometaskFile = await DoneHomeTaskFile.create(req.body);
     res.status(201).json(doneHometaskFile);
   } catch (error) {
+    console.error('Error in createDoneHometaskFile:', error);
     res.status(400).json({ error: error.message });
   }
 };
@@ -14,9 +15,13 @@ exports.createDoneHometaskFile = async (req, res) => {
 exports.getDoneHometaskFiles = async (req, res) => {
   try {
     const { where, order } = parseQueryParams(req.query);
-    const doneHometaskFiles = await DoneHometaskFile.findAll({ where: where || undefined, order: order || undefined });
+    const doneHometaskFiles = await DoneHomeTaskFile.findAll({
+      where: where || undefined,
+      order: order || undefined,
+    });
     res.status(200).json(doneHometaskFiles);
   } catch (error) {
+    console.error('Error in getDoneHometaskFiles:', error);
     res.status(400).json({ error: error.message });
   }
 };
@@ -24,9 +29,10 @@ exports.getDoneHometaskFiles = async (req, res) => {
 exports.getDoneHometaskFileById = async (req, res) => {
   try {
     const doneHometaskFile = await DoneHomeTaskFile.findByPk(req.params.id);
-    if (!doneHometaskFile) return res.status(404).json({ error: "DoneHometaskFile not found" });
+    if (!doneHometaskFile) return res.status(404).json({ error: "DoneHomeTaskFile not found" });
     res.status(200).json(doneHometaskFile);
   } catch (error) {
+    console.error('Error in getDoneHometaskFileById:', error);
     res.status(400).json({ error: error.message });
   }
 };
@@ -43,13 +49,17 @@ exports.searchDoneHomeTaskFiles = async (req, res) => {
     const files = await DoneHomeTaskFile.findAll({
       where: whereConditions,
       include: [
-        { model: DoneHomeTask, as: 'DoneHomeTask', attributes: ['DoneHomeTaskId', 'Mark'] }
-      ]
+        { model: DoneHomeTask, as: 'DoneHomeTask', attributes: ['DoneHomeTaskId', 'Mark'] },
+      ],
     });
 
-    if (!files.length) return res.status(404).json({ success: false, message: 'No files found matching the criteria.' });
+    if (!files.length) {
+      return res.status(404).json({ success: false, message: 'No files found matching the criteria.' });
+    }
+
     return res.status(200).json({ success: true, data: files });
   } catch (error) {
+    console.error('Error in searchDoneHomeTaskFiles:', error);
     return res.status(500).json({ success: false, message: 'Server error, please try again later.' });
   }
 };
@@ -57,11 +67,12 @@ exports.searchDoneHomeTaskFiles = async (req, res) => {
 exports.updateDoneHometaskFile = async (req, res) => {
   try {
     const doneHometaskFile = await DoneHomeTaskFile.findByPk(req.params.id);
-    if (!doneHometaskFile) return res.status(404).json({ error: "DoneHometaskFile not found" });
-    
+    if (!doneHometaskFile) return res.status(404).json({ error: "DoneHomeTaskFile not found" });
+
     await doneHometaskFile.update(req.body);
     res.status(200).json(doneHometaskFile);
   } catch (error) {
+    console.error('Error in updateDoneHometaskFile:', error);
     res.status(400).json({ error: error.message });
   }
 };
@@ -69,11 +80,12 @@ exports.updateDoneHometaskFile = async (req, res) => {
 exports.deleteDoneHometaskFile = async (req, res) => {
   try {
     const doneHometaskFile = await DoneHomeTaskFile.findByPk(req.params.id);
-    if (!doneHometaskFile) return res.status(404).json({ error: "DoneHometaskFile not found" });
-    
+    if (!doneHometaskFile) return res.status(404).json({ error: "DoneHomeTaskFile not found" });
+
     await doneHometaskFile.destroy();
     res.status(204).send();
   } catch (error) {
+    console.error('Error in deleteDoneHometaskFile:', error);
     res.status(400).json({ error: error.message });
   }
 };

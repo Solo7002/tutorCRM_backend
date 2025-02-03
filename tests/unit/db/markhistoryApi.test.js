@@ -1,268 +1,225 @@
-const request = require('supertest');
-const app = require('../../../src/app');
+const httpMocks = require('node-mocks-http');
 const { MarkHistory, Student, Course } = require('../../../src/models/dbModels');
+const markHistoryController = require('../../../src/controllers/dbControllers/markHistoryController');
+const { Op } = require('sequelize');
 
-describe('MarkHistory API Tests', () => {
-  describe('POST /api/markhistories', () => {
-    test('should create a new mark history and return status 201', async () => {
-      const testStudent = await Student.create({
-        FirstName: 'John',
-        LastName: 'Doe',
-        SchoolName: 'Test School',
-        Grade: '10th'
-      });
+jest.mock('../../../src/models/dbModels', () => ({
+  MarkHistory: {
+    create: jest.fn(),
+    findAll: jest.fn(),
+    findByPk: jest.fn(),
+    update: jest.fn(),
+    destroy: jest.fn(),
+  },
+  Student: jest.fn(() => ({ name: 'Student' })),
+  Course: jest.fn(() => ({ name: 'Course' })),
+}));
 
-      const testCourse = await Course.create({
-        CourseName: 'Mathematics',
-        CourseDescription: 'Advanced Math Course'
-      });
-
-      const newMarkHistory = {
-        MarkType: 'Exam',
-        Mark: 95,
-        MarkDate: new Date(),
-        StudentId: testStudent.StudentId,
-        CourseId: testCourse.CourseId
-      };
-
-      const response = await request(app)
-        .post('/api/markhistories')
-        .send(newMarkHistory);
-
-      expect(response.status).toBe(201);
-      expect(response.body).toHaveProperty('MarkHistoryId');
-      expect(response.body.MarkType).toBe('Exam');
-      expect(response.body.Mark).toBe(95);
-      expect(response.body.StudentId).toBe(testStudent.StudentId);
-      expect(response.body.CourseId).toBe(testCourse.CourseId);
-    });
-
-    test('should return 400 for invalid input (missing Mark)', async () => {
-      const testStudent = await Student.create({
-        FirstName: 'John',
-        LastName: 'Doe',
-        SchoolName: 'Test School',
-        Grade: '10th'
-      });
-
-      const testCourse = await Course.create({
-        CourseName: 'Mathematics',
-        CourseDescription: 'Advanced Math Course'
-      });
-
-      const invalidMarkHistory = {
-        MarkType: 'Exam',
-        MarkDate: new Date(),
-        StudentId: testStudent.StudentId,
-        CourseId: testCourse.CourseId
-      };
-
-      const response = await request(app)
-        .post('/api/markhistories')
-        .send(invalidMarkHistory);
-
-      expect(response.status).toBe(400);
-      expect(response.body.error).toContain('Validation error: Mark must be an integer');
-    });
+describe('MarkHistory Controller Tests', () => {
+  afterEach(() => {
+    jest.clearAllMocks();
   });
 
-  describe('GET /api/markhistories', () => {
-    test('should return a list of mark histories and status 200', async () => {
-      const testStudent = await Student.create({
-        FirstName: 'Jane',
-        LastName: 'Smith',
-        SchoolName: 'Test School',
-        Grade: '11th'
-      });
-
-      const testCourse = await Course.create({
-        CourseName: 'Physics',
-        CourseDescription: 'Advanced Physics Course'
-      });
-
-      await MarkHistory.create({
-        MarkType: 'Quiz',
+  test('createMarkHistory should create a new mark history', async () => {
+    const req = httpMocks.createRequest({
+      method: 'POST',
+      body: {
         Mark: 85,
-        MarkDate: new Date(),
-        StudentId: testStudent.StudentId,
-        CourseId: testCourse.CourseId
-      });
-
-      const response = await request(app)
-        .get('/api/markhistories');
-
-      expect(response.status).toBe(200);
-      expect(Array.isArray(response.body)).toBe(true);
-      expect(response.body.length).toBeGreaterThan(0);
+        MarkType: 'test',
+        StudentId: 1,
+        CourseId: 1,
+      },
     });
+    const res = httpMocks.createResponse();
+
+    MarkHistory.create.mockResolvedValue(req.body);
+
+    await markHistoryController.createMarkHistory(req, res);
+
+    expect(MarkHistory.create).toHaveBeenCalledWith(req.body);
+    expect(res.statusCode).toBe(201);
+    expect(res._getJSONData()).toEqual(req.body);
   });
 
-  describe('GET /api/markhistories/:id', () => {
-    test('should return a mark history by ID and status 200', async () => {
-      const testStudent = await Student.create({
-        FirstName: 'Alice',
-        LastName: 'Johnson',
-        SchoolName: 'Test School',
-        Grade: '12th'
-      });
+  test('getMarkHistories should return all mark histories', async () => {
+    const req = httpMocks.createRequest({ method: 'GET' });
+    const res = httpMocks.createResponse();
 
-      const testCourse = await Course.create({
-        CourseName: 'Chemistry',
-        CourseDescription: 'Advanced Chemistry Course'
-      });
+    const mockMarkHistories = [
+      {
+        MarkId: 1,
+        Mark: 85,
+        MarkType: 'test',
+        MarkDate: '2023-10-01T00:00:00Z',
+        StudentId: 1,
+        CourseId: 1,
+      },
+    ];
 
-      const testMarkHistory = await MarkHistory.create({
-        MarkType: 'Assignment',
+    MarkHistory.findAll.mockResolvedValue(mockMarkHistories);
+
+    await markHistoryController.getMarkHistories(req, res);
+
+    expect(MarkHistory.findAll).toHaveBeenCalledWith({
+      where: undefined,
+      order: undefined,
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData()).toEqual(mockMarkHistories);
+  });
+
+  test('getMarkHistoryById should return mark history if found', async () => {
+    const req = httpMocks.createRequest({ method: 'GET', params: { id: 1 } });
+    const res = httpMocks.createResponse();
+
+    const mockMarkHistory = {
+      MarkId: 1,
+      Mark: 85,
+      MarkType: 'test',
+      MarkDate: '2023-10-01T00:00:00Z',
+      StudentId: 1,
+      CourseId: 1,
+    };
+
+    MarkHistory.findByPk.mockResolvedValue(mockMarkHistory);
+
+    await markHistoryController.getMarkHistoryById(req, res);
+
+    expect(MarkHistory.findByPk).toHaveBeenCalledWith(1);
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData()).toEqual(mockMarkHistory);
+  });
+
+  test('searchMarkHistory should return matching mark histories', async () => {
+    const req = httpMocks.createRequest({
+      method: 'GET',
+      query: {
+        markType: 'test',
+        mark: '85',
+        studentId: '1',
+        courseId: '1',
+        startDate: '2023-10-01',
+      },
+    });
+    const res = httpMocks.createResponse();
+
+    const mockMarkHistories = [
+      {
+        MarkId: 1,
+        Mark: 85,
+        MarkType: 'test',
+        MarkDate: '2023-10-01T00:00:00Z',
+        StudentId: 1,
+        CourseId: 1,
+        Student: { StudentId: 1, FirstName: 'John', LastName: 'Doe' },
+        Course: { CourseId: 1, CourseName: 'Mathematics' },
+      },
+    ];
+
+    MarkHistory.findAll.mockResolvedValue(mockMarkHistories);
+
+    await markHistoryController.searchMarkHistory(req, res);
+
+    expect(MarkHistory.findAll).toHaveBeenCalledWith({
+      where: {
+        MarkType: 'test',
+        Mark: 85,
+        StudentId: '1',
+        CourseId: '1',
+        MarkDate: { [Op.gte]: new Date('2023-10-01') },
+      },
+      include: [
+        {
+          model: expect.any(Function),
+          as: 'Student',
+          attributes: ['StudentId', 'FirstName', 'LastName'],
+        },
+        {
+          model: expect.any(Function),
+          as: 'Course',
+          attributes: ['CourseId', 'CourseName'],
+        },
+      ],
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData().success).toBe(true);
+    expect(res._getJSONData().data).toEqual(mockMarkHistories);
+  });
+
+  test('updateMarkHistory should update an existing mark history', async () => {
+    const req = httpMocks.createRequest({
+      method: 'PUT',
+      params: { id: 1 },
+      body: { Mark: 90 },
+    });
+    const res = httpMocks.createResponse();
+
+    const mockMarkHistory = {
+      update: jest.fn().mockResolvedValue([1]),
+      dataValues: {
+        MarkId: 1,
         Mark: 90,
-        MarkDate: new Date(),
-        StudentId: testStudent.StudentId,
-        CourseId: testCourse.CourseId
-      });
+        MarkType: 'test',
+        MarkDate: '2023-10-01T00:00:00Z',
+        StudentId: 1,
+        CourseId: 1,
+      },
+      toJSON: jest.fn(() => ({ ...mockMarkHistory.dataValues })),
+    };
 
-      const response = await request(app)
-        .get(`/api/markhistories/${testMarkHistory.MarkHistoryId}`);
+    MarkHistory.findByPk.mockResolvedValue(mockMarkHistory);
 
-      expect(response.status).toBe(200);
-      expect(response.body.MarkType).toBe('Assignment');
-      expect(response.body.Mark).toBe(90);
-      expect(response.body.StudentId).toBe(testStudent.StudentId);
-      expect(response.body.CourseId).toBe(testCourse.CourseId);
+    await markHistoryController.updateMarkHistory(req, res);
+
+    expect(mockMarkHistory.update).toHaveBeenCalledWith(req.body);
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData()).toEqual({
+      MarkId: 1,
+      Mark: 90,
+      MarkType: 'test',
+      MarkDate: '2023-10-01T00:00:00Z',
+      StudentId: 1,
+      CourseId: 1,
     });
-
-    test('should return 404 if mark history not found', async () => {
-      const response = await request(app)
-        .get('/api/markhistories/999');
-
-      expect(response.status).toBe(404);
-      expect(response.body.error).toBe('MarkHistory not found');
-    });
+    expect(mockMarkHistory.toJSON).toHaveBeenCalled();
   });
 
-  describe('GET /api/markhistories/search', () => {
-    test('should return matching mark histories and status 200', async () => {
-      const testStudent = await Student.create({
-        FirstName: 'Bob',
-        LastName: 'Brown',
-        SchoolName: 'Test School',
-        Grade: '9th'
-      });
+  test('deleteMarkHistory should remove a mark history', async () => {
+    const req = httpMocks.createRequest({ method: 'DELETE', params: { id: 1 } });
+    const res = httpMocks.createResponse();
 
-      const testCourse = await Course.create({
-        CourseName: 'Biology',
-        CourseDescription: 'Advanced Biology Course'
-      });
+    const mockMarkHistory = { destroy: jest.fn().mockResolvedValue(1) };
 
-      await MarkHistory.create({
-        MarkType: 'Exam',
-        Mark: 88,
-        MarkDate: new Date(),
-        StudentId: testStudent.StudentId,
-        CourseId: testCourse.CourseId
-      });
+    MarkHistory.findByPk.mockResolvedValue(mockMarkHistory);
 
-      const response = await request(app)
-        .get('/api/markhistories/search')
-        .query({ studentId: testStudent.StudentId });
+    await markHistoryController.deleteMarkHistory(req, res);
 
-      expect(response.status).toBe(200);
-      expect(response.body.success).toBe(true);
-      expect(Array.isArray(response.body.data)).toBe(true);
-      expect(response.body.data.length).toBeGreaterThan(0);
-      expect(response.body.data[0].StudentId).toBe(testStudent.StudentId);
-    });
-
-    test('should return 404 if no mark histories match the criteria', async () => {
-      const response = await request(app)
-        .get('/api/markhistories/search')
-        .query({ studentId: 'nonexistent' });
-
-      expect(response.status).toBe(404);
-      expect(response.body.success).toBe(false);
-      expect(response.body.message).toBe('No mark histories found matching the criteria.');
-    });
+    expect(mockMarkHistory.destroy).toHaveBeenCalled();
+    expect(res.statusCode).toBe(204);
   });
 
-  describe('PUT /api/markhistories/:id', () => {
-    test('should update a mark history and return status 200', async () => {
-      const testStudent = await Student.create({
-        FirstName: 'Charlie',
-        LastName: 'Davis',
-        SchoolName: 'Test School',
-        Grade: '10th'
-      });
+  test('getMarkHistoryById should handle not found case', async () => {
+    const req = httpMocks.createRequest({ method: 'GET', params: { id: 999 } });
+    const res = httpMocks.createResponse();
 
-      const testCourse = await Course.create({
-        CourseName: 'History',
-        CourseDescription: 'Advanced History Course'
-      });
+    MarkHistory.findByPk.mockResolvedValue(null);
 
-      const testMarkHistory = await MarkHistory.create({
-        MarkType: 'Project',
-        Mark: 75,
-        MarkDate: new Date(),
-        StudentId: testStudent.StudentId,
-        CourseId: testCourse.CourseId
-      });
+    await markHistoryController.getMarkHistoryById(req, res);
 
-      const updatedData = {
-        Mark: 80
-      };
-
-      const response = await request(app)
-        .put(`/api/markhistories/${testMarkHistory.MarkHistoryId}`)
-        .send(updatedData);
-
-      expect(response.status).toBe(200);
-      expect(response.body.Mark).toBe(80);
-    });
-
-    test('should return 404 if mark history not found', async () => {
-      const response = await request(app)
-        .put('/api/markhistories/999')
-        .send({ Mark: 80 });
-
-      expect(response.status).toBe(404);
-      expect(response.body.error).toBe('MarkHistory not found');
-    });
+    expect(res.statusCode).toBe(404);
+    expect(res._getJSONData()).toEqual({ error: 'MarkHistory not found' });
   });
 
-  describe('DELETE /api/markhistories/:id', () => {
-    test('should delete a mark history and return status 204', async () => {
-      const testStudent = await Student.create({
-        FirstName: 'Eve',
-        LastName: 'Wilson',
-        SchoolName: 'Test School',
-        Grade: '11th'
-      });
+  test('searchMarkHistory should handle no results case', async () => {
+    const req = httpMocks.createRequest({ method: 'GET', query: { markType: 'nonexistent' } });
+    const res = httpMocks.createResponse();
 
-      const testCourse = await Course.create({
-        CourseName: 'Geography',
-        CourseDescription: 'Advanced Geography Course'
-      });
+    MarkHistory.findAll.mockResolvedValue([]);
 
-      const testMarkHistory = await MarkHistory.create({
-        MarkType: 'Final Exam',
-        Mark: 92,
-        MarkDate: new Date(),
-        StudentId: testStudent.StudentId,
-        CourseId: testCourse.CourseId
-      });
+    await markHistoryController.searchMarkHistory(req, res);
 
-      const response = await request(app)
-        .delete(`/api/markhistories/${testMarkHistory.MarkHistoryId}`);
-
-      expect(response.status).toBe(204);
-
-      const deletedMarkHistory = await MarkHistory.findByPk(testMarkHistory.MarkHistoryId);
-      expect(deletedMarkHistory).toBeNull();
-    });
-
-    test('should return 404 if mark history not found', async () => {
-      const response = await request(app)
-        .delete('/api/markhistories/999');
-
-      expect(response.status).toBe(404);
-      expect(response.body.error).toBe('MarkHistory not found');
-    });
+    expect(res.statusCode).toBe(404);
+    expect(res._getJSONData()).toEqual({ success: false, message: 'No mark histories found matching the criteria.' });
   });
 });

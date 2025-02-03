@@ -7,6 +7,7 @@ exports.createSaleMaterial = async (req, res) => {
     const saleMaterial = await SaleMaterial.create(req.body);
     res.status(201).json(saleMaterial);
   } catch (error) {
+    console.error('Error in createSaleMaterial:', error);
     res.status(400).json({ error: error.message });
   }
 };
@@ -14,9 +15,13 @@ exports.createSaleMaterial = async (req, res) => {
 exports.getSaleMaterials = async (req, res) => {
   try {
     const { where, order } = parseQueryParams(req.query);
-    const saleMaterials = await SaleMaterial.findAll({ where: where || undefined, order: order || undefined });
+    const saleMaterials = await SaleMaterial.findAll({
+      where: where || undefined,
+      order: order || undefined,
+    });
     res.status(200).json(saleMaterials);
   } catch (error) {
+    console.error('Error in getSaleMaterials:', error);
     res.status(400).json({ error: error.message });
   }
 };
@@ -27,6 +32,7 @@ exports.getSaleMaterialById = async (req, res) => {
     if (!saleMaterial) return res.status(404).json({ error: "SaleMaterial not found" });
     res.status(200).json(saleMaterial);
   } catch (error) {
+    console.error('Error in getSaleMaterialById:', error);
     res.status(400).json({ error: error.message });
   }
 };
@@ -34,21 +40,23 @@ exports.getSaleMaterialById = async (req, res) => {
 exports.searchSaleMaterials = async (req, res) => {
   try {
     const { materialsHeader, price, vendorId } = req.query;
-    let whereConditions = {};
+    const whereConditions = {};
 
-    if (materialsHeader) whereConditions.MaterialsHeader = { [Op.like]: `%${materialsHeader}%` };
-    if (price) whereConditions.Price = price;
-    if (vendorId) whereConditions.VendorldId = vendorId;
+    if (materialsHeader) { whereConditions.MaterialsHeader = { [Op.like]: `%${materialsHeader}%` }; }
+    if (price) { whereConditions.Price = parseFloat(price); }
+    if (vendorId) { whereConditions.VendorId = vendorId; }
 
     const saleMaterials = await SaleMaterial.findAll({
       where: whereConditions,
     });
 
-    if (!saleMaterials.length) return res.status(404).json({ success: false, message: 'No sale materials found matching the criteria.' });
+    if (!saleMaterials.length) {
+      return res.status(404).json({ success: false, message: 'No sale materials found matching the criteria.' });
+    }
 
     return res.status(200).json({ success: true, data: saleMaterials });
   } catch (error) {
-    console.error(error);
+    console.error('Error in searchSaleMaterials:', error);
     return res.status(500).json({ success: false, message: 'Server error, please try again later.' });
   }
 };
@@ -57,10 +65,11 @@ exports.updateSaleMaterial = async (req, res) => {
   try {
     const saleMaterial = await SaleMaterial.findByPk(req.params.id);
     if (!saleMaterial) return res.status(404).json({ error: "SaleMaterial not found" });
-    
+
     await saleMaterial.update(req.body);
     res.status(200).json(saleMaterial);
   } catch (error) {
+    console.error('Error in updateSaleMaterial:', error);
     res.status(400).json({ error: error.message });
   }
 };
@@ -69,10 +78,11 @@ exports.deleteSaleMaterial = async (req, res) => {
   try {
     const saleMaterial = await SaleMaterial.findByPk(req.params.id);
     if (!saleMaterial) return res.status(404).json({ error: "SaleMaterial not found" });
-    
+
     await saleMaterial.destroy();
     res.status(204).send();
   } catch (error) {
+    console.error('Error in deleteSaleMaterial:', error);
     res.status(400).json({ error: error.message });
   }
 };

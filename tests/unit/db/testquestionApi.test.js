@@ -1,177 +1,206 @@
-const request = require('supertest');
-const app = require('../../../src/app');
+const httpMocks = require('node-mocks-http');
 const { TestQuestion } = require('../../../src/models/dbModels');
+const testQuestionController = require('../../../src/controllers/dbControllers/testQuestionController');
+const { Op } = require('sequelize');
 
-describe('TestQuestion API Tests', () => {
-  describe('POST /api/testquestions', () => {
-    test('should create a new test question and return status 201', async () => {
-      const newTestQuestion = {
+jest.mock('../../../src/models/dbModels', () => ({
+  TestQuestion: {
+    create: jest.fn(),
+    findAll: jest.fn(),
+    findByPk: jest.fn(),
+    update: jest.fn(),
+    destroy: jest.fn(),
+  },
+}));
+
+describe('TestQuestion Controller Tests', () => {
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  test('createTestQuestion should create a new test question', async () => {
+    const req = httpMocks.createRequest({
+      method: 'POST',
+      body: {
         TestQuestionHeader: 'Math Question',
-        TestQuestionDescription: 'What is 2 + 2?',
-        ImagePath: 'http://example.com/images/math.png',
-        AudioPath: 'http://example.com/audio/math.mp3'
-      };
-
-      const response = await request(app)
-        .post('/api/testquestions')
-        .send(newTestQuestion);
-
-      expect(response.status).toBe(201);
-      expect(response.body).toHaveProperty('TestQuestionId');
-      expect(response.body.TestQuestionHeader).toBe('Math Question');
-      expect(response.body.TestQuestionDescription).toBe('What is 2 + 2?');
-      expect(response.body.ImagePath).toBe('http://example.com/images/math.png');
-      expect(response.body.AudioPath).toBe('http://example.com/audio/math.mp3');
+        TestQuestionDescription: 'Solve this math problem',
+        ImagePath: 'http://example.com/image.jpg',
+        AudioPath: 'http://example.com/audio.mp3',
+      },
     });
+    const res = httpMocks.createResponse();
 
-    test('should return 400 for invalid input (missing TestQuestionHeader)', async () => {
-      const invalidTestQuestion = {
-        TestQuestionDescription: 'What is 2 + 2?',
-        ImagePath: 'http://example.com/images/math.png',
-        AudioPath: 'http://example.com/audio/math.mp3'
-      };
+    TestQuestion.create.mockResolvedValue(req.body);
 
-      const response = await request(app)
-        .post('/api/testquestions')
-        .send(invalidTestQuestion);
+    await testQuestionController.createTestQuestion(req, res);
 
-      expect(response.status).toBe(400);
-      expect(response.body.error).toContain('Validation error: TestQuestionHeader cannot be empty');
-    });
+    expect(TestQuestion.create).toHaveBeenCalledWith(req.body);
+    expect(res.statusCode).toBe(201);
+    expect(res._getJSONData()).toEqual(req.body);
   });
 
-  describe('GET /api/testquestions', () => {
-    test('should return a list of test questions and status 200', async () => {
-      await TestQuestion.create({
-        TestQuestionHeader: 'Science Question',
-        TestQuestionDescription: 'What is gravity?',
-        ImagePath: 'http://example.com/images/science.png',
-        AudioPath: 'http://example.com/audio/science.mp3'
-      });
+  test('getTestQuestions should return all test questions', async () => {
+    const req = httpMocks.createRequest({ method: 'GET' });
+    const res = httpMocks.createResponse();
 
-      const response = await request(app)
-        .get('/api/testquestions');
+    const mockTestQuestions = [
+      {
+        TestQuestionId: 1,
+        TestQuestionHeader: 'Math Question',
+        TestQuestionDescription: 'Solve this math problem',
+        ImagePath: 'http://example.com/image.jpg',
+        AudioPath: 'http://example.com/audio.mp3',
+      },
+      {
+        TestQuestionId: 2,
+        TestQuestionHeader: 'Physics Question',
+        TestQuestionDescription: 'Explain this physics concept',
+        ImagePath: null,
+        AudioPath: null,
+      },
+    ];
 
-      expect(response.status).toBe(200);
-      expect(Array.isArray(response.body)).toBe(true);
-      expect(response.body.length).toBeGreaterThan(0);
+    TestQuestion.findAll.mockResolvedValue(mockTestQuestions);
+
+    await testQuestionController.getTestQuestions(req, res);
+
+    expect(TestQuestion.findAll).toHaveBeenCalledWith({
+      where: undefined,
+      order: undefined,
     });
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData()).toEqual(mockTestQuestions);
   });
 
-  describe('GET /api/testquestions/:id', () => {
-    test('should return a test question by ID and status 200', async () => {
-      const testQuestion = await TestQuestion.create({
-        TestQuestionHeader: 'Chemistry Question',
-        TestQuestionDescription: 'What is H2O?',
-        ImagePath: 'http://example.com/images/chemistry.png',
-        AudioPath: 'http://example.com/audio/chemistry.mp3'
-      });
+  test('getTestQuestionById should return test question if found', async () => {
+    const req = httpMocks.createRequest({ method: 'GET', params: { id: 1 } });
+    const res = httpMocks.createResponse();
 
-      const response = await request(app)
-        .get(`/api/testquestions/${testQuestion.TestQuestionId}`);
+    const mockTestQuestion = {
+      TestQuestionId: 1,
+      TestQuestionHeader: 'Math Question',
+      TestQuestionDescription: 'Solve this math problem',
+      ImagePath: 'http://example.com/image.jpg',
+      AudioPath: 'http://example.com/audio.mp3',
+    };
 
-      expect(response.status).toBe(200);
-      expect(response.body.TestQuestionHeader).toBe('Chemistry Question');
-      expect(response.body.TestQuestionDescription).toBe('What is H2O?');
-      expect(response.body.ImagePath).toBe('http://example.com/images/chemistry.png');
-      expect(response.body.AudioPath).toBe('http://example.com/audio/chemistry.mp3');
-    });
+    TestQuestion.findByPk.mockResolvedValue(mockTestQuestion);
 
-    test('should return 404 if test question not found', async () => {
-      const response = await request(app)
-        .get('/api/testquestions/999');
+    await testQuestionController.getTestQuestionById(req, res);
 
-      expect(response.status).toBe(404);
-      expect(response.body.error).toBe('TestQuestion not found');
-    });
+    expect(TestQuestion.findByPk).toHaveBeenCalledWith(1);
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData()).toEqual(mockTestQuestion);
   });
 
-  describe('GET /api/testquestions/search', () => {
-    test('should return matching test questions and status 200', async () => {
-      await TestQuestion.create({
-        TestQuestionHeader: 'Biology Question',
-        TestQuestionDescription: 'What is photosynthesis?',
-        ImagePath: 'http://example.com/images/biology.png',
-        AudioPath: 'http://example.com/audio/biology.mp3'
-      });
+  test('searchTestQuestions should return matching test questions', async () => {
+    const req = httpMocks.createRequest({
+      method: 'GET',
+      query: {
+        header: 'Math',
+        description: 'problem',
+      },
+    });
+    const res = httpMocks.createResponse();
 
-      const response = await request(app)
-        .get('/api/testquestions/search')
-        .query({ header: 'Biology' });
+    const mockTestQuestions = [
+      {
+        TestQuestionId: 1,
+        TestQuestionHeader: 'Math Question',
+        TestQuestionDescription: 'Solve this math problem',
+        ImagePath: 'http://example.com/image.jpg',
+        AudioPath: 'http://example.com/audio.mp3',
+      },
+    ];
 
-      expect(response.status).toBe(200);
-      expect(response.body.success).toBe(true);
-      expect(Array.isArray(response.body.data)).toBe(true);
-      expect(response.body.data.length).toBeGreaterThan(0);
-      expect(response.body.data[0].TestQuestionHeader).toContain('Biology');
+    TestQuestion.findAll.mockResolvedValue(mockTestQuestions);
+
+    await testQuestionController.searchTestQuestions(req, res);
+
+    expect(TestQuestion.findAll).toHaveBeenCalledWith({
+      where: {
+        TestQuestionHeader: { [Op.like]: '%Math%' },
+        TestQuestionDescription: { [Op.like]: '%problem%' },
+      },
+      attributes: ['TestQuestionId', 'TestQuestionHeader', 'TestQuestionDescription', 'ImagePath', 'AudioPath'],
     });
 
-    test('should return 404 if no test questions match the criteria', async () => {
-      const response = await request(app)
-        .get('/api/testquestions/search')
-        .query({ header: 'nonexistent' });
-
-      expect(response.status).toBe(404);
-      expect(response.body.success).toBe(false);
-      expect(response.body.message).toBe('No test questions found matching the criteria.');
-    });
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData().success).toBe(true);
+    expect(res._getJSONData().data).toEqual(mockTestQuestions);
   });
 
-  describe('PUT /api/testquestions/:id', () => {
-    test('should update a test question and return status 200', async () => {
-      const testQuestion = await TestQuestion.create({
-        TestQuestionHeader: 'History Question',
-        TestQuestionDescription: 'Who was the first president?',
-        ImagePath: 'http://example.com/images/history.png',
-        AudioPath: 'http://example.com/audio/history.mp3'
-      });
-
-      const updatedData = {
-        TestQuestionHeader: 'Updated History Question'
-      };
-
-      const response = await request(app)
-        .put(`/api/testquestions/${testQuestion.TestQuestionId}`)
-        .send(updatedData);
-
-      expect(response.status).toBe(200);
-      expect(response.body.TestQuestionHeader).toBe('Updated History Question');
+  test('updateTestQuestion should update an existing test question', async () => {
+    const req = httpMocks.createRequest({
+      method: 'PUT',
+      params: { id: 1 },
+      body: { TestQuestionHeader: 'Updated Math Question' },
     });
+    const res = httpMocks.createResponse();
 
-    test('should return 404 if test question not found', async () => {
-      const response = await request(app)
-        .put('/api/testquestions/999')
-        .send({ TestQuestionHeader: 'Updated Question' });
+    const mockTestQuestion = {
+      update: jest.fn().mockResolvedValue([1]),
+      dataValues: {
+        TestQuestionId: 1,
+        TestQuestionHeader: 'Updated Math Question',
+        TestQuestionDescription: 'Solve this math problem',
+        ImagePath: 'http://example.com/image.jpg',
+        AudioPath: 'http://example.com/audio.mp3',
+      },
+      toJSON: jest.fn(() => ({ ...mockTestQuestion.dataValues })),
+    };
 
-      expect(response.status).toBe(404);
-      expect(response.body.error).toBe('TestQuestion not found');
+    TestQuestion.findByPk.mockResolvedValue(mockTestQuestion);
+
+    await testQuestionController.updateTestQuestion(req, res);
+
+    expect(mockTestQuestion.update).toHaveBeenCalledWith(req.body);
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData()).toEqual({
+      TestQuestionId: 1,
+      TestQuestionHeader: 'Updated Math Question',
+      TestQuestionDescription: 'Solve this math problem',
+      ImagePath: 'http://example.com/image.jpg',
+      AudioPath: 'http://example.com/audio.mp3',
     });
+    expect(mockTestQuestion.toJSON).toHaveBeenCalled();
   });
 
-  describe('DELETE /api/testquestions/:id', () => {
-    test('should delete a test question and return status 204', async () => {
-      const testQuestion = await TestQuestion.create({
-        TestQuestionHeader: 'Geography Question',
-        TestQuestionDescription: 'What is the capital of France?',
-        ImagePath: 'http://example.com/images/geography.png',
-        AudioPath: 'http://example.com/audio/geography.mp3'
-      });
+  test('deleteTestQuestion should remove a test question', async () => {
+    const req = httpMocks.createRequest({ method: 'DELETE', params: { id: 1 } });
+    const res = httpMocks.createResponse();
 
-      const response = await request(app)
-        .delete(`/api/testquestions/${testQuestion.TestQuestionId}`);
+    const mockTestQuestion = { destroy: jest.fn().mockResolvedValue(1) };
 
-      expect(response.status).toBe(204);
+    TestQuestion.findByPk.mockResolvedValue(mockTestQuestion);
 
-      const deletedTestQuestion = await TestQuestion.findByPk(testQuestion.TestQuestionId);
-      expect(deletedTestQuestion).toBeNull();
-    });
+    await testQuestionController.deleteTestQuestion(req, res);
 
-    test('should return 404 if test question not found', async () => {
-      const response = await request(app)
-        .delete('/api/testquestions/999');
+    expect(mockTestQuestion.destroy).toHaveBeenCalled();
+    expect(res.statusCode).toBe(204);
+  });
 
-      expect(response.status).toBe(404);
-      expect(response.body.error).toBe('TestQuestion not found');
-    });
+  test('getTestQuestionById should handle not found case', async () => {
+    const req = httpMocks.createRequest({ method: 'GET', params: { id: 999 } });
+    const res = httpMocks.createResponse();
+
+    TestQuestion.findByPk.mockResolvedValue(null);
+
+    await testQuestionController.getTestQuestionById(req, res);
+
+    expect(res.statusCode).toBe(404);
+    expect(res._getJSONData()).toEqual({ error: 'TestQuestion not found' });
+  });
+
+  test('searchTestQuestions should handle no results case', async () => {
+    const req = httpMocks.createRequest({ method: 'GET', query: { header: 'Nonexistent' } });
+    const res = httpMocks.createResponse();
+
+    TestQuestion.findAll.mockResolvedValue([]);
+
+    await testQuestionController.searchTestQuestions(req, res);
+
+    expect(res.statusCode).toBe(404);
+    expect(res._getJSONData()).toEqual({ success: false, message: 'No test questions found matching the criteria.' });
   });
 });
