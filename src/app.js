@@ -11,6 +11,8 @@ const fileRoutes = require('./routes/fileRoutes');
 const { connectRedis } = require('./utils/cacheUtils');
 const { metricsMiddleware, register } = require('./utils/metrics');
 
+require('./config/passportConfig');
+
 
 const app = express();
 dotenv.config();
