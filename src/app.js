@@ -18,8 +18,6 @@ const app = express();
 dotenv.config();
 connectRedis();
 
-const app = express();
-
 app.use(express.json());
 app.use(bodyParser.json());
 app.use(metricsMiddleware);
