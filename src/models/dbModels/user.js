@@ -71,17 +71,5 @@ module.exports = (sequelize, DataTypes) => {
         timestamps: false,
     });
 
-    User.beforeCreate(async (user) => {
-        if (user.Password) {
-            user.Password = await bcrypt.hash(user.Password, 10);
-        }
-    });
-
-    User.beforeUpdate(async (user) => {
-        if (user.Password && !user.Password.startsWith('$2b$')) {
-            user.Password = await bcrypt.hash(user.Password, 10);
-        }
-    });
-
     return User;
 };  
