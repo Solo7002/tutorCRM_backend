@@ -7,9 +7,8 @@ module.exports = (sequelize, DataTypes) => {
     },
     AnswerText: {
       type: DataTypes.TEXT,
-      allowNull: false,
+      allowNull: true,
       validate: {
-        notEmpty: { msg: 'AnswerText cannot be empty' },
         len: { args: [1, 1000], msg: 'AnswerText must be between 1 and 1000 characters' },
       },
     },

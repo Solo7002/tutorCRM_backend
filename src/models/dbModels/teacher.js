@@ -37,6 +37,14 @@ module.exports = (sequelize, DataTypes) => {
           type: DataTypes.INTEGER,
           allowNull: false,
         },
+        SubscriptionLevelId: {
+          type: DataTypes.INTEGER,
+          allowNull: true,
+          references: {
+            model: 'Subscriptions', 
+            key: 'id'
+          },
+        },
     }, {
         timestamps: false,
     });

@@ -15,9 +15,8 @@ module.exports = (sequelize, DataTypes) => {
     },
     TestQuestionDescription: {
       type: DataTypes.TEXT,
-      allowNull: false,
+      allowNull: true,
       validate: {
-        notEmpty: { msg: 'TestQuestionDescription cannot be empty' },
         len: { args: [1, 1000], msg: 'TestQuestionDescription must be between 1 and 1000 characters' },
       },
     },

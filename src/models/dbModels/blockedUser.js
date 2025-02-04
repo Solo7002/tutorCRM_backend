@@ -5,6 +5,17 @@ module.exports = (sequelize, DataTypes) => {
       autoIncrement: true,
       primaryKey: true,
     },
+    UserId: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: {
+        model: 'Users', 
+        key: 'id'
+      },
+      validate: {
+        notNull: { msg: 'User ID is required' },
+      },
+    },
     ReasonDescription: {
       type: DataTypes.TEXT,
       allowNull: false,

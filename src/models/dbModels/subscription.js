@@ -19,7 +19,7 @@ module.exports = (sequelize, DataTypes) => {
       },
       SubscriptionPrice: {
         type: DataTypes.DECIMAL(10, 2),
-        allowNull: false,
+        allowNull: true,
         validate: {
             isDecimal: { msg: 'SubscriptionPrice must be a valid decimal number' },
         },

@@ -51,6 +51,7 @@ module.exports = (sequelize, DataTypes) => {
     MaxMark: {
       type: DataTypes.INTEGER,
       allowNull: false,
+      defaultValue: 100,
       validate: {
         isInt: { msg: 'MaxMark must be an integer' },
         min: { args: [0], msg: 'MaxMark must be at least 0' },
