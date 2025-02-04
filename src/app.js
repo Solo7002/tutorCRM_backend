@@ -32,12 +32,16 @@ const options = {
         info: { title: "Node JS API Project", version: '1.0.1' },
         servers: [{ url: "http://localhost:4000/" }]
     },
-    apis: [path.join(__dirname, "./app.js"), path.join(__dirname, "./routes/**/*.js")]
+    apis: [
+        path.join(__dirname, "./app.js"),
+        path.join(__dirname, "./routes/**/*.js"),
+        path.join(__dirname, "./routes/fileRoutes.js"),
+        path.join(__dirname, "./routes/authRoutes.js") 
+    ]
 };
 
 const swaggerSpec = swaggerJSDoc(options);
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
-console.log("Swagger spec:", JSON.stringify(swaggerSpec, null, 2));
 
 exec('npx sequelize-cli db:migrate', (err, stdout, stderr) => {
     if (err) {
