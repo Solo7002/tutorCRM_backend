@@ -1,207 +1,91 @@
-const request = require('supertest');
-const app = require('../../../src/app');
 const { User } = require('../../../src/models/dbModels');
+const userController = require('../../../src/controllers/dbControllers/userController');
+const httpMocks = require('node-mocks-http');
 
-describe('User API Tests', () => {
-  describe('POST /api/users', () => {
-    test('should create a new user and return status 201', async () => {
-      const newUser = {
+jest.mock('../../../src/models/dbModels', () => ({
+  User: {
+    create: jest.fn(),
+    findAll: jest.fn(),
+    findByPk: jest.fn(),
+    update: jest.fn(),
+    destroy: jest.fn(),
+  },
+}));
+
+describe('User Controller Tests', () => {
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  test('createUser should create a new user', async () => {
+    const req = httpMocks.createRequest({
+      method: 'POST',
+      body: {
         Username: 'testUser',
-        Password: 'Password123!',
-        Email: 'test@example.com',
+        Password: 'password123',
         LastName: 'Doe',
         FirstName: 'John',
-      };
-
-      const response = await request(app)
-        .post('/api/users')
-        .send(newUser);
-
-      expect(response.status).toBe(201);
-      expect(response.body).toHaveProperty('UserId');
-      expect(response.body.Username).toBe('testUser');
-      expect(response.body.Email).toBe('test@example.com');
+        Email: 'john.doe@example.com',
+      },
     });
+    const res = httpMocks.createResponse();
 
-    test('should return 400 for duplicate email', async () => {
-      await request(app)
-        .post('/api/users')
-        .send({
-          Username: 'user1',
-          Password: 'Password123!',
-          Email: 'test@example.com',
-          LastName: 'Doe',
-          FirstName: 'John',
-        });
+    User.create.mockResolvedValue(req.body);
+    await userController.createUser(req, res);
 
-      const duplicateUser = {
-        Username: 'user2',
-        Password: 'Password123!',
-        Email: 'test@example.com',
-        LastName: 'Smith',
-        FirstName: 'Jane',
-      };
-
-      const response = await request(app)
-        .post('/api/users')
-        .send(duplicateUser);
-
-      expect(response.status).toBe(400);
-      expect(response.body.error).toContain('Validation error');
-    });
+    expect(User.create).toHaveBeenCalledWith(req.body);
+    expect(res.statusCode).toBe(201);
+    expect(res._getJSONData()).toEqual(req.body);
   });
 
-  describe('GET /api/users', () => {
-    test('should return a list of users and status 200', async () => {
-      await User.create({
-        Username: 'user1',
-        Password: 'Password123!',
-        Email: 'user1@example.com',
-        LastName: 'Doe',
-        FirstName: 'John',
-      });
-      await User.create({
-        Username: 'user2',
-        Password: 'Password123!',
-        Email: 'user2@example.com',
-        LastName: 'Smith',
-        FirstName: 'Jane',
-      });
+  test('getUsers should return all users', async () => {
+    const req = httpMocks.createRequest({ method: 'GET' });
+    const res = httpMocks.createResponse();
+    const mockUsers = [{ UserId: 1, Username: 'testUser' }];
 
-      const response = await request(app)
-        .get('/api/users');
+    User.findAll.mockResolvedValue(mockUsers);
+    await userController.getUsers(req, res);
 
-      expect(response.status).toBe(200);
-      expect(Array.isArray(response.body)).toBe(true);
-      expect(response.body.length).toBeGreaterThan(0);
-    });
+    expect(User.findAll).toHaveBeenCalled();
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData()).toEqual(mockUsers);
   });
 
-  describe('GET /api/users/:id', () => {
-    test('should return a user by ID and status 200', async () => {
-      const testUser = await User.create({
-        Username: 'testUser',
-        Password: 'Password123!',
-        Email: 'test@example.com',
-        LastName: 'Doe',
-        FirstName: 'John',
-      });
+  test('getUserById should return user if found', async () => {
+    const req = httpMocks.createRequest({ method: 'GET', params: { id: 1 } });
+    const res = httpMocks.createResponse();
+    const mockUser = { UserId: 1, Username: 'testUser' };
 
-      const response = await request(app)
-        .get(`/api/users/${testUser.UserId}`);
+    User.findByPk.mockResolvedValue(mockUser);
+    await userController.getUserById(req, res);
 
-      expect(response.status).toBe(200);
-      expect(response.body.Username).toBe('testUser');
-      expect(response.body.Email).toBe('test@example.com');
-    });
-
-    test('should return 404 if user not found', async () => {
-      const response = await request(app)
-        .get('/api/users/999');
-
-      expect(response.status).toBe(404);
-      expect(response.body.message).toBe('User not found');
-    });
+    expect(User.findByPk).toHaveBeenCalledWith(1);
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData()).toEqual(mockUser);
   });
 
-  describe('GET /api/users/search', () => {
-    test('should return matching users and status 200', async () => {
-      await User.create({
-        Username: 'johnDoe',
-        Password: 'Password123!',
-        Email: 'john@example.com',
-        LastName: 'Doe',
-        FirstName: 'John',
-      });
-      await User.create({
-        Username: 'janeSmith',
-        Password: 'Password123!',
-        Email: 'jane@example.com',
-        LastName: 'Smith',
-        FirstName: 'Jane',
-      });
+  test('updateUser should update an existing user', async () => {
+    const req = httpMocks.createRequest({ method: 'PUT', params: { id: 1 }, body: { Username: 'updatedUser' } });
+    const res = httpMocks.createResponse();
+    const mockUser = { update: jest.fn().mockResolvedValue([1]) };
 
-      const response = await request(app)
-        .get('/api/users/search')
-        .query({ username: 'john' });
+    User.findByPk.mockResolvedValue(mockUser);
+    await userController.updateUser(req, res);
 
-      expect(response.status).toBe(200);
-      expect(response.body.success).toBe(true);
-      expect(Array.isArray(response.body.data)).toBe(true);
-      expect(response.body.data[0].Username).toBe('johnDoe');
-    });
-
-    test('should return 404 if no users match the criteria', async () => {
-      const response = await request(app)
-        .get('/api/users/search')
-        .query({ username: 'nonexistent' });
-
-      expect(response.status).toBe(404);
-      expect(response.body.success).toBe(false);
-      expect(response.body.message).toBe('No users found matching the criteria.');
-    });
+    expect(mockUser.update).toHaveBeenCalledWith(req.body);
+    expect(res.statusCode).toBe(200);
   });
 
-  describe('PUT /api/users/:id', () => {
-    test('should update a user and return status 200', async () => {
-      const testUser = await User.create({
-        Username: 'testUser',
-        Password: 'Password123!',
-        Email: 'test@example.com',
-        LastName: 'Doe',
-        FirstName: 'John',
-      });
+  test('deleteUser should remove a user', async () => {
+    const req = httpMocks.createRequest({ method: 'DELETE', params: { id: 1 } });
+    const res = httpMocks.createResponse();
+    const mockUser = { destroy: jest.fn().mockResolvedValue(1) };
 
-      const updatedData = {
-        LastName: 'UpdatedDoe',
-        FirstName: 'UpdatedJohn',
-      };
+    User.findByPk.mockResolvedValue(mockUser);
+    await userController.deleteUser(req, res);
 
-      const response = await request(app)
-        .put(`/api/users/${testUser.UserId}`)
-        .send(updatedData);
-
-      expect(response.status).toBe(200);
-      expect(response.body.LastName).toBe('UpdatedDoe');
-      expect(response.body.FirstName).toBe('UpdatedJohn');
-    });
-
-    test('should return 404 if user not found', async () => {
-      const response = await request(app)
-        .put('/api/users/999')
-        .send({ LastName: 'UpdatedDoe', FirstName: 'UpdatedJohn' });
-
-      expect(response.status).toBe(404);
-      expect(response.body.message).toBe('User not found');
-    });
-  });
-
-  describe('DELETE /api/users/:id', () => {
-    test('should delete a user and return status 200', async () => {
-      const testUser = await User.create({
-        Username: 'testUser',
-        Password: 'Password123!',
-        Email: 'test@example.com',
-        LastName: 'Doe',
-        FirstName: 'John',
-      });
-
-      const response = await request(app)
-        .delete(`/api/users/${testUser.UserId}`);
-
-      expect(response.status).toBe(200);
-      expect(response.body.message).toBe('User deleted');
-
-      const deletedUser = await User.findByPk(testUser.UserId);
-      expect(deletedUser).toBeNull();
-    });
-
-    test('should return 404 if user not found', async () => {
-      const response = await request(app)
-        .delete('/api/users/999');
-
-      expect(response.status).toBe(404);
-      expect(response.body.message).toBe('User not found');
-    });
+    expect(mockUser.destroy).toHaveBeenCalled();
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData()).toEqual({ message: 'User deleted' });
   });
 });

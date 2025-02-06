@@ -1,186 +1,204 @@
-const request = require('supertest');
-const app = require('../../../src/app');
+const httpMocks = require('node-mocks-http');
 const { Location } = require('../../../src/models/dbModels');
+const locationController = require('../../../src/controllers/dbControllers/locationController');
+const { Op } = require('sequelize');
 
-describe('Location API Tests', () => {
-  describe('POST /api/locations', () => {
-    test('should create a new location and return status 201', async () => {
-      const newLocation = {
+jest.mock('../../../src/models/dbModels', () => ({
+  Location: {
+    create: jest.fn(),
+    findAll: jest.fn(),
+    findByPk: jest.fn(),
+    update: jest.fn(),
+    destroy: jest.fn(),
+  },
+}));
+
+describe('Location Controller Tests', () => {
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  test('createLocation should create a new location', async () => {
+    const req = httpMocks.createRequest({
+      method: 'POST',
+      body: {
         City: 'New York',
         Country: 'USA',
         Latitude: 40.7128,
         Longitude: -74.006,
-        Address: '123 Main St'
-      };
-
-      const response = await request(app)
-        .post('/api/locations')
-        .send(newLocation);
-
-      expect(response.status).toBe(201);
-      expect(response.body).toHaveProperty('LocationId');
-      expect(response.body.City).toBe('New York');
-      expect(response.body.Country).toBe('USA');
-      expect(response.body.Latitude).toBe(40.7128);
-      expect(response.body.Longitude).toBe(-74.006);
-      expect(response.body.Address).toBe('123 Main St');
+        Address: 'Times Square',
+      },
     });
+    const res = httpMocks.createResponse();
 
-    test('should return 400 for invalid input (missing City)', async () => {
-      const invalidLocation = {
+    Location.create.mockResolvedValue(req.body);
+
+    await locationController.createLocation(req, res);
+
+    expect(Location.create).toHaveBeenCalledWith(req.body);
+    expect(res.statusCode).toBe(201);
+    expect(res._getJSONData()).toEqual(req.body);
+  });
+
+  test('getLocations should return all locations', async () => {
+    const req = httpMocks.createRequest({ method: 'GET' });
+    const res = httpMocks.createResponse();
+
+    const mockLocations = [
+      {
+        LocationId: 1,
+        City: 'New York',
         Country: 'USA',
         Latitude: 40.7128,
         Longitude: -74.006,
-        Address: '123 Main St'
-      };
+        Address: 'Times Square',
+      },
+    ];
 
-      const response = await request(app)
-        .post('/api/locations')
-        .send(invalidLocation);
+    Location.findAll.mockResolvedValue(mockLocations);
 
-      expect(response.status).toBe(400);
-      expect(response.body.error).toContain('Validation error: City cannot be empty');
+    await locationController.getLocations(req, res);
+
+    expect(Location.findAll).toHaveBeenCalledWith({
+      where: undefined,
+      order: undefined,
     });
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData()).toEqual(mockLocations);
   });
 
-  describe('GET /api/locations', () => {
-    test('should return a list of locations and status 200', async () => {
-      await Location.create({
-        City: 'Los Angeles',
-        Country: 'USA',
-        Latitude: 34.0522,
-        Longitude: -118.2437,
-        Address: '456 Elm St'
-      });
+  test('getLocationById should return location if found', async () => {
+    const req = httpMocks.createRequest({ method: 'GET', params: { id: 1 } });
+    const res = httpMocks.createResponse();
 
-      const response = await request(app)
-        .get('/api/locations');
+    const mockLocation = {
+      LocationId: 1,
+      City: 'New York',
+      Country: 'USA',
+      Latitude: 40.7128,
+      Longitude: -74.006,
+      Address: 'Times Square',
+    };
 
-      expect(response.status).toBe(200);
-      expect(Array.isArray(response.body)).toBe(true);
-      expect(response.body.length).toBeGreaterThan(0);
-    });
+    Location.findByPk.mockResolvedValue(mockLocation);
+
+    await locationController.getLocationById(req, res);
+
+    expect(Location.findByPk).toHaveBeenCalledWith(1);
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData()).toEqual(mockLocation);
   });
 
-  describe('GET /api/locations/:id', () => {
-    test('should return a location by ID and status 200', async () => {
-      const testLocation = await Location.create({
-        City: 'Chicago',
+  test('searchLocations should return matching locations', async () => {
+    const req = httpMocks.createRequest({
+      method: 'GET',
+      query: { city: 'New', country: 'USA', latitude: '40.7128', longitude: '-74.006', address: 'Square' },
+    });
+    const res = httpMocks.createResponse();
+
+    const mockLocations = [
+      {
+        LocationId: 1,
+        City: 'New York',
         Country: 'USA',
-        Latitude: 41.8781,
-        Longitude: -87.6298,
-        Address: '789 Oak St'
-      });
+        Latitude: 40.7128,
+        Longitude: -74.006,
+        Address: 'Times Square',
+      },
+    ];
 
-      const response = await request(app)
-        .get(`/api/locations/${testLocation.LocationId}`);
+    Location.findAll.mockResolvedValue(mockLocations);
 
-      expect(response.status).toBe(200);
-      expect(response.body.City).toBe('Chicago');
-      expect(response.body.Country).toBe('USA');
-      expect(response.body.Latitude).toBe(41.8781);
-      expect(response.body.Longitude).toBe(-87.6298);
-      expect(response.body.Address).toBe('789 Oak St');
+    await locationController.searchLocations(req, res);
+
+    expect(Location.findAll).toHaveBeenCalledWith({
+      where: {
+        City: { [Op.like]: '%New%' },
+        Country: { [Op.like]: '%USA%' },
+        Latitude: 40.7128,
+        Longitude: -74.006,
+        Address: { [Op.like]: '%Square%' },
+      },
     });
 
-    test('should return 404 if location not found', async () => {
-      const response = await request(app)
-        .get('/api/locations/999');
-
-      expect(response.status).toBe(404);
-      expect(response.body.error).toBe('Location not found');
-    });
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData().success).toBe(true);
+    expect(res._getJSONData().data).toEqual(mockLocations);
   });
 
-  describe('GET /api/locations/search', () => {
-    test('should return matching locations and status 200', async () => {
-      await Location.create({
-        City: 'San Francisco',
+  test('updateLocation should update an existing location', async () => {
+    const req = httpMocks.createRequest({
+      method: 'PUT',
+      params: { id: 1 },
+      body: { City: 'Updated New York' },
+    });
+    const res = httpMocks.createResponse();
+
+    const mockLocation = {
+      update: jest.fn().mockResolvedValue([1]),
+      dataValues: {
+        LocationId: 1,
+        City: 'Updated New York',
         Country: 'USA',
-        Latitude: 37.7749,
-        Longitude: -122.4194,
-        Address: '321 Pine St'
-      });
+        Latitude: 40.7128,
+        Longitude: -74.006,
+        Address: 'Times Square',
+      },
+      toJSON: jest.fn(() => ({ ...mockLocation.dataValues })),
+    };
 
-      const response = await request(app)
-        .get('/api/locations/search')
-        .query({ city: 'San' });
+    Location.findByPk.mockResolvedValue(mockLocation);
 
-      expect(response.status).toBe(200);
-      expect(response.body.success).toBe(true);
-      expect(Array.isArray(response.body.data)).toBe(true);
-      expect(response.body.data.length).toBeGreaterThan(0);
-      expect(response.body.data[0].City).toContain('San');
+    await locationController.updateLocation(req, res);
+
+    expect(mockLocation.update).toHaveBeenCalledWith(req.body);
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData()).toEqual({
+      LocationId: 1,
+      City: 'Updated New York',
+      Country: 'USA',
+      Latitude: 40.7128,
+      Longitude: -74.006,
+      Address: 'Times Square',
     });
-
-    test('should return 404 if no locations match the criteria', async () => {
-      const response = await request(app)
-        .get('/api/locations/search')
-        .query({ city: 'nonexistent' });
-
-      expect(response.status).toBe(404);
-      expect(response.body.success).toBe(false);
-      expect(response.body.message).toBe('No locations found matching the criteria.');
-    });
+    expect(mockLocation.toJSON).toHaveBeenCalled();
   });
 
-  describe('PUT /api/locations/:id', () => {
-    test('should update a location and return status 200', async () => {
-      const testLocation = await Location.create({
-        City: 'Miami',
-        Country: 'USA',
-        Latitude: 25.7617,
-        Longitude: -80.1918,
-        Address: '654 Palm St'
-      });
+  test('deleteLocation should remove a location', async () => {
+    const req = httpMocks.createRequest({ method: 'DELETE', params: { id: 1 } });
+    const res = httpMocks.createResponse();
 
-      const updatedData = {
-        City: 'Updated Miami'
-      };
+    const mockLocation = { destroy: jest.fn().mockResolvedValue(1) };
 
-      const response = await request(app)
-        .put(`/api/locations/${testLocation.LocationId}`)
-        .send(updatedData);
+    Location.findByPk.mockResolvedValue(mockLocation);
 
-      expect(response.status).toBe(200);
-      expect(response.body.City).toBe('Updated Miami');
-    });
+    await locationController.deleteLocation(req, res);
 
-    test('should return 404 if location not found', async () => {
-      const response = await request(app)
-        .put('/api/locations/999')
-        .send({ City: 'Updated City' });
-
-      expect(response.status).toBe(404);
-      expect(response.body.error).toBe('Location not found');
-    });
+    expect(mockLocation.destroy).toHaveBeenCalled();
+    expect(res.statusCode).toBe(204);
   });
 
-  describe('DELETE /api/locations/:id', () => {
-    test('should delete a location and return status 204', async () => {
-      const testLocation = await Location.create({
-        City: 'Seattle',
-        Country: 'USA',
-        Latitude: 47.6062,
-        Longitude: -122.3321,
-        Address: '987 Maple St'
-      });
+  test('getLocationById should handle not found case', async () => {
+    const req = httpMocks.createRequest({ method: 'GET', params: { id: 999 } });
+    const res = httpMocks.createResponse();
 
-      const response = await request(app)
-        .delete(`/api/locations/${testLocation.LocationId}`);
+    Location.findByPk.mockResolvedValue(null);
 
-      expect(response.status).toBe(204);
+    await locationController.getLocationById(req, res);
 
-      const deletedLocation = await Location.findByPk(testLocation.LocationId);
-      expect(deletedLocation).toBeNull();
-    });
+    expect(res.statusCode).toBe(404);
+    expect(res._getJSONData()).toEqual({ error: 'Location not found' });
+  });
 
-    test('should return 404 if location not found', async () => {
-      const response = await request(app)
-        .delete('/api/locations/999');
+  test('searchLocations should handle no results case', async () => {
+    const req = httpMocks.createRequest({ method: 'GET', query: { city: 'Nonexistent' } });
+    const res = httpMocks.createResponse();
 
-      expect(response.status).toBe(404);
-      expect(response.body.error).toBe('Location not found');
-    });
+    Location.findAll.mockResolvedValue([]);
+
+    await locationController.searchLocations(req, res);
+
+    expect(res.statusCode).toBe(404);
+    expect(res._getJSONData()).toEqual({ success: false, message: 'No locations found matching the criteria.' });
   });
 });

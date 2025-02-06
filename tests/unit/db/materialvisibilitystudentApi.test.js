@@ -1,258 +1,194 @@
-const request = require('supertest');
-const app = require('../../../src/app');
-const { Material, Student, MaterialVisibilityStudent } = require('../../../src/models/dbModels');
+const httpMocks = require('node-mocks-http');
+const { MaterialVisibilityStudent, Material, Student } = require('../../../src/models/dbModels');
+const materialVisibilityController = require('../../../src/controllers/dbControllers/materialVisibilityStudentController');
+const { Op } = require('sequelize');
 
-describe('MaterialVisibilityStudent API Tests', () => {
-  describe('POST /api/materialvisibilitystudents', () => {
-    test('should create a new material visibility record and return status 201', async () => {
-      const testMaterial = await Material.create({
-        MaterialName: 'Math Notes',
-        Type: 'PDF',
-        FilePath: 'http://example.com/files/math_notes.pdf',
-        TeacherId: 1
-      });
+jest.mock('../../../src/models/dbModels', () => ({
+  MaterialVisibilityStudent: {
+    create: jest.fn(),
+    findAll: jest.fn(),
+    findByPk: jest.fn(),
+    update: jest.fn(),
+    destroy: jest.fn(),
+  },
+  Material: jest.fn(() => ({ name: 'Material' })),
+  Student: jest.fn(() => ({ name: 'Student' })),
+}));
 
-      const testStudent = await Student.create({
-        FirstName: 'John',
-        LastName: 'Doe',
-        SchoolName: 'Test School',
-        Grade: '10th'
-      });
-
-      const newMaterialVisibilityStudent = {
-        MaterialId: testMaterial.MaterialId,
-        StudentId: testStudent.StudentId
-      };
-
-      const response = await request(app)
-        .post('/api/materialvisibilitystudents')
-        .send(newMaterialVisibilityStudent);
-
-      expect(response.status).toBe(201);
-      expect(response.body).toHaveProperty('MaterialId', testMaterial.MaterialId);
-      expect(response.body).toHaveProperty('StudentId', testStudent.StudentId);
-    });
-
-    test('should return 400 for invalid input (missing MaterialId)', async () => {
-      const testStudent = await Student.create({
-        FirstName: 'John',
-        LastName: 'Doe',
-        SchoolName: 'Test School',
-        Grade: '10th'
-      });
-
-      const invalidMaterialVisibilityStudent = {
-        StudentId: testStudent.StudentId
-      };
-
-      const response = await request(app)
-        .post('/api/materialvisibilitystudents')
-        .send(invalidMaterialVisibilityStudent);
-
-      expect(response.status).toBe(400);
-      expect(response.body.error).toContain('Validation error: MaterialId cannot be null');
-    });
+describe('MaterialVisibilityStudent Controller Tests', () => {
+  afterEach(() => {
+    jest.clearAllMocks();
   });
 
-  describe('GET /api/materialvisibilitystudents', () => {
-    test('should return a list of material visibility records and status 200', async () => {
-      const testMaterial = await Material.create({
-        MaterialName: 'Physics Notes',
-        Type: 'PDF',
-        FilePath: 'http://example.com/files/physics_notes.pdf',
-        TeacherId: 1
-      });
-
-      const testStudent = await Student.create({
-        FirstName: 'Jane',
-        LastName: 'Smith',
-        SchoolName: 'Test School',
-        Grade: '11th'
-      });
-
-      await MaterialVisibilityStudent.create({
-        MaterialId: testMaterial.MaterialId,
-        StudentId: testStudent.StudentId
-      });
-
-      const response = await request(app)
-        .get('/api/materialvisibilitystudents');
-
-      expect(response.status).toBe(200);
-      expect(Array.isArray(response.body)).toBe(true);
-      expect(response.body.length).toBeGreaterThan(0);
-      expect(response.body[0]).toHaveProperty('MaterialId', testMaterial.MaterialId);
-      expect(response.body[0]).toHaveProperty('StudentId', testStudent.StudentId);
+  test('createMaterialVisibilityStudent should create a new record', async () => {
+    const req = httpMocks.createRequest({
+      method: 'POST',
+      body: {
+        MaterialId: 1,
+        StudentId: 1,
+      },
     });
+    const res = httpMocks.createResponse();
+
+    MaterialVisibilityStudent.create.mockResolvedValue(req.body);
+
+    await materialVisibilityController.createMaterialVisibilityStudent(req, res);
+
+    expect(MaterialVisibilityStudent.create).toHaveBeenCalledWith(req.body);
+    expect(res.statusCode).toBe(201);
+    expect(res._getJSONData()).toEqual(req.body);
   });
 
-  describe('GET /api/materialvisibilitystudents/:id', () => {
-    test('should return a material visibility record by ID and status 200', async () => {
-      const testMaterial = await Material.create({
-        MaterialName: 'Chemistry Notes',
-        Type: 'PDF',
-        FilePath: 'http://example.com/files/chemistry_notes.pdf',
-        TeacherId: 1
-      });
+  test('getMaterialVisibilityStudents should return all records', async () => {
+    const req = httpMocks.createRequest({ method: 'GET' });
+    const res = httpMocks.createResponse();
 
-      const testStudent = await Student.create({
-        FirstName: 'Alice',
-        LastName: 'Johnson',
-        SchoolName: 'Test School',
-        Grade: '12th'
-      });
+    const mockRecords = [
+      {
+        MaterialId: 1,
+        StudentId: 1,
+      },
+    ];
 
-      const testMaterialVisibilityStudent = await MaterialVisibilityStudent.create({
-        MaterialId: testMaterial.MaterialId,
-        StudentId: testStudent.StudentId
-      });
+    MaterialVisibilityStudent.findAll.mockResolvedValue(mockRecords);
 
-      const response = await request(app)
-        .get(`/api/materialvisibilitystudents/${testMaterialVisibilityStudent.MaterialVisibilityStudentId}`);
+    await materialVisibilityController.getMaterialVisibilityStudents(req, res);
 
-      expect(response.status).toBe(200);
-      expect(response.body).toHaveProperty('MaterialId', testMaterial.MaterialId);
-      expect(response.body).toHaveProperty('StudentId', testStudent.StudentId);
+    expect(MaterialVisibilityStudent.findAll).toHaveBeenCalledWith({
+      where: undefined,
+      order: undefined,
     });
-
-    test('should return 404 if material visibility record not found', async () => {
-      const response = await request(app)
-        .get('/api/materialvisibilitystudents/999');
-
-      expect(response.status).toBe(404);
-      expect(response.body.error).toBe('MaterialVisibilityStudent not found');
-    });
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData()).toEqual(mockRecords);
   });
 
-  describe('GET /api/materialvisibilitystudents/search', () => {
-    test('should return matching material visibility records and status 200', async () => {
-      const testMaterial = await Material.create({
-        MaterialName: 'Biology Notes',
-        Type: 'PDF',
-        FilePath: 'http://example.com/files/biology_notes.pdf',
-        TeacherId: 1
-      });
+  test('getMaterialVisibilityStudentById should return record if found', async () => {
+    const req = httpMocks.createRequest({ method: 'GET', params: { id: 1 } });
+    const res = httpMocks.createResponse();
 
-      const testStudent = await Student.create({
-        FirstName: 'Bob',
-        LastName: 'Brown',
-        SchoolName: 'Test School',
-        Grade: '9th'
-      });
+    const mockRecord = {
+      MaterialId: 1,
+      StudentId: 1,
+    };
 
-      await MaterialVisibilityStudent.create({
-        MaterialId: testMaterial.MaterialId,
-        StudentId: testStudent.StudentId
-      });
+    MaterialVisibilityStudent.findByPk.mockResolvedValue(mockRecord);
 
-      const response = await request(app)
-        .get('/api/materialvisibilitystudents/search')
-        .query({ studentId: testStudent.StudentId });
+    await materialVisibilityController.getMaterialVisibilityStudentById(req, res);
 
-      expect(response.status).toBe(200);
-      expect(response.body.success).toBe(true);
-      expect(Array.isArray(response.body.data)).toBe(true);
-      expect(response.body.data.length).toBeGreaterThan(0);
-      expect(response.body.data[0].StudentId).toBe(testStudent.StudentId);
-    });
-
-    test('should return 404 if no material visibility records match the criteria', async () => {
-      const response = await request(app)
-        .get('/api/materialvisibilitystudents/search')
-        .query({ studentId: 'nonexistent' });
-
-      expect(response.status).toBe(404);
-      expect(response.body.success).toBe(false);
-      expect(response.body.message).toBe('No material visibility records found matching the criteria.');
-    });
+    expect(MaterialVisibilityStudent.findByPk).toHaveBeenCalledWith(1);
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData()).toEqual(mockRecord);
   });
 
-  describe('PUT /api/materialvisibilitystudents/:id', () => {
-    test('should update a material visibility record and return status 200', async () => {
-      const testMaterial1 = await Material.create({
-        MaterialName: 'History Notes',
-        Type: 'PDF',
-        FilePath: 'http://example.com/files/history_notes.pdf',
-        TeacherId: 1
-      });
+  test('searchMaterialVisibility should return matching records', async () => {
+    const req = httpMocks.createRequest({
+      method: 'GET',
+      query: { materialId: '1', studentId: '1' },
+    });
+    const res = httpMocks.createResponse();
 
-      const testMaterial2 = await Material.create({
-        MaterialName: 'Geography Notes',
-        Type: 'PDF',
-        FilePath: 'http://example.com/files/geography_notes.pdf',
-        TeacherId: 1
-      });
+    const mockRecords = [
+      {
+        MaterialId: 1,
+        StudentId: 1,
+        Material: { MaterialId: 1, MaterialName: 'Math Notes' },
+        Student: { StudentId: 1, FirstName: 'John', LastName: 'Doe' },
+      },
+    ];
 
-      const testStudent = await Student.create({
-        FirstName: 'Charlie',
-        LastName: 'Davis',
-        SchoolName: 'Test School',
-        Grade: '10th'
-      });
+    MaterialVisibilityStudent.findAll.mockResolvedValue(mockRecords);
 
-      const testMaterialVisibilityStudent = await MaterialVisibilityStudent.create({
-        MaterialId: testMaterial1.MaterialId,
-        StudentId: testStudent.StudentId
-      });
+    await materialVisibilityController.searchMaterialVisibility(req, res);
 
-      const updatedData = {
-        MaterialId: testMaterial2.MaterialId
-      };
-
-      const response = await request(app)
-        .put(`/api/materialvisibilitystudents/${testMaterialVisibilityStudent.MaterialVisibilityStudentId}`)
-        .send(updatedData);
-
-      expect(response.status).toBe(200);
-      expect(response.body.MaterialId).toBe(testMaterial2.MaterialId);
+    expect(MaterialVisibilityStudent.findAll).toHaveBeenCalledWith({
+      where: {
+        MaterialId: '1',
+        StudentId: '1',
+      },
+      include: [
+        {
+          model: expect.any(Function),
+          as: 'Material',
+          attributes: ['MaterialId', 'MaterialName'],
+        },
+        {
+          model: expect.any(Function),
+          as: 'Student',
+          attributes: ['StudentId', 'FirstName', 'LastName'],
+        },
+      ],
     });
 
-    test('should return 404 if material visibility record not found', async () => {
-      const response = await request(app)
-        .put('/api/materialvisibilitystudents/999')
-        .send({ MaterialId: 1 });
-
-      expect(response.status).toBe(404);
-      expect(response.body.error).toBe('MaterialVisibilityStudent not found');
-    });
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData().success).toBe(true);
+    expect(res._getJSONData().data).toEqual(mockRecords);
   });
 
-  describe('DELETE /api/materialvisibilitystudents/:id', () => {
-    test('should delete a material visibility record and return status 204', async () => {
-      const testMaterial = await Material.create({
-        MaterialName: 'Art Notes',
-        Type: 'PDF',
-        FilePath: 'http://example.com/files/art_notes.pdf',
-        TeacherId: 1
-      });
-
-      const testStudent = await Student.create({
-        FirstName: 'Eve',
-        LastName: 'Wilson',
-        SchoolName: 'Test School',
-        Grade: '11th'
-      });
-
-      const testMaterialVisibilityStudent = await MaterialVisibilityStudent.create({
-        MaterialId: testMaterial.MaterialId,
-        StudentId: testStudent.StudentId
-      });
-
-      const response = await request(app)
-        .delete(`/api/materialvisibilitystudents/${testMaterialVisibilityStudent.MaterialVisibilityStudentId}`);
-
-      expect(response.status).toBe(204);
-
-      const deletedRecord = await MaterialVisibilityStudent.findByPk(testMaterialVisibilityStudent.MaterialVisibilityStudentId);
-      expect(deletedRecord).toBeNull();
+  test('updateMaterialVisibilityStudent should update an existing record', async () => {
+    const req = httpMocks.createRequest({
+      method: 'PUT',
+      params: { id: 1 },
+      body: { MaterialId: 2 },
     });
+    const res = httpMocks.createResponse();
 
-    test('should return 404 if material visibility record not found', async () => {
-      const response = await request(app)
-        .delete('/api/materialvisibilitystudents/999');
+    const mockRecord = {
+      update: jest.fn().mockResolvedValue([1]),
+      dataValues: {
+        MaterialId: 2,
+        StudentId: 1,
+      },
+      toJSON: jest.fn(() => ({ ...mockRecord.dataValues })),
+    };
 
-      expect(response.status).toBe(404);
-      expect(response.body.error).toBe('MaterialVisibilityStudent not found');
+    MaterialVisibilityStudent.findByPk.mockResolvedValue(mockRecord);
+
+    await materialVisibilityController.updateMaterialVisibilityStudent(req, res);
+
+    expect(mockRecord.update).toHaveBeenCalledWith(req.body);
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData()).toEqual({
+      MaterialId: 2,
+      StudentId: 1,
     });
+    expect(mockRecord.toJSON).toHaveBeenCalled();
+  });
+
+  test('deleteMaterialVisibilityStudent should remove a record', async () => {
+    const req = httpMocks.createRequest({ method: 'DELETE', params: { id: 1 } });
+    const res = httpMocks.createResponse();
+
+    const mockRecord = { destroy: jest.fn().mockResolvedValue(1) };
+
+    MaterialVisibilityStudent.findByPk.mockResolvedValue(mockRecord);
+
+    await materialVisibilityController.deleteMaterialVisibilityStudent(req, res);
+
+    expect(mockRecord.destroy).toHaveBeenCalled();
+    expect(res.statusCode).toBe(204);
+  });
+
+  test('getMaterialVisibilityStudentById should handle not found case', async () => {
+    const req = httpMocks.createRequest({ method: 'GET', params: { id: 999 } });
+    const res = httpMocks.createResponse();
+
+    MaterialVisibilityStudent.findByPk.mockResolvedValue(null);
+
+    await materialVisibilityController.getMaterialVisibilityStudentById(req, res);
+
+    expect(res.statusCode).toBe(404);
+    expect(res._getJSONData()).toEqual({ error: 'MaterialVisibilityStudent not found' });
+  });
+
+  test('searchMaterialVisibility should handle no results case', async () => {
+    const req = httpMocks.createRequest({ method: 'GET', query: { materialId: '999' } });
+    const res = httpMocks.createResponse();
+
+    MaterialVisibilityStudent.findAll.mockResolvedValue([]);
+
+    await materialVisibilityController.searchMaterialVisibility(req, res);
+
+    expect(res.statusCode).toBe(404);
+    expect(res._getJSONData()).toEqual({ success: false, message: 'No material visibility records found matching the criteria.' });
   });
 });

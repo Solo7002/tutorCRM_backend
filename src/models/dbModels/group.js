@@ -15,7 +15,7 @@ module.exports = (sequelize, DataTypes) => {
     },
     GroupPrice: {
       type: DataTypes.DECIMAL(10, 2),
-      allowNull: false,
+      allowNull: true,
       validate: {
         isDecimal: { msg: 'Group price must be a valid decimal number', },
         min: { args: [0], msg: 'Group price must be at least 0', },

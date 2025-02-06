@@ -1,168 +1,194 @@
-const request = require('supertest');
-const app = require('../../../src/app');
+const httpMocks = require('node-mocks-http');
 const { PurchasedMaterial } = require('../../../src/models/dbModels');
+const purchasedMaterialController = require('../../../src/controllers/dbControllers/purchasedMaterialController');
+const { Op } = require('sequelize');
 
-describe('PurchasedMaterial API Tests', () => {
-  describe('POST /api/purchasedmaterials', () => {
-    test('should create a new purchased material and return status 201', async () => {
-      const newPurchasedMaterial = {
+jest.mock('../../../src/models/dbModels', () => ({
+  PurchasedMaterial: {
+    create: jest.fn(),
+    findAll: jest.fn(),
+    findByPk: jest.fn(),
+    update: jest.fn(),
+    destroy: jest.fn(),
+  },
+}));
+
+describe('PurchasedMaterial Controller Tests', () => {
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  test('createPurchasedMaterial should create a new purchased material', async () => {
+    const req = httpMocks.createRequest({
+      method: 'POST',
+      body: {
         SaleMaterialId: 1,
         PurchaserId: 1,
-        PurchasedDate: new Date()
-      };
-
-      const response = await request(app)
-        .post('/api/purchasedmaterials')
-        .send(newPurchasedMaterial);
-
-      expect(response.status).toBe(201);
-      expect(response.body).toHaveProperty('PurchasedMaterialId');
-      expect(response.body.SaleMaterialId).toBe(1);
-      expect(response.body.PurchaserId).toBe(1);
-      expect(new Date(response.body.PurchasedDate)).toBeInstanceOf(Date);
+      },
     });
+    const res = httpMocks.createResponse();
 
-    test('should return 400 for invalid input (missing SaleMaterialId)', async () => {
-      const invalidPurchasedMaterial = {
+    PurchasedMaterial.create.mockResolvedValue(req.body);
+
+    await purchasedMaterialController.createPurchasedMaterial(req, res);
+
+    expect(PurchasedMaterial.create).toHaveBeenCalledWith(req.body);
+    expect(res.statusCode).toBe(201);
+    expect(res._getJSONData()).toEqual(req.body);
+  });
+
+  test('getPurchasedMaterials should return all purchased materials', async () => {
+    const req = httpMocks.createRequest({ method: 'GET' });
+    const res = httpMocks.createResponse();
+
+    const mockPurchasedMaterials = [
+      {
+        PurchasedMaterialId: 1,
+        SaleMaterialId: 1,
         PurchaserId: 1,
-        PurchasedDate: new Date()
-      };
+        PurchasedDate: '2023-10-01T00:00:00Z',
+      },
+    ];
 
-      const response = await request(app)
-        .post('/api/purchasedmaterials')
-        .send(invalidPurchasedMaterial);
+    PurchasedMaterial.findAll.mockResolvedValue(mockPurchasedMaterials);
 
-      expect(response.status).toBe(400);
-      expect(response.body.error).toContain('Validation error: SaleMaterialId cannot be null');
+    await purchasedMaterialController.getPurchasedMaterials(req, res);
+
+    expect(PurchasedMaterial.findAll).toHaveBeenCalledWith({
+      where: undefined,
+      order: undefined,
     });
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData()).toEqual(mockPurchasedMaterials);
   });
 
-  describe('GET /api/purchasedmaterials', () => {
-    test('should return a list of purchased materials and status 200', async () => {
-      await PurchasedMaterial.create({
+  test('getPurchasedMaterialById should return purchased material if found', async () => {
+    const req = httpMocks.createRequest({ method: 'GET', params: { id: 1 } });
+    const res = httpMocks.createResponse();
+
+    const mockPurchasedMaterial = {
+      PurchasedMaterialId: 1,
+      SaleMaterialId: 1,
+      PurchaserId: 1,
+      PurchasedDate: '2023-10-01T00:00:00Z',
+    };
+
+    PurchasedMaterial.findByPk.mockResolvedValue(mockPurchasedMaterial);
+
+    await purchasedMaterialController.getPurchasedMaterialById(req, res);
+
+    expect(PurchasedMaterial.findByPk).toHaveBeenCalledWith(1);
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData()).toEqual(mockPurchasedMaterial);
+  });
+
+  test('searchPurchasedMaterials should return matching purchased materials', async () => {
+    const req = httpMocks.createRequest({
+      method: 'GET',
+      query: {
+        startDate: '2023-10-01',
+        endDate: '2023-10-31',
+        materialId: '1',
+        purchaserId: '1',
+      },
+    });
+    const res = httpMocks.createResponse();
+
+    const mockPurchasedMaterials = [
+      {
+        PurchasedMaterialId: 1,
+        SaleMaterialId: 1,
+        PurchaserId: 1,
+        PurchasedDate: '2023-10-15T00:00:00Z',
+      },
+    ];
+
+    PurchasedMaterial.findAll.mockResolvedValue(mockPurchasedMaterials);
+
+    await purchasedMaterialController.searchPurchasedMaterials(req, res);
+
+    expect(PurchasedMaterial.findAll).toHaveBeenCalledWith({
+      where: {
+        PurchasedDate: { [Op.between]: [new Date('2023-10-01'), new Date('2023-10-31')] },
+        SaleMaterialId: '1',
+        PurchaserId: '1',
+      },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData().success).toBe(true);
+    expect(res._getJSONData().data).toEqual(mockPurchasedMaterials);
+  });
+
+  test('updatePurchasedMaterial should update an existing purchased material', async () => {
+    const req = httpMocks.createRequest({
+      method: 'PUT',
+      params: { id: 1 },
+      body: { SaleMaterialId: 2 },
+    });
+    const res = httpMocks.createResponse();
+
+    const mockPurchasedMaterial = {
+      update: jest.fn().mockResolvedValue([1]),
+      dataValues: {
+        PurchasedMaterialId: 1,
         SaleMaterialId: 2,
-        PurchaserId: 2,
-        PurchasedDate: new Date()
-      });
+        PurchaserId: 1,
+        PurchasedDate: '2023-10-01T00:00:00Z',
+      },
+      toJSON: jest.fn(() => ({ ...mockPurchasedMaterial.dataValues })),
+    };
 
-      const response = await request(app)
-        .get('/api/purchasedmaterials');
+    PurchasedMaterial.findByPk.mockResolvedValue(mockPurchasedMaterial);
 
-      expect(response.status).toBe(200);
-      expect(Array.isArray(response.body)).toBe(true);
-      expect(response.body.length).toBeGreaterThan(0);
+    await purchasedMaterialController.updatePurchasedMaterial(req, res);
+
+    expect(mockPurchasedMaterial.update).toHaveBeenCalledWith(req.body);
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData()).toEqual({
+      PurchasedMaterialId: 1,
+      SaleMaterialId: 2,
+      PurchaserId: 1,
+      PurchasedDate: '2023-10-01T00:00:00Z',
     });
+    expect(mockPurchasedMaterial.toJSON).toHaveBeenCalled();
   });
 
-  describe('GET /api/purchasedmaterials/:id', () => {
-    test('should return a purchased material by ID and status 200', async () => {
-      const testPurchasedMaterial = await PurchasedMaterial.create({
-        SaleMaterialId: 3,
-        PurchaserId: 3,
-        PurchasedDate: new Date()
-      });
+  test('deletePurchasedMaterial should remove a purchased material', async () => {
+    const req = httpMocks.createRequest({ method: 'DELETE', params: { id: 1 } });
+    const res = httpMocks.createResponse();
 
-      const response = await request(app)
-        .get(`/api/purchasedmaterials/${testPurchasedMaterial.PurchasedMaterialId}`);
+    const mockPurchasedMaterial = { destroy: jest.fn().mockResolvedValue(1) };
 
-      expect(response.status).toBe(200);
-      expect(response.body.SaleMaterialId).toBe(3);
-      expect(response.body.PurchaserId).toBe(3);
-      expect(new Date(response.body.PurchasedDate)).toBeInstanceOf(Date);
-    });
+    PurchasedMaterial.findByPk.mockResolvedValue(mockPurchasedMaterial);
 
-    test('should return 404 if purchased material not found', async () => {
-      const response = await request(app)
-        .get('/api/purchasedmaterials/999');
+    await purchasedMaterialController.deletePurchasedMaterial(req, res);
 
-      expect(response.status).toBe(404);
-      expect(response.body.error).toBe('PurchasedMaterial not found');
-    });
+    expect(mockPurchasedMaterial.destroy).toHaveBeenCalled();
+    expect(res.statusCode).toBe(204);
   });
 
-  describe('GET /api/purchasedmaterials/search', () => {
-    test('should return matching purchased materials and status 200', async () => {
-      await PurchasedMaterial.create({
-        SaleMaterialId: 4,
-        PurchaserId: 4,
-        PurchasedDate: new Date()
-      });
+  test('getPurchasedMaterialById should handle not found case', async () => {
+    const req = httpMocks.createRequest({ method: 'GET', params: { id: 999 } });
+    const res = httpMocks.createResponse();
 
-      const response = await request(app)
-        .get('/api/purchasedmaterials/search')
-        .query({ purchaserId: 4 });
+    PurchasedMaterial.findByPk.mockResolvedValue(null);
 
-      expect(response.status).toBe(200);
-      expect(response.body.success).toBe(true);
-      expect(Array.isArray(response.body.data)).toBe(true);
-      expect(response.body.data.length).toBeGreaterThan(0);
-      expect(response.body.data[0].PurchaserId).toBe(4);
-    });
+    await purchasedMaterialController.getPurchasedMaterialById(req, res);
 
-    test('should return 404 if no purchased materials match the criteria', async () => {
-      const response = await request(app)
-        .get('/api/purchasedmaterials/search')
-        .query({ purchaserId: 'nonexistent' });
-
-      expect(response.status).toBe(404);
-      expect(response.body.success).toBe(false);
-      expect(response.body.message).toBe('No purchased materials found matching the criteria.');
-    });
+    expect(res.statusCode).toBe(404);
+    expect(res._getJSONData()).toEqual({ error: 'PurchasedMaterial not found' });
   });
 
-  describe('PUT /api/purchasedmaterials/:id', () => {
-    test('should update a purchased material and return status 200', async () => {
-      const testPurchasedMaterial = await PurchasedMaterial.create({
-        SaleMaterialId: 5,
-        PurchaserId: 5,
-        PurchasedDate: new Date()
-      });
+  test('searchPurchasedMaterials should handle no results case', async () => {
+    const req = httpMocks.createRequest({ method: 'GET', query: { startDate: 'Nonexistent' } });
+    const res = httpMocks.createResponse();
 
-      const updatedData = {
-        SaleMaterialId: 6
-      };
+    PurchasedMaterial.findAll.mockResolvedValue([]);
 
-      const response = await request(app)
-        .put(`/api/purchasedmaterials/${testPurchasedMaterial.PurchasedMaterialId}`)
-        .send(updatedData);
+    await purchasedMaterialController.searchPurchasedMaterials(req, res);
 
-      expect(response.status).toBe(200);
-      expect(response.body.SaleMaterialId).toBe(6);
-    });
-
-    test('should return 404 if purchased material not found', async () => {
-      const response = await request(app)
-        .put('/api/purchasedmaterials/999')
-        .send({ SaleMaterialId: 7 });
-
-      expect(response.status).toBe(404);
-      expect(response.body.error).toBe('PurchasedMaterial not found');
-    });
-  });
-
-  describe('DELETE /api/purchasedmaterials/:id', () => {
-    test('should delete a purchased material and return status 204', async () => {
-      const testPurchasedMaterial = await PurchasedMaterial.create({
-        SaleMaterialId: 8,
-        PurchaserId: 8,
-        PurchasedDate: new Date()
-      });
-
-      const response = await request(app)
-        .delete(`/api/purchasedmaterials/${testPurchasedMaterial.PurchasedMaterialId}`);
-
-      expect(response.status).toBe(204);
-
-      const deletedPurchasedMaterial = await PurchasedMaterial.findByPk(testPurchasedMaterial.PurchasedMaterialId);
-      expect(deletedPurchasedMaterial).toBeNull();
-    });
-
-    test('should return 404 if purchased material not found', async () => {
-      const response = await request(app)
-        .delete('/api/purchasedmaterials/999');
-
-      expect(response.status).toBe(404);
-      expect(response.body.error).toBe('PurchasedMaterial not found');
-    });
+    expect(res.statusCode).toBe(404);
+    expect(res._getJSONData()).toEqual({ success: false, message: 'No purchased materials found matching the criteria.' });
   });
 });

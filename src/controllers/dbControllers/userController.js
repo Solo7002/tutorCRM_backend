@@ -3,7 +3,6 @@ const { parseQueryParams } = require('../../utils/dbUtils/queryUtils');
 const { Op } = require('sequelize');
 
 exports.createUser = async (req, res) => {
-  console.log("+++++++++++++++++ Create user");
   try {
     const user = await User.create(req.body);
     res.status(201).json(user);

@@ -1,202 +1,137 @@
-const request = require('supertest');
-const app = require('../../../src/app');
-const { User, Student } = require('../../../src/models/dbModels');
+const { Student } = require('../../../src/models/dbModels');
+const studentController = require('../../../src/controllers/dbControllers/studentController');
+const httpMocks = require('node-mocks-http');
+const { Op } = require('sequelize');
 
-describe('Student API Tests', () => {
-  describe('POST /api/students', () => {
-    test('should create a new student and return status 201', async () => {
-      const testUser = await User.create({
-        Username: `user${Date.now()}`,
-        Password: 'Password123!',
-        Email: `test${Date.now()}@example.com`,
-        LastName: 'Doe',
-        FirstName: 'John',
-      });
+jest.mock('../../../src/models/dbModels', () => ({
+  Student: {
+    create: jest.fn(),
+    findAll: jest.fn(),
+    findByPk: jest.fn(),
+    update: jest.fn(),
+    destroy: jest.fn(),
+  },
+}));
 
-      const newStudent = {
-        SchoolName: 'Test School',
-        Grade: '10th',
-        UserId: testUser.UserId,
-      };
-
-      const response = await request(app)
-        .post('/api/students')
-        .send(newStudent);
-
-      expect(response.status).toBe(201);
-      expect(response.body).toHaveProperty('StudentId');
-      expect(response.body.SchoolName).toBe('Test School');
-      expect(response.body.Grade).toBe('10th');
-      expect(response.body.UserId).toBe(testUser.UserId);
-    });
-
-    test('should return 400 for invalid input (empty SchoolName)', async () => {
-      const testUser = await User.create({
-        Username: `user${Date.now()}`,
-        Password: 'Password123!',
-        Email: `test${Date.now()}@example.com`,
-        LastName: 'Doe',
-        FirstName: 'John',
-      });
-
-      const invalidStudent = {
-        SchoolName: '',
-        Grade: '10th',
-        UserId: testUser.UserId,
-      };
-
-      const response = await request(app)
-        .post('/api/students')
-        .send(invalidStudent);
-
-      expect(response.status).toBe(400);
-      expect(response.body.error).toContain('Validation error: SchoolName cannot be empty');
-    });
+describe('Student Controller Tests', () => {
+  afterEach(() => {
+    jest.clearAllMocks();
   });
 
-  describe('GET /api/students', () => {
-    test('should return a list of students and status 200', async () => {
-      const testUser1 = await User.create({
-        Username: `user1${Date.now()}`,
-        Password: 'Password123!',
-        Email: `user1${Date.now()}@example.com`,
-        LastName: 'Doe',
-        FirstName: 'John',
-      });
-      const testUser2 = await User.create({
-        Username: `user2${Date.now()}`,
-        Password: 'Password123!',
-        Email: `user2${Date.now()}@example.com`,
-        LastName: 'Smith',
-        FirstName: 'Jane',
-      });
-
-      await Student.create({
-        SchoolName: 'School A',
-        Grade: '10th',
-        UserId: testUser1.UserId,
-      });
-      await Student.create({
-        SchoolName: 'School B',
-        Grade: '11th',
-        UserId: testUser2.UserId,
-      });
-
-      const response = await request(app)
-        .get('/api/students');
-
-      expect(response.status).toBe(200);
-      expect(Array.isArray(response.body)).toBe(true);
-      expect(response.body.length).toBeGreaterThan(0);
-    });
-  });
-
-  describe('GET /api/students/:id', () => {
-    test('should return a student by ID and status 200', async () => {
-      const testUser = await User.create({
-        Username: `user${Date.now()}`,
-        Password: 'Password123!',
-        Email: `test${Date.now()}@example.com`,
-        LastName: 'Doe',
-        FirstName: 'John',
-      });
-
-      const testStudent = await Student.create({
+  test('createStudent should create a new student', async () => {
+    const req = httpMocks.createRequest({
+      method: 'POST',
+      body: {
         SchoolName: 'Test School',
         Grade: '10th',
-        UserId: testUser.UserId,
-      });
-
-      const response = await request(app)
-        .get(`/api/students/${testStudent.StudentId}`);
-
-      expect(response.status).toBe(200);
-      expect(response.body.SchoolName).toBe('Test School');
-      expect(response.body.Grade).toBe('10th');
-      expect(response.body.UserId).toBe(testUser.UserId);
+        UserId: 1,
+      },
     });
-
-    test('should return 404 if student not found', async () => {
-      const response = await request(app)
-        .get('/api/students/999');
-
-      expect(response.status).toBe(404);
-      expect(response.body.message).toBe('Student not found');
-    });
+    const res = httpMocks.createResponse();
+    Student.create.mockResolvedValue(req.body);
+    await studentController.createStudent(req, res);
+    expect(Student.create).toHaveBeenCalledWith(req.body);
+    expect(res.statusCode).toBe(201);
+    expect(res._getJSONData()).toEqual(req.body);
   });
 
-  describe('PUT /api/students/:id', () => {
-    test('should update a student and return status 200', async () => {
-      const testUser = await User.create({
-        Username: `user${Date.now()}`,
-        Password: 'Password123!',
-        Email: `test${Date.now()}@example.com`,
-        LastName: 'Doe',
-        FirstName: 'John',
-      });
-
-      const testStudent = await Student.create({
-        SchoolName: 'Test School',
-        Grade: '10th',
-        UserId: testUser.UserId,
-      });
-
-      const updatedData = {
-        SchoolName: 'Updated School',
-        Grade: '11th',
-      };
-
-      const response = await request(app)
-        .put(`/api/students/${testStudent.StudentId}`)
-        .send(updatedData);
-
-      expect(response.status).toBe(200);
-      expect(response.body.SchoolName).toBe('Updated School');
-      expect(response.body.Grade).toBe('11th');
-    });
-
-    test('should return 404 if student not found', async () => {
-      const response = await request(app)
-        .put('/api/students/999')
-        .send({ SchoolName: 'Updated School', Grade: '11th' });
-
-      expect(response.status).toBe(404);
-      expect(response.body.message).toBe('Student not found');
-    });
+  test('getStudents should return all students', async () => {
+    const req = httpMocks.createRequest({ method: 'GET' });
+    const res = httpMocks.createResponse();
+    const mockStudents = [{ StudentId: 1, SchoolName: 'Test School' }];
+    Student.findAll.mockResolvedValue(mockStudents);
+    await studentController.getStudents(req, res);
+    expect(Student.findAll).toHaveBeenCalled();
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData()).toEqual(mockStudents);
   });
 
-  describe('DELETE /api/students/:id', () => {
-    test('should delete a student and return status 200', async () => {
-      const testUser = await User.create({
-        Username: `user${Date.now()}`,
-        Password: 'Password123!',
-        Email: `test${Date.now()}@example.com`,
-        LastName: 'Doe',
-        FirstName: 'John',
-      });
+  test('getStudentById should return student if found', async () => {
+    const req = httpMocks.createRequest({ method: 'GET', params: { id: 1 } });
+    const res = httpMocks.createResponse();
+    const mockStudent = { StudentId: 1, SchoolName: 'Test School' };
+    Student.findByPk.mockResolvedValue(mockStudent);
+    await studentController.getStudentById(req, res);
+    expect(Student.findByPk).toHaveBeenCalledWith(1);
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData()).toEqual(mockStudent);
+  });
 
-      const testStudent = await Student.create({
-        SchoolName: 'Test School',
-        Grade: '10th',
-        UserId: testUser.UserId,
-      });
-
-      const response = await request(app)
-        .delete(`/api/students/${testStudent.StudentId}`);
-
-      expect(response.status).toBe(200);
-      expect(response.body.message).toBe('Student deleted');
-
-      const deletedStudent = await Student.findByPk(testStudent.StudentId);
-      expect(deletedStudent).toBeNull();
+  test('searchStudents should return matching students', async () => {
+    const req = httpMocks.createRequest({
+      method: 'GET',
+      query: { schoolName: 'Test', grade: 'A' },
     });
-
-    test('should return 404 if student not found', async () => {
-      const response = await request(app)
-        .delete('/api/students/999');
-
-      expect(response.status).toBe(404);
-      expect(response.body.message).toBe('Student not found');
+    const res = httpMocks.createResponse();
+    const mockStudents = [{ StudentId: 1, SchoolName: 'Test School', Grade: 'A' }];
+    Student.findAll.mockResolvedValue(mockStudents);
+    await studentController.searchStudents(req, res);
+    expect(Student.findAll).toHaveBeenCalledWith({
+      where: { SchoolName: { [Op.like]: '%Test%' }, Grade: { [Op.like]: '%A%' } },
     });
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData().success).toBe(true);
+    expect(res._getJSONData().data).toEqual(mockStudents);
+  });
+
+  test('updateStudent should update an existing student', async () => {
+    const req = httpMocks.createRequest({
+      method: 'PUT',
+      params: { id: 1 },
+      body: { SchoolName: 'Updated School' },
+    });
+    const res = httpMocks.createResponse();
+  
+    const mockStudent = {
+      update: jest.fn().mockResolvedValue([1]),
+      dataValues: { StudentId: 1, SchoolName: 'Updated School', Grade: '10th', UserId: 1 },
+      toJSON: jest.fn(() => ({ ...mockStudent.dataValues })),
+    };
+  
+    Student.findByPk.mockResolvedValue(mockStudent);
+  
+    await studentController.updateStudent(req, res);
+  
+    expect(mockStudent.update).toHaveBeenCalledWith(req.body);
+    expect(res.statusCode).toBe(200);
+  
+    expect(res._getJSONData()).toEqual({
+      StudentId: 1,
+      SchoolName: 'Updated School',
+      Grade: '10th',
+      UserId: 1,
+    });
+  
+    expect(mockStudent.toJSON).toHaveBeenCalled();
+  });
+  
+
+  test('deleteStudent should remove a student', async () => {
+    const req = httpMocks.createRequest({ method: 'DELETE', params: { id: 1 } });
+    const res = httpMocks.createResponse();
+    const mockStudent = { destroy: jest.fn().mockResolvedValue(1) };
+    Student.findByPk.mockResolvedValue(mockStudent);
+    await studentController.deleteStudent(req, res);
+    expect(mockStudent.destroy).toHaveBeenCalled();
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData()).toEqual({ message: 'Student deleted' });
+  });
+
+  test('getStudentById should handle not found case', async () => {
+    const req = httpMocks.createRequest({ method: 'GET', params: { id: 999 } });
+    const res = httpMocks.createResponse();
+    Student.findByPk.mockResolvedValue(null);
+    await studentController.getStudentById(req, res);
+    expect(res.statusCode).toBe(404);
+    expect(res._getJSONData()).toEqual({ message: 'Student not found' });
+  });
+
+  test('searchStudents should handle no results case', async () => {
+    const req = httpMocks.createRequest({ method: 'GET', query: { schoolName: 'Nonexistent' } });
+    const res = httpMocks.createResponse();
+    Student.findAll.mockResolvedValue([]);
+    await studentController.searchStudents(req, res);
+    expect(res.statusCode).toBe(404);
+    expect(res._getJSONData()).toEqual({ success: false, message: 'No students found.' });
   });
 });

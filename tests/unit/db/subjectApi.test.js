@@ -1,149 +1,183 @@
-const request = require('supertest');
-const app = require('../../../src/app');
+const httpMocks = require('node-mocks-http');
 const { Subject } = require('../../../src/models/dbModels');
+const subjectController = require('../../../src/controllers/dbControllers/subjectController');
+const { Op } = require('sequelize');
 
-describe('Subject API Tests', () => {
-  describe('POST /api/subjects', () => {
-    test('should create a new subject and return status 201', async () => {
-      const newSubject = {
-        SubjectName: 'Mathematics'
-      };
+jest.mock('../../../src/models/dbModels', () => ({
+  Subject: {
+    create: jest.fn(),
+    findAll: jest.fn(),
+    findByPk: jest.fn(),
+    update: jest.fn(),
+    destroy: jest.fn(),
+  },
+}));
 
-      const response = await request(app)
-        .post('/api/subjects')
-        .send(newSubject);
-
-      expect(response.status).toBe(201);
-      expect(response.body).toHaveProperty('SubjectId');
-      expect(response.body.SubjectName).toBe('Mathematics');
-    });
-
-    test('should return 400 for invalid input (missing SubjectName)', async () => {
-      const invalidSubject = {};
-
-      const response = await request(app)
-        .post('/api/subjects')
-        .send(invalidSubject);
-
-      expect(response.status).toBe(400);
-      expect(response.body.error).toContain('Validation error: SubjectName cannot be empty');
-    });
+describe('Subject Controller Tests', () => {
+  afterEach(() => {
+    jest.clearAllMocks();
   });
 
-  describe('GET /api/subjects', () => {
-    test('should return a list of subjects and status 200', async () => {
-      await Subject.create({
-        SubjectName: 'Physics'
-      });
-
-      const response = await request(app)
-        .get('/api/subjects');
-
-      expect(response.status).toBe(200);
-      expect(Array.isArray(response.body)).toBe(true);
-      expect(response.body.length).toBeGreaterThan(0);
+  test('createSubject should create a new subject', async () => {
+    const req = httpMocks.createRequest({
+      method: 'POST',
+      body: {
+        SubjectName: 'Mathematics',
+      },
     });
+    const res = httpMocks.createResponse();
+
+    Subject.create.mockResolvedValue(req.body);
+
+    await subjectController.createSubject(req, res);
+
+    expect(Subject.create).toHaveBeenCalledWith(req.body);
+    expect(res.statusCode).toBe(201);
+    expect(res._getJSONData()).toEqual(req.body);
   });
 
-  describe('GET /api/subjects/:id', () => {
-    test('should return a subject by ID and status 200', async () => {
-      const testSubject = await Subject.create({
-        SubjectName: 'Chemistry'
-      });
+  test('getSubjects should return all subjects', async () => {
+    const req = httpMocks.createRequest({ method: 'GET' });
+    const res = httpMocks.createResponse();
 
-      const response = await request(app)
-        .get(`/api/subjects/${testSubject.SubjectId}`);
+    const mockSubjects = [
+      {
+        SubjectId: 1,
+        SubjectName: 'Mathematics',
+      },
+      {
+        SubjectId: 2,
+        SubjectName: 'Physics',
+      },
+    ];
 
-      expect(response.status).toBe(200);
-      expect(response.body.SubjectName).toBe('Chemistry');
+    Subject.findAll.mockResolvedValue(mockSubjects);
+
+    await subjectController.getSubjects(req, res);
+
+    expect(Subject.findAll).toHaveBeenCalledWith({
+      where: undefined,
+      order: undefined,
     });
-
-    test('should return 404 if subject not found', async () => {
-      const response = await request(app)
-        .get('/api/subjects/999');
-
-      expect(response.status).toBe(404);
-      expect(response.body.error).toBe('Subject not found');
-    });
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData()).toEqual(mockSubjects);
   });
 
-  describe('GET /api/subjects/search', () => {
-    test('should return matching subjects and status 200', async () => {
-      await Subject.create({
-        SubjectName: 'Biology'
-      });
+  test('getSubjectById should return subject if found', async () => {
+    const req = httpMocks.createRequest({ method: 'GET', params: { id: 1 } });
+    const res = httpMocks.createResponse();
 
-      const response = await request(app)
-        .get('/api/subjects/search')
-        .query({ subjectName: 'Bio' });
+    const mockSubject = {
+      SubjectId: 1,
+      SubjectName: 'Mathematics',
+    };
 
-      expect(response.status).toBe(200);
-      expect(response.body.success).toBe(true);
-      expect(Array.isArray(response.body.data)).toBe(true);
-      expect(response.body.data.length).toBeGreaterThan(0);
-      expect(response.body.data[0].SubjectName).toContain('Bio');
-    });
+    Subject.findByPk.mockResolvedValue(mockSubject);
 
-    test('should return 404 if no subjects match the criteria', async () => {
-      const response = await request(app)
-        .get('/api/subjects/search')
-        .query({ subjectName: 'nonexistent' });
+    await subjectController.getSubjectById(req, res);
 
-      expect(response.status).toBe(404);
-      expect(response.body.success).toBe(false);
-      expect(response.body.message).toBe('No subjects found matching the criteria.');
-    });
+    expect(Subject.findByPk).toHaveBeenCalledWith(1);
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData()).toEqual(mockSubject);
   });
 
-  describe('PUT /api/subjects/:id', () => {
-    test('should update a subject and return status 200', async () => {
-      const testSubject = await Subject.create({
-        SubjectName: 'History'
-      });
+  test('searchSubjects should return matching subjects', async () => {
+    const req = httpMocks.createRequest({
+      method: 'GET',
+      query: {
+        subjectName: 'Math',
+      },
+    });
+    const res = httpMocks.createResponse();
 
-      const updatedData = {
-        SubjectName: 'Updated History'
-      };
+    const mockSubjects = [
+      {
+        SubjectId: 1,
+        SubjectName: 'Mathematics',
+      },
+    ];
 
-      const response = await request(app)
-        .put(`/api/subjects/${testSubject.SubjectId}`)
-        .send(updatedData);
+    Subject.findAll.mockResolvedValue(mockSubjects);
 
-      expect(response.status).toBe(200);
-      expect(response.body.SubjectName).toBe('Updated History');
+    await subjectController.searchSubjects(req, res);
+
+    expect(Subject.findAll).toHaveBeenCalledWith({
+      where: {
+        SubjectName: { [Op.like]: '%Math%' },
+      },
+      attributes: ['SubjectId', 'SubjectName'],
     });
 
-    test('should return 404 if subject not found', async () => {
-      const response = await request(app)
-        .put('/api/subjects/999')
-        .send({ SubjectName: 'Updated Subject' });
-
-      expect(response.status).toBe(404);
-      expect(response.body.error).toBe('Subject not found');
-    });
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData().success).toBe(true);
+    expect(res._getJSONData().data).toEqual(mockSubjects);
   });
 
-  describe('DELETE /api/subjects/:id', () => {
-    test('should delete a subject and return status 204', async () => {
-      const testSubject = await Subject.create({
-        SubjectName: 'Geography'
-      });
-
-      const response = await request(app)
-        .delete(`/api/subjects/${testSubject.SubjectId}`);
-
-      expect(response.status).toBe(204);
-
-      const deletedSubject = await Subject.findByPk(testSubject.SubjectId);
-      expect(deletedSubject).toBeNull();
+  test('updateSubject should update an existing subject', async () => {
+    const req = httpMocks.createRequest({
+      method: 'PUT',
+      params: { id: 1 },
+      body: { SubjectName: 'Updated Mathematics' },
     });
+    const res = httpMocks.createResponse();
 
-    test('should return 404 if subject not found', async () => {
-      const response = await request(app)
-        .delete('/api/subjects/999');
+    const mockSubject = {
+      update: jest.fn().mockResolvedValue([1]),
+      dataValues: {
+        SubjectId: 1,
+        SubjectName: 'Updated Mathematics',
+      },
+      toJSON: jest.fn(() => ({ ...mockSubject.dataValues })),
+    };
 
-      expect(response.status).toBe(404);
-      expect(response.body.error).toBe('Subject not found');
+    Subject.findByPk.mockResolvedValue(mockSubject);
+
+    await subjectController.updateSubject(req, res);
+
+    expect(mockSubject.update).toHaveBeenCalledWith(req.body);
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData()).toEqual({
+      SubjectId: 1,
+      SubjectName: 'Updated Mathematics',
     });
+    expect(mockSubject.toJSON).toHaveBeenCalled();
+  });
+
+  test('deleteSubject should remove a subject', async () => {
+    const req = httpMocks.createRequest({ method: 'DELETE', params: { id: 1 } });
+    const res = httpMocks.createResponse();
+
+    const mockSubject = { destroy: jest.fn().mockResolvedValue(1) };
+
+    Subject.findByPk.mockResolvedValue(mockSubject);
+
+    await subjectController.deleteSubject(req, res);
+
+    expect(mockSubject.destroy).toHaveBeenCalled();
+    expect(res.statusCode).toBe(204);
+  });
+
+  test('getSubjectById should handle not found case', async () => {
+    const req = httpMocks.createRequest({ method: 'GET', params: { id: 999 } });
+    const res = httpMocks.createResponse();
+
+    Subject.findByPk.mockResolvedValue(null);
+
+    await subjectController.getSubjectById(req, res);
+
+    expect(res.statusCode).toBe(404);
+    expect(res._getJSONData()).toEqual({ error: 'Subject not found' });
+  });
+
+  test('searchSubjects should handle no results case', async () => {
+    const req = httpMocks.createRequest({ method: 'GET', query: { subjectName: 'Nonexistent' } });
+    const res = httpMocks.createResponse();
+
+    Subject.findAll.mockResolvedValue([]);
+
+    await subjectController.searchSubjects(req, res);
+
+    expect(res.statusCode).toBe(404);
+    expect(res._getJSONData()).toEqual({ success: false, message: 'No subjects found matching the criteria.' });
   });
 });

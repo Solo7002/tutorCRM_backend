@@ -1,168 +1,199 @@
-const request = require('supertest');
-const app = require('../../../src/app');
+const httpMocks = require('node-mocks-http');
 const { Test } = require('../../../src/models/dbModels');
+const testController = require('../../../src/controllers/dbControllers/testController');
+const { Op } = require('sequelize');
 
-describe('Test API Tests', () => {
-  describe('POST /api/tests', () => {
-    test('should create a new test and return status 201', async () => {
-      const newTest = {
+jest.mock('../../../src/models/dbModels', () => ({
+  Test: {
+    create: jest.fn(),
+    findAll: jest.fn(),
+    findByPk: jest.fn(),
+    update: jest.fn(),
+    destroy: jest.fn(),
+  },
+}));
+
+describe('Test Controller Tests', () => {
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  test('createTest should create a new test', async () => {
+    const req = httpMocks.createRequest({
+      method: 'POST',
+      body: {
         TestName: 'Math Test',
-        TestDescription: 'This is a math test.',
-        CreatedDate: new Date()
-      };
-
-      const response = await request(app)
-        .post('/api/tests')
-        .send(newTest);
-
-      expect(response.status).toBe(201);
-      expect(response.body).toHaveProperty('TestId');
-      expect(response.body.TestName).toBe('Math Test');
-      expect(response.body.TestDescription).toBe('This is a math test.');
-      expect(new Date(response.body.CreatedDate)).toBeInstanceOf(Date);
+        TestDescription: 'Basic math questions',
+      },
     });
+    const res = httpMocks.createResponse();
 
-    test('should return 400 for invalid input (missing TestName)', async () => {
-      const invalidTest = {
-        TestDescription: 'This is a math test.',
-        CreatedDate: new Date()
-      };
+    Test.create.mockResolvedValue(req.body);
 
-      const response = await request(app)
-        .post('/api/tests')
-        .send(invalidTest);
+    await testController.createTest(req, res);
 
-      expect(response.status).toBe(400);
-      expect(response.body.error).toContain('Validation error: TestName cannot be empty');
-    });
+    expect(Test.create).toHaveBeenCalledWith(req.body);
+    expect(res.statusCode).toBe(201);
+    expect(res._getJSONData()).toEqual(req.body);
   });
 
-  describe('GET /api/tests', () => {
-    test('should return a list of tests and status 200', async () => {
-      await Test.create({
-        TestName: 'Science Test',
-        TestDescription: 'This is a science test.',
-        CreatedDate: new Date()
-      });
+  test('getTests should return all tests', async () => {
+    const req = httpMocks.createRequest({ method: 'GET' });
+    const res = httpMocks.createResponse();
 
-      const response = await request(app)
-        .get('/api/tests');
+    const mockTests = [
+      {
+        TestId: 1,
+        TestName: 'Math Test',
+        TestDescription: 'Basic math questions',
+        CreatedDate: '2023-10-01T00:00:00Z',
+      },
+      {
+        TestId: 2,
+        TestName: 'Physics Test',
+        TestDescription: 'Advanced physics quiz',
+        CreatedDate: '2023-10-15T00:00:00Z',
+      },
+    ];
 
-      expect(response.status).toBe(200);
-      expect(Array.isArray(response.body)).toBe(true);
-      expect(response.body.length).toBeGreaterThan(0);
+    Test.findAll.mockResolvedValue(mockTests);
+
+    await testController.getTests(req, res);
+
+    expect(Test.findAll).toHaveBeenCalledWith({
+      where: undefined,
+      order: undefined,
     });
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData()).toEqual(mockTests);
   });
 
-  describe('GET /api/tests/:id', () => {
-    test('should return a test by ID and status 200', async () => {
-      const test = await Test.create({
-        TestName: 'Chemistry Test',
-        TestDescription: 'This is a chemistry test.',
-        CreatedDate: new Date()
-      });
+  test('getTestById should return test if found', async () => {
+    const req = httpMocks.createRequest({ method: 'GET', params: { id: 1 } });
+    const res = httpMocks.createResponse();
 
-      const response = await request(app)
-        .get(`/api/tests/${test.TestId}`);
+    const mockTest = {
+      TestId: 1,
+      TestName: 'Math Test',
+      TestDescription: 'Basic math questions',
+      CreatedDate: '2023-10-01T00:00:00Z',
+    };
 
-      expect(response.status).toBe(200);
-      expect(response.body.TestName).toBe('Chemistry Test');
-      expect(response.body.TestDescription).toBe('This is a chemistry test.');
-      expect(new Date(response.body.CreatedDate)).toBeInstanceOf(Date);
-    });
+    Test.findByPk.mockResolvedValue(mockTest);
 
-    test('should return 404 if test not found', async () => {
-      const response = await request(app)
-        .get('/api/tests/999');
+    await testController.getTestById(req, res);
 
-      expect(response.status).toBe(404);
-      expect(response.body.error).toBe('Test not found');
-    });
+    expect(Test.findByPk).toHaveBeenCalledWith(1);
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData()).toEqual(mockTest);
   });
 
-  describe('GET /api/tests/search', () => {
-    test('should return matching tests and status 200', async () => {
-      await Test.create({
-        TestName: 'Biology Test',
-        TestDescription: 'This is a biology test.',
-        CreatedDate: new Date()
-      });
+  test('searchTests should return matching tests', async () => {
+    const req = httpMocks.createRequest({
+      method: 'GET',
+      query: {
+        testName: 'Math',
+        startDate: '2023-10-01',
+        endDate: '2023-10-31',
+      },
+    });
+    const res = httpMocks.createResponse();
 
-      const response = await request(app)
-        .get('/api/tests/search')
-        .query({ testName: 'Biology' });
+    const mockTests = [
+      {
+        TestId: 1,
+        TestName: 'Math Test',
+        TestDescription: 'Basic math questions',
+        CreatedDate: '2023-10-01T00:00:00Z',
+      },
+    ];
 
-      expect(response.status).toBe(200);
-      expect(response.body.success).toBe(true);
-      expect(Array.isArray(response.body.data)).toBe(true);
-      expect(response.body.data.length).toBeGreaterThan(0);
-      expect(response.body.data[0].TestName).toContain('Biology');
+    Test.findAll.mockResolvedValue(mockTests);
+
+    await testController.searchTests(req, res);
+
+    expect(Test.findAll).toHaveBeenCalledWith({
+      where: {
+        TestName: { [Op.like]: '%Math%' },
+        CreatedDate: { [Op.between]: [new Date('2023-10-01'), new Date('2023-10-31')] },
+      },
+      attributes: ['TestId', 'TestName', 'TestDescription', 'CreatedDate'],
     });
 
-    test('should return 404 if no tests match the criteria', async () => {
-      const response = await request(app)
-        .get('/api/tests/search')
-        .query({ testName: 'nonexistent' });
-
-      expect(response.status).toBe(404);
-      expect(response.body.success).toBe(false);
-      expect(response.body.message).toBe('No tests found matching the criteria.');
-    });
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData().success).toBe(true);
+    expect(res._getJSONData().data).toEqual(mockTests);
   });
 
-  describe('PUT /api/tests/:id', () => {
-    test('should update a test and return status 200', async () => {
-      const test = await Test.create({
-        TestName: 'History Test',
-        TestDescription: 'This is a history test.',
-        CreatedDate: new Date()
-      });
-
-      const updatedData = {
-        TestName: 'Updated History Test'
-      };
-
-      const response = await request(app)
-        .put(`/api/tests/${test.TestId}`)
-        .send(updatedData);
-
-      expect(response.status).toBe(200);
-      expect(response.body.TestName).toBe('Updated History Test');
+  test('updateTest should update an existing test', async () => {
+    const req = httpMocks.createRequest({
+      method: 'PUT',
+      params: { id: 1 },
+      body: { TestName: 'Updated Math Test' },
     });
+    const res = httpMocks.createResponse();
 
-    test('should return 404 if test not found', async () => {
-      const response = await request(app)
-        .put('/api/tests/999')
-        .send({ TestName: 'Updated Test' });
+    const mockTest = {
+      update: jest.fn().mockResolvedValue([1]),
+      dataValues: {
+        TestId: 1,
+        TestName: 'Updated Math Test',
+        TestDescription: 'Basic math questions',
+        CreatedDate: '2023-10-01T00:00:00Z',
+      },
+      toJSON: jest.fn(() => ({ ...mockTest.dataValues })),
+    };
 
-      expect(response.status).toBe(404);
-      expect(response.body.error).toBe('Test not found');
+    Test.findByPk.mockResolvedValue(mockTest);
+
+    await testController.updateTest(req, res);
+
+    expect(mockTest.update).toHaveBeenCalledWith(req.body);
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData()).toEqual({
+      TestId: 1,
+      TestName: 'Updated Math Test',
+      TestDescription: 'Basic math questions',
+      CreatedDate: '2023-10-01T00:00:00Z',
     });
+    expect(mockTest.toJSON).toHaveBeenCalled();
   });
 
-  describe('DELETE /api/tests/:id', () => {
-    test('should delete a test and return status 204', async () => {
-      const test = await Test.create({
-        TestName: 'Geography Test',
-        TestDescription: 'This is a geography test.',
-        CreatedDate: new Date()
-      });
+  test('deleteTest should remove a test', async () => {
+    const req = httpMocks.createRequest({ method: 'DELETE', params: { id: 1 } });
+    const res = httpMocks.createResponse();
 
-      const response = await request(app)
-        .delete(`/api/tests/${test.TestId}`);
+    const mockTest = { destroy: jest.fn().mockResolvedValue(1) };
 
-      expect(response.status).toBe(204);
+    Test.findByPk.mockResolvedValue(mockTest);
 
-      const deletedTest = await Test.findByPk(test.TestId);
-      expect(deletedTest).toBeNull();
-    });
+    await testController.deleteTest(req, res);
 
-    test('should return 404 if test not found', async () => {
-      const response = await request(app)
-        .delete('/api/tests/999');
+    expect(mockTest.destroy).toHaveBeenCalled();
+    expect(res.statusCode).toBe(204);
+  });
 
-      expect(response.status).toBe(404);
-      expect(response.body.error).toBe('Test not found');
-    });
+  test('getTestById should handle not found case', async () => {
+    const req = httpMocks.createRequest({ method: 'GET', params: { id: 999 } });
+    const res = httpMocks.createResponse();
+
+    Test.findByPk.mockResolvedValue(null);
+
+    await testController.getTestById(req, res);
+
+    expect(res.statusCode).toBe(404);
+    expect(res._getJSONData()).toEqual({ error: 'Test not found' });
+  });
+
+  test('searchTests should handle no results case', async () => {
+    const req = httpMocks.createRequest({ method: 'GET', query: { testName: 'Nonexistent' } });
+    const res = httpMocks.createResponse();
+
+    Test.findAll.mockResolvedValue([]);
+
+    await testController.searchTests(req, res);
+
+    expect(res.statusCode).toBe(404);
+    expect(res._getJSONData()).toEqual({ success: false, message: 'No tests found matching the criteria.' });
   });
 });

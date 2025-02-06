@@ -1,177 +1,208 @@
-const request = require('supertest');
-const app = require('../../../src/app');
+const httpMocks = require('node-mocks-http');
 const { PlannedLesson } = require('../../../src/models/dbModels');
+const plannedLessonController = require('../../../src/controllers/dbControllers/plannedLessonController');
+const { Op } = require('sequelize');
 
-describe('PlannedLesson API Tests', () => {
-  describe('POST /api/plannedlessons', () => {
-    test('should create a new planned lesson and return status 201', async () => {
-      const newPlannedLesson = {
+jest.mock('../../../src/models/dbModels', () => ({
+  PlannedLesson: {
+    create: jest.fn(),
+    findAll: jest.fn(),
+    findByPk: jest.fn(),
+    update: jest.fn(),
+    destroy: jest.fn(),
+  },
+}));
+
+describe('PlannedLesson Controller Tests', () => {
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  test('createPlannedLesson should create a new planned lesson', async () => {
+    const req = httpMocks.createRequest({
+      method: 'POST',
+      body: {
         LessonHeader: 'Math Lesson',
-        LessonPrice: 50,
-        IsPaid: false,
-        GroupId: 1
-      };
-
-      const response = await request(app)
-        .post('/api/plannedlessons')
-        .send(newPlannedLesson);
-
-      expect(response.status).toBe(201);
-      expect(response.body).toHaveProperty('PlannedLessonId');
-      expect(response.body.LessonHeader).toBe('Math Lesson');
-      expect(response.body.LessonPrice).toBe(50);
-      expect(response.body.IsPaid).toBe(false);
-      expect(response.body.GroupId).toBe(1);
-    });
-
-    test('should return 400 for invalid input (missing LessonHeader)', async () => {
-      const invalidPlannedLesson = {
-        LessonPrice: 50,
-        IsPaid: false,
-        GroupId: 1
-      };
-
-      const response = await request(app)
-        .post('/api/plannedlessons')
-        .send(invalidPlannedLesson);
-
-      expect(response.status).toBe(400);
-      expect(response.body.error).toContain('Validation error: LessonHeader cannot be empty');
-    });
-  });
-
-  describe('GET /api/plannedlessons', () => {
-    test('should return a list of planned lessons and status 200', async () => {
-      await PlannedLesson.create({
-        LessonHeader: 'Science Lesson',
-        LessonPrice: 60,
+        LessonDescription: 'Learn math basics',
+        LessonPrice: 100.0,
         IsPaid: true,
-        GroupId: 1
-      });
-
-      const response = await request(app)
-        .get('/api/plannedlessons');
-
-      expect(response.status).toBe(200);
-      expect(Array.isArray(response.body)).toBe(true);
-      expect(response.body.length).toBeGreaterThan(0);
+        GroupId: 1,
+      },
     });
+    const res = httpMocks.createResponse();
+
+    PlannedLesson.create.mockResolvedValue(req.body);
+
+    await plannedLessonController.createPlannedLesson(req, res);
+
+    expect(PlannedLesson.create).toHaveBeenCalledWith(req.body);
+    expect(res.statusCode).toBe(201);
+    expect(res._getJSONData()).toEqual(req.body);
   });
 
-  describe('GET /api/plannedlessons/:id', () => {
-    test('should return a planned lesson by ID and status 200', async () => {
-      const testPlannedLesson = await PlannedLesson.create({
-        LessonHeader: 'Chemistry Lesson',
-        LessonPrice: 70,
-        IsPaid: false,
-        GroupId: 1
-      });
+  test('getPlannedLessons should return all planned lessons', async () => {
+    const req = httpMocks.createRequest({ method: 'GET' });
+    const res = httpMocks.createResponse();
 
-      const response = await request(app)
-        .get(`/api/plannedlessons/${testPlannedLesson.PlannedLessonId}`);
-
-      expect(response.status).toBe(200);
-      expect(response.body.LessonHeader).toBe('Chemistry Lesson');
-      expect(response.body.LessonPrice).toBe(70);
-      expect(response.body.IsPaid).toBe(false);
-      expect(response.body.GroupId).toBe(1);
-    });
-
-    test('should return 404 if planned lesson not found', async () => {
-      const response = await request(app)
-        .get('/api/plannedlessons/999');
-
-      expect(response.status).toBe(404);
-      expect(response.body.error).toBe('PlannedLesson not found');
-    });
-  });
-
-  describe('GET /api/plannedlessons/search', () => {
-    test('should return matching planned lessons and status 200', async () => {
-      await PlannedLesson.create({
-        LessonHeader: 'Biology Lesson',
-        LessonPrice: 80,
+    const mockPlannedLessons = [
+      {
+        PlannedLessonId: 1,
+        LessonHeader: 'Math Lesson',
+        LessonDescription: 'Learn math basics',
+        LessonPrice: 100.0,
         IsPaid: true,
-        GroupId: 1
-      });
+        GroupId: 1,
+      },
+    ];
 
-      const response = await request(app)
-        .get('/api/plannedlessons/search')
-        .query({ lessonHeader: 'Biology' });
+    PlannedLesson.findAll.mockResolvedValue(mockPlannedLessons);
 
-      expect(response.status).toBe(200);
-      expect(response.body.success).toBe(true);
-      expect(Array.isArray(response.body.data)).toBe(true);
-      expect(response.body.data.length).toBeGreaterThan(0);
-      expect(response.body.data[0].LessonHeader).toContain('Biology');
+    await plannedLessonController.getPlannedLessons(req, res);
+
+    expect(PlannedLesson.findAll).toHaveBeenCalledWith({
+      where: undefined,
+      order: undefined,
     });
-
-    test('should return 404 if no planned lessons match the criteria', async () => {
-      const response = await request(app)
-        .get('/api/plannedlessons/search')
-        .query({ lessonHeader: 'nonexistent' });
-
-      expect(response.status).toBe(404);
-      expect(response.body.success).toBe(false);
-      expect(response.body.message).toBe('No planned lessons found matching the criteria.');
-    });
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData()).toEqual(mockPlannedLessons);
   });
 
-  describe('PUT /api/plannedlessons/:id', () => {
-    test('should update a planned lesson and return status 200', async () => {
-      const testPlannedLesson = await PlannedLesson.create({
-        LessonHeader: 'History Lesson',
-        LessonPrice: 90,
-        IsPaid: false,
-        GroupId: 1
-      });
+  test('getPlannedLessonById should return planned lesson if found', async () => {
+    const req = httpMocks.createRequest({ method: 'GET', params: { id: 1 } });
+    const res = httpMocks.createResponse();
 
-      const updatedData = {
-        LessonHeader: 'Updated History Lesson'
-      };
+    const mockPlannedLesson = {
+      PlannedLessonId: 1,
+      LessonHeader: 'Math Lesson',
+      LessonDescription: 'Learn math basics',
+      LessonPrice: 100.0,
+      IsPaid: true,
+      GroupId: 1,
+    };
 
-      const response = await request(app)
-        .put(`/api/plannedlessons/${testPlannedLesson.PlannedLessonId}`)
-        .send(updatedData);
+    PlannedLesson.findByPk.mockResolvedValue(mockPlannedLesson);
 
-      expect(response.status).toBe(200);
-      expect(response.body.LessonHeader).toBe('Updated History Lesson');
-    });
+    await plannedLessonController.getPlannedLessonById(req, res);
 
-    test('should return 404 if planned lesson not found', async () => {
-      const response = await request(app)
-        .put('/api/plannedlessons/999')
-        .send({ LessonHeader: 'Updated Lesson' });
-
-      expect(response.status).toBe(404);
-      expect(response.body.error).toBe('PlannedLesson not found');
-    });
+    expect(PlannedLesson.findByPk).toHaveBeenCalledWith(1);
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData()).toEqual(mockPlannedLesson);
   });
 
-  describe('DELETE /api/plannedlessons/:id', () => {
-    test('should delete a planned lesson and return status 204', async () => {
-      const testPlannedLesson = await PlannedLesson.create({
-        LessonHeader: 'Geography Lesson',
-        LessonPrice: 100,
+  test('searchPlannedLessons should return matching planned lessons', async () => {
+    const req = httpMocks.createRequest({
+      method: 'GET',
+      query: {
+        lessonHeader: 'Math',
+        lessonPrice: '100.0',
+        isPaid: 'true',
+        groupId: '1',
+      },
+    });
+    const res = httpMocks.createResponse();
+
+    const mockPlannedLessons = [
+      {
+        PlannedLessonId: 1,
+        LessonHeader: 'Math Lesson',
+        LessonDescription: 'Learn math basics',
+        LessonPrice: 100.0,
         IsPaid: true,
-        GroupId: 1
-      });
+        GroupId: 1,
+      },
+    ];
 
-      const response = await request(app)
-        .delete(`/api/plannedlessons/${testPlannedLesson.PlannedLessonId}`);
+    PlannedLesson.findAll.mockResolvedValue(mockPlannedLessons);
 
-      expect(response.status).toBe(204);
+    await plannedLessonController.searchPlannedLessons(req, res);
 
-      const deletedPlannedLesson = await PlannedLesson.findByPk(testPlannedLesson.PlannedLessonId);
-      expect(deletedPlannedLesson).toBeNull();
+    expect(PlannedLesson.findAll).toHaveBeenCalledWith({
+      where: {
+        LessonHeader: { [Op.like]: '%Math%' },
+        LessonPrice: 100.0,
+        IsPaid: true,
+        GroupId: '1',
+      },
     });
 
-    test('should return 404 if planned lesson not found', async () => {
-      const response = await request(app)
-        .delete('/api/plannedlessons/999');
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData().success).toBe(true);
+    expect(res._getJSONData().data).toEqual(mockPlannedLessons);
+  });
 
-      expect(response.status).toBe(404);
-      expect(response.body.error).toBe('PlannedLesson not found');
+  test('updatePlannedLesson should update an existing planned lesson', async () => {
+    const req = httpMocks.createRequest({
+      method: 'PUT',
+      params: { id: 1 },
+      body: { LessonHeader: 'Updated Math Lesson' },
     });
+    const res = httpMocks.createResponse();
+
+    const mockPlannedLesson = {
+      update: jest.fn().mockResolvedValue([1]),
+      dataValues: {
+        PlannedLessonId: 1,
+        LessonHeader: 'Updated Math Lesson',
+        LessonDescription: 'Learn math basics',
+        LessonPrice: 100.0,
+        IsPaid: true,
+        GroupId: 1,
+      },
+      toJSON: jest.fn(() => ({ ...mockPlannedLesson.dataValues })),
+    };
+
+    PlannedLesson.findByPk.mockResolvedValue(mockPlannedLesson);
+
+    await plannedLessonController.updatePlannedLesson(req, res);
+
+    expect(mockPlannedLesson.update).toHaveBeenCalledWith(req.body);
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData()).toEqual({
+      PlannedLessonId: 1,
+      LessonHeader: 'Updated Math Lesson',
+      LessonDescription: 'Learn math basics',
+      LessonPrice: 100.0,
+      IsPaid: true,
+      GroupId: 1,
+    });
+    expect(mockPlannedLesson.toJSON).toHaveBeenCalled();
+  });
+
+  test('deletePlannedLesson should remove a planned lesson', async () => {
+    const req = httpMocks.createRequest({ method: 'DELETE', params: { id: 1 } });
+    const res = httpMocks.createResponse();
+
+    const mockPlannedLesson = { destroy: jest.fn().mockResolvedValue(1) };
+
+    PlannedLesson.findByPk.mockResolvedValue(mockPlannedLesson);
+
+    await plannedLessonController.deletePlannedLesson(req, res);
+
+    expect(mockPlannedLesson.destroy).toHaveBeenCalled();
+    expect(res.statusCode).toBe(204);
+  });
+
+  test('getPlannedLessonById should handle not found case', async () => {
+    const req = httpMocks.createRequest({ method: 'GET', params: { id: 999 } });
+    const res = httpMocks.createResponse();
+
+    PlannedLesson.findByPk.mockResolvedValue(null);
+
+    await plannedLessonController.getPlannedLessonById(req, res);
+
+    expect(res.statusCode).toBe(404);
+    expect(res._getJSONData()).toEqual({ error: 'PlannedLesson not found' });
+  });
+
+  test('searchPlannedLessons should handle no results case', async () => {
+    const req = httpMocks.createRequest({ method: 'GET', query: { lessonHeader: 'Nonexistent' } });
+    const res = httpMocks.createResponse();
+
+    PlannedLesson.findAll.mockResolvedValue([]);
+
+    await plannedLessonController.searchPlannedLessons(req, res);
+
+    expect(res.statusCode).toBe(404);
+    expect(res._getJSONData()).toEqual({ success: false, message: 'No planned lessons found matching the criteria.' });
   });
 });

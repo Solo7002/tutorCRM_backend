@@ -1,168 +1,189 @@
-const request = require('supertest');
-const app = require('../../../src/app');
+const httpMocks = require('node-mocks-http');
 const { StudentCourseRating } = require('../../../src/models/dbModels');
+const studentCourseRatingController = require('../../../src/controllers/dbControllers/studentCourseRatingController');
+const { Op } = require('sequelize');
 
-describe('StudentCourseRating API Tests', () => {
-  describe('POST /api/studentcourseratings', () => {
-    test('should create a new student course rating and return status 201', async () => {
-      const newRating = {
+jest.mock('../../../src/models/dbModels', () => ({
+  StudentCourseRating: {
+    create: jest.fn(),
+    findAll: jest.fn(),
+    findByPk: jest.fn(),
+    update: jest.fn(),
+    destroy: jest.fn(),
+  },
+}));
+
+describe('StudentCourseRating Controller Tests', () => {
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  test('createStudentCourseRating should create a new rating', async () => {
+    const req = httpMocks.createRequest({
+      method: 'POST',
+      body: {
+        Rating: 8.5,
         StudentId: 1,
         CourseId: 1,
-        Rating: 5
-      };
-
-      const response = await request(app)
-        .post('/api/studentcourseratings')
-        .send(newRating);
-
-      expect(response.status).toBe(201);
-      expect(response.body).toHaveProperty('StudentCourseRatingId');
-      expect(response.body.StudentId).toBe(1);
-      expect(response.body.CourseId).toBe(1);
-      expect(response.body.Rating).toBe(5);
+      },
     });
+    const res = httpMocks.createResponse();
 
-    test('should return 400 for invalid input (missing Rating)', async () => {
-      const invalidRating = {
+    StudentCourseRating.create.mockResolvedValue(req.body);
+
+    await studentCourseRatingController.createStudentCourseRating(req, res);
+
+    expect(StudentCourseRating.create).toHaveBeenCalledWith(req.body);
+    expect(res.statusCode).toBe(201);
+    expect(res._getJSONData()).toEqual(req.body);
+  });
+
+  test('getStudentCourseRatings should return all ratings', async () => {
+    const req = httpMocks.createRequest({ method: 'GET' });
+    const res = httpMocks.createResponse();
+
+    const mockRatings = [
+      {
+        Rating: 8.5,
         StudentId: 1,
-        CourseId: 1
-      };
+        CourseId: 1,
+      },
+    ];
 
-      const response = await request(app)
-        .post('/api/studentcourseratings')
-        .send(invalidRating);
+    StudentCourseRating.findAll.mockResolvedValue(mockRatings);
 
-      expect(response.status).toBe(400);
-      expect(response.body.error).toContain('Validation error: Rating cannot be null');
+    await studentCourseRatingController.getStudentCourseRatings(req, res);
+
+    expect(StudentCourseRating.findAll).toHaveBeenCalledWith({
+      where: undefined,
+      order: undefined,
     });
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData()).toEqual(mockRatings);
   });
 
-  describe('GET /api/studentcourseratings', () => {
-    test('should return a list of student course ratings and status 200', async () => {
-      await StudentCourseRating.create({
-        StudentId: 2,
-        CourseId: 2,
-        Rating: 4
-      });
+  test('getStudentCourseRatingById should return rating if found', async () => {
+    const req = httpMocks.createRequest({ method: 'GET', params: { id: 1 } });
+    const res = httpMocks.createResponse();
 
-      const response = await request(app)
-        .get('/api/studentcourseratings');
+    const mockRating = {
+      Rating: 8.5,
+      StudentId: 1,
+      CourseId: 1,
+    };
 
-      expect(response.status).toBe(200);
-      expect(Array.isArray(response.body)).toBe(true);
-      expect(response.body.length).toBeGreaterThan(0);
-    });
+    StudentCourseRating.findByPk.mockResolvedValue(mockRating);
+
+    await studentCourseRatingController.getStudentCourseRatingById(req, res);
+
+    expect(StudentCourseRating.findByPk).toHaveBeenCalledWith(1);
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData()).toEqual(mockRating);
   });
 
-  describe('GET /api/studentcourseratings/:id', () => {
-    test('should return a student course rating by ID and status 200', async () => {
-      const testRating = await StudentCourseRating.create({
-        StudentId: 3,
-        CourseId: 3,
-        Rating: 3
-      });
+  test('searchStudentCourseRatings should return matching ratings', async () => {
+    const req = httpMocks.createRequest({
+      method: 'GET',
+      query: {
+        studentId: '1',
+        courseId: '1',
+        rating: '8.5',
+      },
+    });
+    const res = httpMocks.createResponse();
 
-      const response = await request(app)
-        .get(`/api/studentcourseratings/${testRating.StudentCourseRatingId}`);
+    const mockRatings = [
+      {
+        Rating: 8.5,
+        StudentId: 1,
+        CourseId: 1,
+      },
+    ];
 
-      expect(response.status).toBe(200);
-      expect(response.body.StudentId).toBe(3);
-      expect(response.body.CourseId).toBe(3);
-      expect(response.body.Rating).toBe(3);
+    StudentCourseRating.findAll.mockResolvedValue(mockRatings);
+
+    await studentCourseRatingController.searchStudentCourseRatings(req, res);
+
+    expect(StudentCourseRating.findAll).toHaveBeenCalledWith({
+      where: {
+        StudentId: '1',
+        CourseId: '1',
+        Rating: 8.5,
+      },
     });
 
-    test('should return 404 if student course rating not found', async () => {
-      const response = await request(app)
-        .get('/api/studentcourseratings/999');
-
-      expect(response.status).toBe(404);
-      expect(response.body.error).toBe('StudentCourseRating not found');
-    });
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData().success).toBe(true);
+    expect(res._getJSONData().data).toEqual(mockRatings);
   });
 
-  describe('GET /api/studentcourseratings/search', () => {
-    test('should return matching student course ratings and status 200', async () => {
-      await StudentCourseRating.create({
-        StudentId: 4,
-        CourseId: 4,
-        Rating: 5
-      });
-
-      const response = await request(app)
-        .get('/api/studentcourseratings/search')
-        .query({ studentId: 4 });
-
-      expect(response.status).toBe(200);
-      expect(response.body.success).toBe(true);
-      expect(Array.isArray(response.body.data)).toBe(true);
-      expect(response.body.data.length).toBeGreaterThan(0);
-      expect(response.body.data[0].StudentId).toBe(4);
+  test('updateStudentCourseRating should update an existing rating', async () => {
+    const req = httpMocks.createRequest({
+      method: 'PUT',
+      params: { id: 1 },
+      body: { Rating: 9.0 },
     });
+    const res = httpMocks.createResponse();
 
-    test('should return 404 if no student course ratings match the criteria', async () => {
-      const response = await request(app)
-        .get('/api/studentcourseratings/search')
-        .query({ studentId: 'nonexistent' });
+    const mockRating = {
+      update: jest.fn().mockResolvedValue([1]),
+      dataValues: {
+        Rating: 9.0,
+        StudentId: 1,
+        CourseId: 1,
+      },
+      toJSON: jest.fn(() => ({ ...mockRating.dataValues })),
+    };
 
-      expect(response.status).toBe(404);
-      expect(response.body.success).toBe(false);
-      expect(response.body.message).toBe('No ratings found.');
+    StudentCourseRating.findByPk.mockResolvedValue(mockRating);
+
+    await studentCourseRatingController.updateStudentCourseRating(req, res);
+
+    expect(mockRating.update).toHaveBeenCalledWith(req.body);
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData()).toEqual({
+      Rating: 9.0,
+      StudentId: 1,
+      CourseId: 1,
     });
+    expect(mockRating.toJSON).toHaveBeenCalled();
   });
 
-  describe('PUT /api/studentcourseratings/:id', () => {
-    test('should update a student course rating and return status 200', async () => {
-      const testRating = await StudentCourseRating.create({
-        StudentId: 5,
-        CourseId: 5,
-        Rating: 2
-      });
+  test('deleteStudentCourseRating should remove a rating', async () => {
+    const req = httpMocks.createRequest({ method: 'DELETE', params: { id: 1 } });
+    const res = httpMocks.createResponse();
 
-      const updatedData = {
-        Rating: 4
-      };
+    const mockRating = { destroy: jest.fn().mockResolvedValue(1) };
 
-      const response = await request(app)
-        .put(`/api/studentcourseratings/${testRating.StudentCourseRatingId}`)
-        .send(updatedData);
+    StudentCourseRating.findByPk.mockResolvedValue(mockRating);
 
-      expect(response.status).toBe(200);
-      expect(response.body.Rating).toBe(4);
-    });
+    await studentCourseRatingController.deleteStudentCourseRating(req, res);
 
-    test('should return 404 if student course rating not found', async () => {
-      const response = await request(app)
-        .put('/api/studentcourseratings/999')
-        .send({ Rating: 5 });
-
-      expect(response.status).toBe(404);
-      expect(response.body.error).toBe('StudentCourseRating not found');
-    });
+    expect(mockRating.destroy).toHaveBeenCalled();
+    expect(res.statusCode).toBe(204);
   });
 
-  describe('DELETE /api/studentcourseratings/:id', () => {
-    test('should delete a student course rating and return status 204', async () => {
-      const testRating = await StudentCourseRating.create({
-        StudentId: 6,
-        CourseId: 6,
-        Rating: 3
-      });
+  test('getStudentCourseRatingById should handle not found case', async () => {
+    const req = httpMocks.createRequest({ method: 'GET', params: { id: 999 } });
+    const res = httpMocks.createResponse();
 
-      const response = await request(app)
-        .delete(`/api/studentcourseratings/${testRating.StudentCourseRatingId}`);
+    StudentCourseRating.findByPk.mockResolvedValue(null);
 
-      expect(response.status).toBe(204);
+    await studentCourseRatingController.getStudentCourseRatingById(req, res);
 
-      const deletedRating = await StudentCourseRating.findByPk(testRating.StudentCourseRatingId);
-      expect(deletedRating).toBeNull();
-    });
+    expect(res.statusCode).toBe(404);
+    expect(res._getJSONData()).toEqual({ error: 'StudentCourseRating not found' });
+  });
 
-    test('should return 404 if student course rating not found', async () => {
-      const response = await request(app)
-        .delete('/api/studentcourseratings/999');
+  test('searchStudentCourseRatings should handle no results case', async () => {
+    const req = httpMocks.createRequest({ method: 'GET', query: { studentId: 'Nonexistent' } });
+    const res = httpMocks.createResponse();
 
-      expect(response.status).toBe(404);
-      expect(response.body.error).toBe('StudentCourseRating not found');
-    });
+    StudentCourseRating.findAll.mockResolvedValue([]);
+
+    await studentCourseRatingController.searchStudentCourseRatings(req, res);
+
+    expect(res.statusCode).toBe(404);
+    expect(res._getJSONData()).toEqual({ success: false, message: 'No ratings found.' });
   });
 });

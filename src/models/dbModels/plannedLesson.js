@@ -22,7 +22,7 @@ module.exports = (sequelize, DataTypes) => {
     },
     LessonPrice: {
       type: DataTypes.DECIMAL(10, 2),
-      allowNull: false,
+      allowNull: true,
       validate: {
         isDecimal: { msg: 'LessonPrice must be a valid decimal number' },
         min: { args: [0], msg: 'LessonPrice must be greater than or equal to 0' },

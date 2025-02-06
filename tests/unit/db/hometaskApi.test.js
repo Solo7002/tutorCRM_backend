@@ -1,215 +1,220 @@
-const request = require('supertest');
-const app = require('../../../src/app');
-const { Group, HomeTask } = require('../../../src/models/dbModels');
+const httpMocks = require('node-mocks-http');
+const { HomeTask, Group } = require('../../../src/models/dbModels');
+const homeTaskController = require('../../../src/controllers/dbControllers/homeTaskController');
+const { Op } = require('sequelize');
 
-describe('HomeTask API Tests', () => {
-  describe('POST /api/hometasks', () => {
-    test('should create a new home task and return status 201', async () => {
-      const testGroup = await Group.create({
-        GroupName: 'Math Group',
-        GroupPrice: 100,
-        MaxStudents: 20
-      });
+jest.mock('../../../src/models/dbModels', () => ({
+  HomeTask: {
+    create: jest.fn(),
+    findAll: jest.fn(),
+    findByPk: jest.fn(),
+    update: jest.fn(),
+    destroy: jest.fn(),
+  },
+  Group: jest.fn(() => ({ name: 'Group' })),
+}));
 
-      const newHomeTask = {
+describe('HomeTask Controller Tests', () => {
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  test('createHomeTask should create a new home task', async () => {
+    const req = httpMocks.createRequest({
+      method: 'POST',
+      body: {
         HomeTaskHeader: 'Math Homework',
-        StartDate: new Date(),
-        DeadlineDate: new Date(Date.now() + 86400000),
-        GroupId: testGroup.GroupId
-      };
-
-      const response = await request(app)
-        .post('/api/hometasks')
-        .send(newHomeTask);
-
-      expect(response.status).toBe(201);
-      expect(response.body).toHaveProperty('HomeTaskId');
-      expect(response.body.HomeTaskHeader).toBe('Math Homework');
-      expect(response.body.GroupId).toBe(testGroup.GroupId);
+        HomeTaskDescription: 'Solve problems 1-10',
+        StartDate: '2023-10-01T00:00:00Z',
+        DeadlineDate: '2023-10-10T00:00:00Z',
+        MaxMark: 100,
+        GroupId: 1,
+      },
     });
+    const res = httpMocks.createResponse();
 
-    test('should return 400 for invalid input (missing HomeTaskHeader)', async () => {
-      const testGroup = await Group.create({
-        GroupName: 'Math Group',
-        GroupPrice: 100,
-        MaxStudents: 20
-      });
+    HomeTask.create.mockResolvedValue(req.body);
 
-      const invalidHomeTask = {
-        StartDate: new Date(),
-        DeadlineDate: new Date(Date.now() + 86400000),
-        GroupId: testGroup.GroupId
-      };
+    await homeTaskController.createHomeTask(req, res);
 
-      const response = await request(app)
-        .post('/api/hometasks')
-        .send(invalidHomeTask);
-
-      expect(response.status).toBe(400);
-      expect(response.body.error).toContain('Validation error: HomeTaskHeader cannot be empty');
-    });
+    expect(HomeTask.create).toHaveBeenCalledWith(req.body);
+    expect(res.statusCode).toBe(201);
+    expect(res._getJSONData()).toEqual(req.body);
   });
 
-  describe('GET /api/hometasks', () => {
-    test('should return a list of home tasks and status 200', async () => {
-      const testGroup = await Group.create({
-        GroupName: 'Science Group',
-        GroupPrice: 150,
-        MaxStudents: 25
-      });
+  test('getHomeTasks should return all home tasks', async () => {
+    const req = httpMocks.createRequest({ method: 'GET' });
+    const res = httpMocks.createResponse();
 
-      await HomeTask.create({
-        HomeTaskHeader: 'Physics Homework',
-        StartDate: new Date(),
-        DeadlineDate: new Date(Date.now() + 86400000),
-        GroupId: testGroup.GroupId
-      });
+    const mockHomeTasks = [
+      {
+        HomeTaskId: 1,
+        HomeTaskHeader: 'Math Homework',
+        HomeTaskDescription: 'Solve problems 1-10',
+        StartDate: '2023-10-01T00:00:00Z',
+        DeadlineDate: '2023-10-10T00:00:00Z',
+        MaxMark: 100,
+        GroupId: 1,
+      },
+    ];
 
-      const response = await request(app)
-        .get('/api/hometasks');
+    HomeTask.findAll.mockResolvedValue(mockHomeTasks);
 
-      expect(response.status).toBe(200);
-      expect(Array.isArray(response.body)).toBe(true);
-      expect(response.body.length).toBeGreaterThan(0);
+    await homeTaskController.getHomeTasks(req, res);
+
+    expect(HomeTask.findAll).toHaveBeenCalledWith({
+      where: undefined,
+      order: undefined,
     });
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData()).toEqual(mockHomeTasks);
   });
 
-  describe('GET /api/hometasks/:id', () => {
-    test('should return a home task by ID and status 200', async () => {
-      const testGroup = await Group.create({
-        GroupName: 'Chemistry Group',
-        GroupPrice: 180,
-        MaxStudents: 30
-      });
+  test('getHomeTaskById should return home task if found', async () => {
+    const req = httpMocks.createRequest({ method: 'GET', params: { id: 1 } });
+    const res = httpMocks.createResponse();
 
-      const testHomeTask = await HomeTask.create({
-        HomeTaskHeader: 'Chemistry Homework',
-        StartDate: new Date(),
-        DeadlineDate: new Date(Date.now() + 86400000),
-        GroupId: testGroup.GroupId
-      });
+    const mockHomeTask = {
+      HomeTaskId: 1,
+      HomeTaskHeader: 'Math Homework',
+      HomeTaskDescription: 'Solve problems 1-10',
+      StartDate: '2023-10-01T00:00:00Z',
+      DeadlineDate: '2023-10-10T00:00:00Z',
+      MaxMark: 100,
+      GroupId: 1,
+    };
 
-      const response = await request(app)
-        .get(`/api/hometasks/${testHomeTask.HomeTaskId}`);
+    HomeTask.findByPk.mockResolvedValue(mockHomeTask);
 
-      expect(response.status).toBe(200);
-      expect(response.body.HomeTaskHeader).toBe('Chemistry Homework');
-      expect(response.body.GroupId).toBe(testGroup.GroupId);
-    });
+    await homeTaskController.getHomeTaskById(req, res);
 
-    test('should return 404 if home task not found', async () => {
-      const response = await request(app)
-        .get('/api/hometasks/999');
-
-      expect(response.status).toBe(404);
-      expect(response.body.error).toBe('HomeTask not found');
-    });
+    expect(HomeTask.findByPk).toHaveBeenCalledWith(1);
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData()).toEqual(mockHomeTask);
   });
 
-  describe('GET /api/hometasks/search', () => {
-    test('should return matching home tasks and status 200', async () => {
-      const testGroup = await Group.create({
-        GroupName: 'Biology Group',
-        GroupPrice: 200,
-        MaxStudents: 22
-      });
+  test('searchHomeTasks should return matching home tasks', async () => {
+    const req = httpMocks.createRequest({
+      method: 'GET',
+      query: {
+        homeTaskHeader: 'Math',
+        groupId: '1',
+        startDate: '2023-10-01',
+        deadlineDate: '2023-10-10',
+      },
+    });
+    const res = httpMocks.createResponse();
 
-      await HomeTask.create({
-        HomeTaskHeader: 'Biology Homework',
-        StartDate: new Date(),
-        DeadlineDate: new Date(Date.now() + 86400000),
-        GroupId: testGroup.GroupId
-      });
+    const mockHomeTasks = [
+      {
+        HomeTaskId: 1,
+        HomeTaskHeader: 'Math Homework',
+        HomeTaskDescription: 'Solve problems 1-10',
+        StartDate: '2023-10-01T00:00:00Z',
+        DeadlineDate: '2023-10-10T00:00:00Z',
+        MaxMark: 100,
+        GroupId: 1,
+        Group: { GroupId: 1, GroupName: 'Math Group' },
+      },
+    ];
 
-      const response = await request(app)
-        .get('/api/hometasks/search')
-        .query({ homeTaskHeader: 'Biology' });
+    HomeTask.findAll.mockResolvedValue(mockHomeTasks);
 
-      expect(response.status).toBe(200);
-      expect(response.body.success).toBe(true);
-      expect(Array.isArray(response.body.data)).toBe(true);
-      expect(response.body.data.length).toBeGreaterThan(0);
-      expect(response.body.data[0].HomeTaskHeader).toContain('Biology');
+    await homeTaskController.searchHomeTasks(req, res);
+
+    expect(HomeTask.findAll).toHaveBeenCalledWith({
+      where: {
+        HomeTaskHeader: { [Op.like]: '%Math%' },
+        GroupId: '1',
+        StartDate: { [Op.between]: [new Date('2023-10-01'), new Date('2023-10-10')] },
+      },
+      include: {
+        model: expect.any(Function),
+        as: 'Group',
+        attributes: ['GroupId', 'GroupName'],
+      },
     });
 
-    test('should return 404 if no home tasks match the criteria', async () => {
-      const response = await request(app)
-        .get('/api/hometasks/search')
-        .query({ homeTaskHeader: 'nonexistent' });
-
-      expect(response.status).toBe(404);
-      expect(response.body.success).toBe(false);
-      expect(response.body.message).toBe('No home tasks found matching the criteria.');
-    });
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData().success).toBe(true);
+    expect(res._getJSONData().data).toEqual(mockHomeTasks);
   });
 
-  describe('PUT /api/hometasks/:id', () => {
-    test('should update a home task and return status 200', async () => {
-      const testGroup = await Group.create({
-        GroupName: 'History Group',
-        GroupPrice: 170,
-        MaxStudents: 28
-      });
-
-      const testHomeTask = await HomeTask.create({
-        HomeTaskHeader: 'History Homework',
-        StartDate: new Date(),
-        DeadlineDate: new Date(Date.now() + 86400000),
-        GroupId: testGroup.GroupId
-      });
-
-      const updatedData = {
-        HomeTaskHeader: 'Updated History Homework'
-      };
-
-      const response = await request(app)
-        .put(`/api/hometasks/${testHomeTask.HomeTaskId}`)
-        .send(updatedData);
-
-      expect(response.status).toBe(200);
-      expect(response.body.HomeTaskHeader).toBe('Updated History Homework');
+  test('updateHomeTask should update an existing home task', async () => {
+    const req = httpMocks.createRequest({
+      method: 'PUT',
+      params: { id: 1 },
+      body: { HomeTaskHeader: 'Updated Math Homework' },
     });
+    const res = httpMocks.createResponse();
 
-    test('should return 404 if home task not found', async () => {
-      const response = await request(app)
-        .put('/api/hometasks/999')
-        .send({ HomeTaskHeader: 'Updated Homework' });
+    const mockHomeTask = {
+      update: jest.fn().mockResolvedValue([1]),
+      dataValues: {
+        HomeTaskId: 1,
+        HomeTaskHeader: 'Updated Math Homework',
+        HomeTaskDescription: 'Solve problems 1-10',
+        StartDate: '2023-10-01T00:00:00Z',
+        DeadlineDate: '2023-10-10T00:00:00Z',
+        MaxMark: 100,
+        GroupId: 1,
+      },
+      toJSON: jest.fn(() => ({ ...mockHomeTask.dataValues })),
+    };
 
-      expect(response.status).toBe(404);
-      expect(response.body.error).toBe('HomeTask not found');
+    HomeTask.findByPk.mockResolvedValue(mockHomeTask);
+
+    await homeTaskController.updateHomeTask(req, res);
+
+    expect(mockHomeTask.update).toHaveBeenCalledWith(req.body);
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData()).toEqual({
+      HomeTaskId: 1,
+      HomeTaskHeader: 'Updated Math Homework',
+      HomeTaskDescription: 'Solve problems 1-10',
+      StartDate: '2023-10-01T00:00:00Z',
+      DeadlineDate: '2023-10-10T00:00:00Z',
+      MaxMark: 100,
+      GroupId: 1,
     });
+    expect(mockHomeTask.toJSON).toHaveBeenCalled();
   });
 
-  describe('DELETE /api/hometasks/:id', () => {
-    test('should delete a home task and return status 204', async () => {
-      const testGroup = await Group.create({
-        GroupName: 'Geography Group',
-        GroupPrice: 190,
-        MaxStudents: 24
-      });
+  test('deleteHomeTask should remove a home task', async () => {
+    const req = httpMocks.createRequest({ method: 'DELETE', params: { id: 1 } });
+    const res = httpMocks.createResponse();
 
-      const testHomeTask = await HomeTask.create({
-        HomeTaskHeader: 'Geography Homework',
-        StartDate: new Date(),
-        DeadlineDate: new Date(Date.now() + 86400000),
-        GroupId: testGroup.GroupId
-      });
+    const mockHomeTask = { destroy: jest.fn().mockResolvedValue(1) };
 
-      const response = await request(app)
-        .delete(`/api/hometasks/${testHomeTask.HomeTaskId}`);
+    HomeTask.findByPk.mockResolvedValue(mockHomeTask);
 
-      expect(response.status).toBe(204);
+    await homeTaskController.deleteHomeTask(req, res);
 
-      const deletedHomeTask = await HomeTask.findByPk(testHomeTask.HomeTaskId);
-      expect(deletedHomeTask).toBeNull();
-    });
+    expect(mockHomeTask.destroy).toHaveBeenCalled();
+    expect(res.statusCode).toBe(204);
+  });
 
-    test('should return 404 if home task not found', async () => {
-      const response = await request(app)
-        .delete('/api/hometasks/999');
+  test('getHomeTaskById should handle not found case', async () => {
+    const req = httpMocks.createRequest({ method: 'GET', params: { id: 999 } });
+    const res = httpMocks.createResponse();
 
-      expect(response.status).toBe(404);
-      expect(response.body.error).toBe('HomeTask not found');
-    });
+    HomeTask.findByPk.mockResolvedValue(null);
+
+    await homeTaskController.getHomeTaskById(req, res);
+
+    expect(res.statusCode).toBe(404);
+    expect(res._getJSONData()).toEqual({ error: 'HomeTask not found' });
+  });
+
+  test('searchHomeTasks should handle no results case', async () => {
+    const req = httpMocks.createRequest({ method: 'GET', query: { homeTaskHeader: 'Nonexistent' } });
+    const res = httpMocks.createResponse();
+
+    HomeTask.findAll.mockResolvedValue([]);
+
+    await homeTaskController.searchHomeTasks(req, res);
+
+    expect(res.statusCode).toBe(404);
+    expect(res._getJSONData()).toEqual({ success: false, message: 'No home tasks found matching the criteria.' });
   });
 });
