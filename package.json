@@ -20,6 +20,7 @@
     "body-parser": "^1.20.3",
     "chai": "^5.1.2",
     "child_process": "^1.0.2",
+    "cors": "^2.8.5",
     "cross-env": "^7.0.3",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",

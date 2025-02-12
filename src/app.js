@@ -4,6 +4,7 @@ const bodyParser = require('body-parser');
 const { exec } = require('child_process');
 const swaggerJSDoc = require("swagger-jsdoc");
 const swaggerUi = require("swagger-ui-express");
+const cors = require('cors');
 
 const authRoutes = require('./routes/authRoutes');
 const routes = require('./routes/dbRoutes/routes');
@@ -18,6 +19,7 @@ const app = express();
 dotenv.config();
 connectRedis();
 
+app.use(cors());
 app.use(express.json());
 app.use(bodyParser.json());
 app.use(metricsMiddleware);
