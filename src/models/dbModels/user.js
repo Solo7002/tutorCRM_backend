@@ -20,10 +20,6 @@ module.exports = (sequelize, DataTypes) => {
             validate: {
                 notEmpty: { msg: 'Password cannot be empty' },
                 len: { args: [6, 100], msg: 'Password must be at least 6 characters long' },
-                is: {
-                    args: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@#^()-=+_[\]{}\\/.,><'";:$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/,
-                    msg: 'Password must contain at least one lowercase letter, one uppercase letter, one digit, one special character, and be at least 8 characters long.'
-                },
                 isNotUsername(value) {
                     if (value === this.Username) {
                         throw new Error('Password cannot be the same as the Username');

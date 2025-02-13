@@ -14,10 +14,20 @@ const comparePassword=async(password,hashPassword)=>{
     return bcrypt.compare(password,hashPassword);
 }
 
+//Валидация пароля
+const validatePassword = (password) => {
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@#^()-=+_[\]{}\\/.,><'";:$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+    if (!passwordRegex.test(password)) {
+      throw new Error('Password must contain at least one lowercase letter, one uppercase letter, one digit, one special character, and be at least 8 characters long.');
+    }
+  };
+
 //Регистрация пользователя
 const registerUser=async(user)=>{
     try{
      
+        validatePassword(user.Password);
+        
         const hashPassworde = await hashPassword(user.Password); 
        
         const newUser = await User.create({
@@ -186,5 +196,6 @@ module.exports={
     resetAndChangePassword,
     registerAndSendEmailConfirmation,
     verifyEmailAndRegisterUser,
-    loginToOuth2
+    loginToOuth2,
+    validatePassword
 }

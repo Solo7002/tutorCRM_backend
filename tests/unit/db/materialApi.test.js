@@ -25,6 +25,9 @@ describe('Material Controller Tests', () => {
       body: {
         MaterialName: 'Math Notes',
         Type: 'file',
+        FilePath: 'http://example.com/file.pdf',
+        FileImage: 'http://example.com/image.jpg',
+        AppearanceDate: '2023-10-01T00:00:00.000Z',
         TeacherId: 1,
       },
     });
@@ -48,6 +51,9 @@ describe('Material Controller Tests', () => {
         MaterialId: 1,
         MaterialName: 'Math Notes',
         Type: 'file',
+        FilePath: 'http://example.com/file.pdf',
+        FileImage: 'http://example.com/image.jpg',
+        AppearanceDate: '2023-10-01T00:00:00.000Z',
         TeacherId: 1,
       },
     ];
@@ -72,6 +78,9 @@ describe('Material Controller Tests', () => {
       MaterialId: 1,
       MaterialName: 'Math Notes',
       Type: 'file',
+      FilePath: 'http://example.com/file.pdf',
+      FileImage: 'http://example.com/image.jpg',
+      AppearanceDate: '2023-10-01T00:00:00.000Z',
       TeacherId: 1,
     };
 
@@ -87,7 +96,14 @@ describe('Material Controller Tests', () => {
   test('searchMaterials should return matching materials', async () => {
     const req = httpMocks.createRequest({
       method: 'GET',
-      query: { materialName: 'Math', type: 'file', teacherId: '1' },
+      query: {
+        materialName: 'Math',
+        type: 'file',
+        teacherId: '1',
+        filePath: 'http://example.com',
+        appearanceDateFrom: '2023-10-01T00:00:00.000Z',
+        appearanceDateTo: '2023-10-31T23:59:59.999Z',
+      },
     });
     const res = httpMocks.createResponse();
 
@@ -96,6 +112,9 @@ describe('Material Controller Tests', () => {
         MaterialId: 1,
         MaterialName: 'Math Notes',
         Type: 'file',
+        FilePath: 'http://example.com/file.pdf',
+        FileImage: 'http://example.com/image.jpg',
+        AppearanceDate: '2023-10-15T00:00:00.000Z',
         TeacherId: 1,
         Teacher: { TeacherId: 1, Name: 'John Doe' },
       },
@@ -110,6 +129,11 @@ describe('Material Controller Tests', () => {
         MaterialName: { [Op.like]: '%Math%' },
         Type: 'file',
         TeacherId: '1',
+        FilePath: { [Op.like]: '%http://example.com%' },
+        AppearanceDate: {
+          [Op.gte]: new Date('2023-10-01T00:00:00.000Z'),
+          [Op.lte]: new Date('2023-10-31T23:59:59.999Z'),
+        },
       },
       include: {
         model: expect.any(Function),
@@ -127,34 +151,34 @@ describe('Material Controller Tests', () => {
     const req = httpMocks.createRequest({
       method: 'PUT',
       params: { id: 1 },
-      body: { MaterialName: 'Updated Math Notes' },
+      body: {
+        MaterialName: 'Updated Math Notes',
+        FilePath: 'http://example.com/updated-file.pdf',
+      },
     });
     const res = httpMocks.createResponse();
-
-    const mockMaterial = {
-      update: jest.fn().mockResolvedValue([1]),
-      dataValues: {
-        MaterialId: 1,
-        MaterialName: 'Updated Math Notes',
-        Type: 'file',
-        TeacherId: 1,
-      },
-      toJSON: jest.fn(() => ({ ...mockMaterial.dataValues })),
-    };
-
-    Material.findByPk.mockResolvedValue(mockMaterial);
-
-    await materialController.updateMaterial(req, res);
-
-    expect(mockMaterial.update).toHaveBeenCalledWith(req.body);
-    expect(res.statusCode).toBe(200);
-    expect(res._getJSONData()).toEqual({
+  
+    const mockMaterialData = {
       MaterialId: 1,
       MaterialName: 'Updated Math Notes',
       Type: 'file',
+      FilePath: 'http://example.com/updated-file.pdf',
+      FileImage: 'http://example.com/image.jpg',
+      AppearanceDate: '2023-10-01T00:00:00.000Z',
       TeacherId: 1,
-    });
-    expect(mockMaterial.toJSON).toHaveBeenCalled();
+    };
+  
+    const mockMaterial = {
+      ...mockMaterialData,
+      update: jest.fn().mockResolvedValue([1]),
+    };
+  
+    Material.findByPk.mockResolvedValue(mockMaterial);
+    await materialController.updateMaterial(req, res);
+  
+    expect(mockMaterial.update).toHaveBeenCalledWith(req.body);
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData()).toEqual(mockMaterialData);
   });
 
   test('deleteMaterial should remove a material', async () => {
@@ -162,7 +186,6 @@ describe('Material Controller Tests', () => {
     const res = httpMocks.createResponse();
 
     const mockMaterial = { destroy: jest.fn().mockResolvedValue(1) };
-
     Material.findByPk.mockResolvedValue(mockMaterial);
 
     await materialController.deleteMaterial(req, res);

@@ -39,12 +39,19 @@ exports.getMaterialById = async (req, res) => {
 
 exports.searchMaterials = async (req, res) => {
   try {
-    const { materialName, type, teacherId } = req.query;
+    const { materialName, type, teacherId, filePath, fileImage, appearanceDateFrom, appearanceDateTo } = req.query;
     const whereConditions = {};
 
     if (materialName) whereConditions.MaterialName = { [Op.like]: `%${materialName}%` };
     if (type) whereConditions.Type = type;
     if (teacherId) whereConditions.TeacherId = teacherId;
+    if (filePath) whereConditions.FilePath = { [Op.like]: `%${filePath}%` };
+    if (fileImage) whereConditions.FileImage = { [Op.like]: `%${fileImage}%` };
+    if (appearanceDateFrom || appearanceDateTo) {
+      whereConditions.AppearanceDate = {};
+      if (appearanceDateFrom) whereConditions.AppearanceDate[Op.gte] = new Date(appearanceDateFrom);
+      if (appearanceDateTo) whereConditions.AppearanceDate[Op.lte] = new Date(appearanceDateTo);
+    }
 
     const materials = await Material.findAll({
       where: whereConditions,
