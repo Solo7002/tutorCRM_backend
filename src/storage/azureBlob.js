@@ -22,7 +22,8 @@ async function uploadFileToBlob(file) {
   const blockBlobClient = containerClient.getBlockBlobClient(file.originalname);
   await blockBlobClient.upload(file.buffer, file.buffer.length);
 
-  return `https://${accountName}.blob.core.windows.net/${containerName}/${file.originalname}`;
+//   return `https://${accountName}.blob.core.windows.net/${containerName}/${file.originalname}`;
+    return file.originalname;
 }
 
 async function deleteFileFromBlob(fileName) {

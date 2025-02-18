@@ -14,9 +14,11 @@ exports.createMaterial = async (req, res) => {
 
 exports.getMaterials = async (req, res) => {
     try {
-        const { where, order } = parseQueryParams(req.query);
+        const { order, ParentId } = req.query;
+        const whereConditions = {};
+        whereConditions.ParentId = ParentId ?? null;
         const materials = await Material.findAll({
-            where: where || undefined,
+            where: whereConditions,
             order: order || undefined,
         });
         res.status(200).json(materials);
@@ -39,15 +41,15 @@ exports.getMaterialById = async (req, res) => {
 
 exports.searchMaterials = async (req, res) => {
     try {
-        const { materialName, type, teacherId, filePath, fileImage, appearanceDateFrom, appearanceDateTo, parentId } = req.query;
+        const { MaterialName, Type, TeacherId, FilePath, FileImage, appearanceDateFrom, appearanceDateTo, ParentId } = req.query;
         const whereConditions = {};
 
-        if (materialName) whereConditions.MaterialName = { [Op.like]: `%${materialName}%` };
-        if (type) whereConditions.Type = type;
-        if (teacherId) whereConditions.TeacherId = teacherId;
-        if (parentId) whereConditions.ParentId = parentId;
-        if (filePath) whereConditions.FilePath = { [Op.like]: `%${filePath}%` };
-        if (fileImage) whereConditions.FileImage = { [Op.like]: `%${fileImage}%` };
+        if (MaterialName) whereConditions.MaterialName = { [Op.like]: `%${MaterialName}%` };
+        if (Type) whereConditions.Type = Type;
+        if (TeacherId) whereConditions.TeacherId = TeacherId;
+        if (ParentId) whereConditions.ParentId = ParentId;
+        if (FilePath) whereConditions.FilePath = { [Op.like]: `%${FilePath}%` };
+        if (FileImage) whereConditions.FileImage = { [Op.like]: `%${FileImage}%` };
         if (appearanceDateFrom || appearanceDateTo) {
             whereConditions.AppearanceDate = {};
             if (appearanceDateFrom) whereConditions.AppearanceDate[Op.gte] = new Date(appearanceDateFrom);
@@ -56,11 +58,11 @@ exports.searchMaterials = async (req, res) => {
 
         const materials = await Material.findAll({
             where: whereConditions,
-            include: {
-                model: Teacher,
-                as: 'Teacher',
-                attributes: ['TeacherId', 'Name'],
-            },
+            // include: {
+            //     model: Teacher,
+            //     as: 'Teacher',
+            //     attributes: ['TeacherId', 'Name'],
+            // },
         });
 
         if (!materials.length) {
