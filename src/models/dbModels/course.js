@@ -19,10 +19,34 @@ module.exports = (sequelize, DataTypes) => {
       validate: {
         isUrl: { msg: 'ImageFilePath must be a valid URL' },
       },
-    }
+    },
+    SubjectId: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: {
+        model: 'Subjects',
+        key: 'SubjectId',
+      },
+      onUpdate: 'CASCADE',
+      onDelete: 'CASCADE',
+    },
+   
   }, {
     timestamps: false,
   });
+
   
+  Course.associate = (models) => {
+      Course.hasMany(models.Group, {
+        foreignKey: 'CourseId',
+        as: 'Groups',
+    });
+
+    Course.belongsTo(models.Teacher, {
+      foreignKey: 'TeacherId',
+      as: 'Teacher',
+  });
+  };
+ 
   return Course;
-};  
+};

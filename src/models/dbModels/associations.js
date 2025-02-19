@@ -44,6 +44,15 @@ module.exports = (models) => {
     });
   }
 
+  if (models.Subject && models.Course) {
+    models.Subject.belongsTo(models.Course, {
+        foreignKey: 'CourseId',
+        as: 'Course',
+        onDelete: 'CASCADE',
+        onUpdate: 'CASCADE',
+    });
+}
+
   if (models.Course && models.Location) {
     models.Course.belongsTo(models.Location, {
       foreignKey: 'LocationId',
@@ -56,7 +65,7 @@ module.exports = (models) => {
   if (models.Group && models.GroupStudent) {
     models.Group.hasMany(models.GroupStudent, {
       foreignKey: 'GroupId',
-      as: 'Students',
+      as: 'GroupStudents',
       onDelete: 'CASCADE',
       onUpdate: 'CASCADE',
     });
@@ -302,7 +311,14 @@ module.exports = (models) => {
       onUpdate: 'CASCADE',
     });
   }
-
+  if (models.Teacher && models.User) {
+    models.Teacher.belongsTo(models.User, {
+      foreignKey: 'UserId', 
+      as: 'User', 
+      onDelete: 'CASCADE',
+      onUpdate: 'CASCADE',
+    });
+  }
   if (models.Teacher && models.Subscription) {
     models.Teacher.belongsTo(models.Subscription, {
       foreignKey: 'SubscriptionLevelId', 
@@ -318,4 +334,39 @@ module.exports = (models) => {
       onUpdate: 'CASCADE',
     });
   }
+
+  if (models.Student && models.Group) {
+    models.Student.belongsToMany(models.Group, {
+      through: models.GroupStudent,
+      foreignKey: 'StudentId',
+      otherKey: 'GroupId',
+      as: 'Groups',
+      onDelete: 'CASCADE',
+      onUpdate: 'CASCADE',
+    });
+  }
+  
+  if (models.Group && models.Student) {
+    models.Group.belongsToMany(models.Student, {
+      through: models.GroupStudent,
+      foreignKey: 'GroupId',
+      otherKey: 'StudentId',
+      as: 'Students',
+      onDelete: 'CASCADE',
+      onUpdate: 'CASCADE',
+    });
+  }
+  if (models.Group && models.Course) {
+    models.Group.belongsTo(models.Course, {
+      foreignKey: 'CourseId',
+      as: 'Course',
+      onDelete: 'CASCADE',
+      onUpdate: 'CASCADE',
+    });
+  }
+  
+  
 };
+
+
+

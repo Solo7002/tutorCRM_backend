@@ -138,4 +138,8 @@ router.put('/:id', doneHometaskController.updateDoneHometask);
  */
 router.delete('/:id', doneHometaskController.deleteDoneHometask);
 
+router.get('/pendingHometask/:studentId', doneHometaskController.getPendingHomeTasksByStudentId);
+
+router.get('/doneHometask/:studentId', doneHometaskController.getCheckedHomeTasksByStudentId);
+
 module.exports = router;

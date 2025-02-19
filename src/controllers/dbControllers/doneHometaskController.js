@@ -1,4 +1,4 @@
-const { DoneHomeTask, HomeTask, Student } = require('../../models/dbModels');
+const { DoneHomeTask, HomeTask,Group, Student } = require('../../models/dbModels');
 const { parseQueryParams } = require('../../utils/dbUtils/queryUtils');
 const { Op } = require('sequelize');
 
@@ -84,5 +84,80 @@ exports.deleteDoneHometask = async (req, res) => {
     res.status(204).send();
   } catch (error) {
     res.status(400).json({ error: error.message });
+  }
+};
+
+exports.getPendingHomeTasksByStudentId = async (req, res) => {
+  try {
+    const { studentId } = req.params;
+
+    // Получаем все ДЗ, которые еще не проверены (оценка -1)
+    const pendingTasks = await DoneHomeTask.findAll({
+      where: {
+        StudentId: studentId,
+        Mark: -1, // ДЗ еще на проверке
+      },
+      include: [
+        {
+          model: HomeTask,
+          as: 'HomeTask',
+          include: [
+            {
+              model: Group,
+              as: 'Group',
+              attributes: ['GroupId', 'GroupName'],
+            },
+          ],
+        },
+      ],
+    });
+
+    res.status(200).json({
+      message: `Pending home tasks for student ID: ${studentId}`,
+      data: pendingTasks,
+    });
+  } catch (error) {
+    console.error('Error in getPendingHomeTasksByStudentId:', error);
+    res.status(500).json({
+      message: `Error in getPendingHomeTasksByStudentId: ${error.message}`,
+    });
+  }
+};
+
+
+exports.getCheckedHomeTasksByStudentId = async (req, res) => {
+  try {
+    const { studentId } = req.params;
+
+    // Получаем все ДЗ, которые уже проверены (оценка >= 0)
+    const checkedTasks = await DoneHomeTask.findAll({
+      where: {
+        StudentId: studentId,
+        Mark: { [Op.gte]: 0 }, // Оценка 0 или выше -> проверенное ДЗ
+      },
+      include: [
+        {
+          model: HomeTask,
+          as: 'HomeTask',
+          include: [
+            {
+              model: Group,
+              as: 'Group',
+              attributes: ['GroupId', 'GroupName'],
+            },
+          ],
+        },
+      ],
+    });
+
+    res.status(200).json({
+      message: `Checked home tasks for student ID: ${studentId}`,
+      data: checkedTasks,
+    });
+  } catch (error) {
+    console.error('Error in getCheckedHomeTasksByStudentId:', error);
+    res.status(500).json({
+      message: `Error in getCheckedHomeTasksByStudentId: ${error.message}`,
+    });
   }
 };

@@ -65,5 +65,15 @@ module.exports = (sequelize, DataTypes) => {
         timestamps: false,
     });
 
+    User.associate = (models) => {
+        // Ассоциация: User имеет одного Teacher
+        User.hasOne(models.Teacher, {
+          foreignKey: 'UserId', // Поле в таблице Teacher, которое ссылается на User
+          as: 'Teacher', // Имя ассоциации
+          onDelete: 'CASCADE',
+          onUpdate: 'CASCADE',
+        });
+      };
+
     return User;
 };  
