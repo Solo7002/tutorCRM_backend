@@ -1,6 +1,7 @@
 const { Material, Teacher } = require('../../models/dbModels');
 const { parseQueryParams } = require('../../utils/dbUtils/queryUtils');
 const { Op } = require('sequelize');
+const path = require("path");
 
 exports.createMaterial = async (req, res) => {
     try {
@@ -41,14 +42,13 @@ exports.getMaterialById = async (req, res) => {
 
 exports.searchMaterials = async (req, res) => {
     try {
-        const { MaterialName, Type, TeacherId, FilePath, FileImage, appearanceDateFrom, appearanceDateTo, ParentId } = req.query;
+        const { MaterialName, Type, TeacherId, FileExtension, FileImage, appearanceDateFrom, appearanceDateTo, ParentId } = req.query;
         const whereConditions = {};
 
         if (MaterialName) whereConditions.MaterialName = { [Op.like]: `%${MaterialName}%` };
         if (Type) whereConditions.Type = Type;
         if (TeacherId) whereConditions.TeacherId = TeacherId;
         if (ParentId) whereConditions.ParentId = ParentId;
-        if (FilePath) whereConditions.FilePath = { [Op.like]: `%${FilePath}%` };
         if (FileImage) whereConditions.FileImage = { [Op.like]: `%${FileImage}%` };
         if (appearanceDateFrom || appearanceDateTo) {
             whereConditions.AppearanceDate = {};
@@ -56,25 +56,28 @@ exports.searchMaterials = async (req, res) => {
             if (appearanceDateTo) whereConditions.AppearanceDate[Op.lte] = new Date(appearanceDateTo);
         }
 
-        const materials = await Material.findAll({
-            where: whereConditions,
-            // include: {
-            //     model: Teacher,
-            //     as: 'Teacher',
-            //     attributes: ['TeacherId', 'Name'],
-            // },
-        });
+
+        let materials = await Material.findAll({ where: whereConditions });
+
+        if (FileExtension) {
+            const extensionsArray = Array.isArray(FileExtension) ? FileExtension : [FileExtension];
+            materials = materials.filter(material => {
+                const ext = path.extname(material.FilePath || "").toLowerCase();
+                return extensionsArray.map(e => e.toLowerCase()).includes(ext);
+            });
+        }
 
         if (!materials.length) {
-            return res.status(404).json({ success: false, message: 'No materials found matching the criteria.' });
+            return res.status(404).json({ success: false, message: "No materials found matching the criteria." });
         }
 
         return res.status(200).json({ success: true, data: materials });
     } catch (error) {
-        console.error('Error in searchMaterials:', error);
-        return res.status(500).json({ success: false, message: 'Server error, please try again later.' });
+        console.error("Error in searchMaterials:", error);
+        return res.status(500).json({ success: false, message: "Server error, please try again later." });
     }
 };
+
 
 exports.updateMaterial = async (req, res) => {
     try {
