@@ -3,6 +3,29 @@ const jwt=require('jsonwebtoken');
 const { User, Student, Teacher } = require('../models/dbModels');
 const{JWT_SECRET,JWT_EXPIRATION,JWT_TEMPTIME}=process.env;
 const emailService=require('../services/emailService');
+const crypto = require('crypto');
+const { setCache, getCache, deleteCache } = require('../utils/cacheUtils');
+
+const saltRounds = 10;
+
+function generateRandomPassword() {
+  const letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  const special = "_-$%!";
+  let passwordChars = [];
+  
+  for (let i = 0; i < 2; i++) {
+    passwordChars.push(special.charAt(Math.floor(Math.random() * special.length)));
+  }
+  for (let i = 0; i < 6; i++) {
+    passwordChars.push(letters.charAt(Math.floor(Math.random() * letters.length)));
+  }
+  for (let i = passwordChars.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [passwordChars[i], passwordChars[j]] = [passwordChars[j], passwordChars[i]];
+  }
+  return passwordChars.join('');
+}
+
 //Хеширование пароля
 const hashPassword=async(password)=>{
     const salt=await bcrypt.genSalt(10);
@@ -116,6 +139,75 @@ const verifyEmailAndRegisterUser = async(token)=>{
     }
 }
 
+const registerAndSendEmailCode = async (user) => {
+    try {
+        const verificationCode = crypto.randomInt(100000, 999999).toString();
+        const redisKey = `email_verification_${user.Email}`;
+
+        await setCache(redisKey, verificationCode, 600);
+
+        await emailService.sendVerificationCode(user.Email, user.Username, verificationCode);
+    } catch (error) {
+        throw new Error('Ошибка отправки кода подтверждения: ' + error.message);
+    }
+};
+
+/**
+ * Подтверждение кода и регистрация пользователя
+ * @param {string} email - Email пользователя
+ * @param {string} code - Введенный код
+ * @param {Object} userData - Данные пользователя для регистрации
+ */
+const verifyEmailCodeAndRegisterUser = async (email, code, userData) => {
+    try {
+        const redisKey = `email_verification_${email}`;
+        const storedCode = await getCache(redisKey);
+
+        if (!storedCode || storedCode !== code) {
+            throw new Error(`Неверный или просроченный код подтверждения`);
+        }
+
+        const hashPassworde = await hashPassword(userData.Password);
+
+        const newUser = await User.create({
+            Username: userData.Username,
+            Password: hashPassworde,
+            LastName: userData.LastName,
+            FirstName: userData.FirstName,
+            Email: userData.Email,
+            ImageFilePath: userData.ImageFilePath,
+        });
+
+        let additionalId;
+        if (userData.Role === 'Student') {
+            const newStudent = await Student.create({
+                UserId: newUser.UserId,
+                SchoolName: "-1",
+                Grade: "-1",
+            });
+            additionalId = newStudent.StudentId;
+            await newUser.update({ StudentId: additionalId });
+        } else if (userData.Role === 'Teacher') {
+            const newTeacher = await Teacher.create({
+                UserId: newUser.UserId,
+                AboutTeacher: "-1",
+                LessonPrice: "-1",
+                LessonType: "-1",
+                MeetingType: "-1",
+                SubscriptionLevelId: null,
+            });
+            additionalId = newTeacher.TeacherId;
+            await newUser.update({ TeacherId: additionalId });
+        }
+
+        await deleteCache(redisKey);
+
+        return newUser;
+    } catch (error) {
+        throw new Error('Ошибка подтверждения кода и регистрации: ' + error.message);
+    }
+};
+
 const loginUser=async(Email,Password)=>{
     try{
         const user=await User.findOne({where:{Email:Email}});
@@ -134,7 +226,7 @@ const loginUser=async(Email,Password)=>{
 
 };
 
-const loginToOuth2=(user)=>{
+/*const loginToOuth2=(user)=>{
     try{
         if(!user){
             throw new Error("User not found");
@@ -143,6 +235,18 @@ const loginToOuth2=(user)=>{
         return token;
     }catch(error){
         throw new Error(error.message);
+    }
+}*/
+
+const loginToOuth2=(user)=>{
+    try{
+        if(!user){
+            return null;
+        }
+        const token=jwt.sign({id:user.UserId,email:user.Email},JWT_SECRET,{expiresIn:JWT_EXPIRATION})
+        return token;
+    }catch(error){
+        throw new Error("erorr: " + error.message);
     }
 }
 
@@ -178,13 +282,30 @@ const resetAndChangePassword=async(token,NewPassword)=>{
     }
 }
 
+const resetPasswordWithNew = async (Email) => {
+  try {
+    const user = await User.findOne({ where: { Email } });
+    if (!user) {
+      throw new Error("User not found");
+    }
+    const newPassword = generateRandomPassword();
+    const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
+    await user.update({ Password: hashedPassword });
+    await emailService.sendResetPasswordWithNewEmail(user.Email, user.Username, newPassword);
+  } catch (error) {
+    throw new Error(error.message);
+  }
+};
 
 module.exports={
     loginUser,
     registerUser,
     resetPasswordByService,
     resetAndChangePassword,
+    resetPasswordWithNew,
     registerAndSendEmailConfirmation,
     verifyEmailAndRegisterUser,
-    loginToOuth2
+    loginToOuth2,
+    registerAndSendEmailCode,
+    verifyEmailCodeAndRegisterUser
 }

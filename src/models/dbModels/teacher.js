@@ -21,14 +21,14 @@ module.exports = (sequelize, DataTypes) => {
         },
         LessonType: {
             type: DataTypes.ENUM('group', 'solo'),
-            allowNull: false,
+            allowNull: true,
             validate: {
                 notEmpty: { msg: 'LessonType cannot be empty' },
             },
         },
         MeetingType: {
             type: DataTypes.ENUM('offline', 'online'),
-            allowNull: false,
+            allowNull: true,
             validate: {
                 notEmpty: { msg: 'MeetingType cannot be empty' },
             },

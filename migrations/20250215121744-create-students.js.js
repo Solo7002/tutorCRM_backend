@@ -10,11 +10,11 @@ module.exports = {
       },
       SchoolName: {
         type: Sequelize.STRING(255),
-        allowNull: false,
+        allowNull: true,
       },
       Grade: {
         type: Sequelize.STRING(50),
-        allowNull: false,
+        allowNull: true,
       },
       UserId: {
         type: Sequelize.INTEGER,

@@ -34,8 +34,8 @@ const testAnswerRoutes = require('./testAnswerRoutes');
 const doneTestRoutes = require('./doneTestRoutes');
 const selectedAnswerRoutes = require('./selectedAnswerRoutes');
 
-router.use('/api/users',authenticateToken, userRoutes);
-router.use('/api/students',authenticateToken, studentRoutes);
+router.use('/api/users', userRoutes);
+router.use('/api/students', studentRoutes);
 router.use('/api/teachers',authenticateToken, teacherRoutes);
 router.use('/api/subscriptions',authenticateToken,cacheMiddleware(3600), subscriptionRoutes);
 router.use('/api/materials',authenticateToken, materialRoutes);

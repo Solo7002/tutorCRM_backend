@@ -8,7 +8,7 @@ module.exports = (sequelize, DataTypes) => {
         Username: {
             type: DataTypes.STRING,
             allowNull: false,
-            unique: true,
+            unique: false,
             validate: {
                 notEmpty: { msg: 'Username cannot be empty' },
                 len: { args: [3, 50], msg: 'Username must be between 3 and 50 characters' },
@@ -19,16 +19,7 @@ module.exports = (sequelize, DataTypes) => {
             allowNull: false,
             validate: {
                 notEmpty: { msg: 'Password cannot be empty' },
-                len: { args: [6, 100], msg: 'Password must be at least 6 characters long' },
-                is: {
-                    args: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@#^()-=+_[\]{}\\/.,><'";:$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/,
-                    msg: 'Password must contain at least one lowercase letter, one uppercase letter, one digit, one special character, and be at least 8 characters long.'
-                },
-                isNotUsername(value) {
-                    if (value === this.Username) {
-                        throw new Error('Password cannot be the same as the Username');
-                    }
-                }
+                len: { args: [6, 100], msg: 'Password must be at least 6 characters long' }
             },
         },
         LastName: {

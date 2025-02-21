@@ -11,6 +11,7 @@ module.exports = (sequelize, DataTypes) => {
             validate: {
                 len: { args: [1, 255], msg: 'SchoolName must be between 1 and 255 characters' },
             },
+            defaultValue: "-1"
         },
         Grade: {
             type: DataTypes.STRING,
@@ -18,6 +19,7 @@ module.exports = (sequelize, DataTypes) => {
              validate: {
                 len: { args: [1, 50], msg: 'Grade must be between 1 and 50 characters' },
             },
+            defaultValue: "-1"
         },
         UserId: {
           type: DataTypes.INTEGER,
