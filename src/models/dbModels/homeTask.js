@@ -77,5 +77,15 @@ module.exports = (sequelize, DataTypes) => {
     timestamps: false,
   });
 
+  HomeTask.associate = (models) => {
+   
+    HomeTask.belongsTo(models.Teacher, {
+      foreignKey: 'GroupId',
+      as: 'Group',
+  });
+  };
+ 
+
+
   return HomeTask;
 };

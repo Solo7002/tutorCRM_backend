@@ -148,4 +148,6 @@ router.put('/:id', hometaskController.updateHomeTask);
  */
 router.delete('/:id', hometaskController.deleteHomeTask);
 
+
+router.get('/newHometask/:studentId', hometaskController.getNewHomeTasksByStudentId);
 module.exports = router;

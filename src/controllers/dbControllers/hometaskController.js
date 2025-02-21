@@ -1,4 +1,4 @@
-const { HomeTask, Group } = require('../../models/dbModels');
+const { HomeTask, Group, GroupStudent, Student } = require('../../models/dbModels');
 const { parseQueryParams } = require('../../utils/dbUtils/queryUtils');
 const { Op } = require('sequelize');
 
@@ -98,3 +98,52 @@ exports.deleteHomeTask = async (req, res) => {
     res.status(400).json({ error: error.message });
   }
 };
+
+
+exports.getNewHomeTasksByStudentId = async (req, res) => {
+  try {
+    const { studentId } = req.params;
+
+  
+    const studentGroups = await GroupStudent.findAll({
+      attributes: ['GroupId'],
+      where: { StudentId: studentId },
+    });
+
+    
+    if (!studentGroups.length) {
+      return res.status(200).json({
+        message: `No home tasks for student ID: ${studentId}`,
+        data: [],
+      });
+    }
+
+    
+    const groupIds = studentGroups.map((group) => group.GroupId);
+
+   
+    const homeTasks = await HomeTask.findAll({
+      where: {
+        GroupId: { [Op.in]: groupIds }, 
+      },
+      include: [
+        {
+          model: Group,
+          as: 'Group',
+          attributes: ['GroupId', 'GroupName'],
+        },
+      ],
+    });
+
+    res.status(200).json({
+      message: `Home tasks for student ID: ${studentId}`,
+      data: homeTasks,
+    });
+  } catch (error) {
+    console.error('Error in getNewHomeTasksByStudentId:', error);
+    res.status(500).json({
+      message: `Error in getNewHomeTasksByStudentId: ${error.message}`,
+    });
+  }
+};
+

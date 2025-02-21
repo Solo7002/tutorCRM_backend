@@ -1,4 +1,5 @@
-const { Subject } = require('../../models/dbModels');
+const { log } = require('winston');
+const { Subject,HomeTask,Group,Course } = require('../../models/dbModels');
 const { parseQueryParams } = require('../../utils/dbUtils/queryUtils');
 const { Op } = require('sequelize');
 
@@ -84,4 +85,41 @@ exports.deleteSubject = async (req, res) => {
     console.error('Error in deleteSubject:', error);
     res.status(400).json({ error: error.message });
   }
+};
+
+exports.getNameSubjectByIdHometask = async (req, res) => {
+  try {
+    const { hometaskId } = req.params;
+
+    const homeTask = await HomeTask.findByPk(hometaskId, {
+        include: {
+            model: Group,
+            as: 'Group',
+            include: {
+                model: Course,
+                as: 'Course',
+                include: {
+                    model: Subject,
+                    as: 'Subject',
+                    attributes: ['SubjectName']
+                    
+                }
+            }
+        }
+    });
+ 
+   
+    if (!homeTask?.Group?.Course?.Subject?.SubjectName) {
+      return res.status(404).json({ message: 'Dont search' });
+  }
+
+
+    res.json({
+        SubjectName: homeTask.Group.Course.Subject.SubjectName,
+        
+    });
+
+} catch (error) {
+    res.status(500).json({ message: 'Error subject:', error: error.message });
+}
 };
