@@ -1,6 +1,8 @@
 const express = require('express');
+const multer = require('multer');
 const router = express.Router();
 const materialController = require('../../controllers/dbControllers/materialController');
+const upload = multer();
 
 /**
  * @swagger
@@ -49,7 +51,7 @@ const materialController = require('../../controllers/dbControllers/materialCont
  *       200:
  *         description: The material was successfully created
  */
-router.post('/', materialController.createMaterial);
+router.post('/', upload.single('file'), materialController.createMaterial);
 
 /**
  * @swagger

@@ -2,10 +2,20 @@ const { Material, Teacher } = require('../../models/dbModels');
 const { parseQueryParams } = require('../../utils/dbUtils/queryUtils');
 const { Op } = require('sequelize');
 const path = require("path");
+const { createFile } = require('../fileController');
 
 exports.createMaterial = async (req, res) => {
     try {
-        const material = await Material.create(req.body);
+        const file = req.file;
+        const fileName = await createFile(file);
+        const material = await Material.create({
+            MaterialName: req.body.MaterialName || file.originalname,
+            Type: "file",
+            ParentId: req.body.ParentId || null,
+            TeacherId: req.body.TeacherId || null,
+            FilePath: fileName,
+            FileImage: null
+        });
         res.status(201).json(material);
     } catch (error) {
         console.error('Error in createMaterial:', error);

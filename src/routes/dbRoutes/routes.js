@@ -38,7 +38,7 @@ router.use('/api/users',authenticateToken, userRoutes);
 router.use('/api/students',authenticateToken, studentRoutes);
 router.use('/api/teachers',authenticateToken, teacherRoutes);
 router.use('/api/subscriptions',authenticateToken,cacheMiddleware(3600), subscriptionRoutes);
-router.use('/api/materials',authenticateToken, materialRoutes);
+router.use('/api/materials', materialRoutes);
 router.use('/api/materialVisibilityStudents',authenticateToken, materialVisibilityStudentRoutes);
 router.use('/api/userPhones',authenticateToken, userPhoneRoutes);
 router.use('/api/userReviews',authenticateToken, userReviewRoutes);
