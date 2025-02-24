@@ -48,6 +48,15 @@ module.exports = (sequelize, DataTypes) => {
     }, {
         timestamps: false,
     });
-
+    Teacher.associate = (models) => {
+       
+        Teacher.belongsTo(models.User, {
+            foreignKey: 'UserId', // Поле в таблице Teacher, которое ссылается на User
+            as: 'User', // Имя ассоциации
+            onDelete: 'CASCADE',
+            onUpdate: 'CASCADE',
+          });
+      };
+    
     return Teacher;
 };

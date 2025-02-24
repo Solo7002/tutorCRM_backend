@@ -140,4 +140,9 @@ router.put('/:id', teacherController.updateTeacher);
  */
 router.delete('/:id', teacherController.deleteTeacher);
 
+
+
+
+router.get('/hometaskTeacher/:teacherId',teacherController.getNameTeacherByIdHometask)
+
 module.exports = router;

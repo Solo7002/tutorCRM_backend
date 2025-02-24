@@ -19,7 +19,12 @@ module.exports = (sequelize, DataTypes) => {
             allowNull: false,
             validate: {
                 notEmpty: { msg: 'Password cannot be empty' },
-                len: { args: [6, 100], msg: 'Password must be at least 6 characters long' }
+                len: { args: [6, 100], msg: 'Password must be at least 6 characters long' },
+                isNotUsername(value) {
+                    if (value === this.Username) {
+                        throw new Error('Password cannot be the same as the Username');
+                    }
+                }
             },
         },
         LastName: {
@@ -59,6 +64,16 @@ module.exports = (sequelize, DataTypes) => {
     }, {
         timestamps: false,
     });
+
+    User.associate = (models) => {
+        // Ассоциация: User имеет одного Teacher
+        User.hasOne(models.Teacher, {
+          foreignKey: 'UserId', // Поле в таблице Teacher, которое ссылается на User
+          as: 'Teacher', // Имя ассоциации
+          onDelete: 'CASCADE',
+          onUpdate: 'CASCADE',
+        });
+      };
 
     return User;
 };  

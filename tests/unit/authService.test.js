@@ -28,7 +28,7 @@ describe('Auth Service Tests', () => {
   test('registerUser should create a new user', async () => {
     const mockUser = {
         Username: 'testUser',
-        Password: 'password123',
+        Password: 'Password123!',
         LastName: 'Doe',
         FirstName: 'John',
         Email: 'john.doe22@example.com',
@@ -90,7 +90,7 @@ describe('Auth Service Tests', () => {
     const mockUser = {
       Username: 'testUser',
       Email: 'john.doe@example.com',
-      Password: 'password123',
+      Password: 'Password123!',
     };
 
     const mockToken = 'mockToken123';
@@ -109,7 +109,7 @@ describe('Auth Service Tests', () => {
       Password: 'hashedPassword',
     };
 
-    const mockInput = { Email: 'john.doe@example.com', Password: 'password123' };
+    const mockInput = { Email: 'john.doe@example.com', Password: 'Password123!' };
     User.findOne.mockResolvedValue(mockUser);
     bcrypt.compare.mockResolvedValue(true);
     jwt.sign.mockReturnValue('mockToken123');
@@ -163,7 +163,7 @@ describe('Auth Service Tests', () => {
         update: jest.fn().mockResolvedValue([1]), 
     };
     const mockToken = jwt.sign({ id: mockUser.UserId, email: mockUser.Email }, JWT_SECRET, { expiresIn: JWT_TEMPTIME });
-    const mockNewPassword = 'newPassword123';
+    const mockNewPassword = 'newPassword123!';
     jwt.verify.mockReturnValue({ id: mockUser.UserId });
     bcrypt.hash.mockResolvedValue('newHashedPassword');
     User.findOne.mockResolvedValue(mockUser);

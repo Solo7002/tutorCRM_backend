@@ -10,7 +10,7 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: true,
       validate: {
         isInt: { msg: 'Mark must be an integer', },
-        min: { args: [0], msg: 'Mark cannot be less than 0', },
+        min: { args: [-1], msg: 'Mark cannot be less than -1', },
         max: { args: [100], msg: 'Mark cannot exceed 100', },
       },
     },

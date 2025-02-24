@@ -29,5 +29,16 @@ module.exports = (sequelize, DataTypes) => {
         timestamps: false,
     });
 
+
+    Student.associate = (models) => {
+        Student.belongsToMany(models.Group, {
+          through: models.GroupStudent, 
+          foreignKey: 'StudentId', 
+          otherKey: 'GroupId',
+          as: 'Groups'
+        });
+      };
+      
+
     return Student;
 };  
