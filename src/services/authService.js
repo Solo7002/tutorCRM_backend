@@ -316,7 +316,7 @@ module.exports={
     registerAndSendEmailConfirmation,
     verifyEmailAndRegisterUser,
     registerAndSendEmailCode,
-    verifyEmailCodeAndRegisterUser
+    verifyEmailCodeAndRegisterUser,
     loginToOuth2,
     validatePassword
 }
