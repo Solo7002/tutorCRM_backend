@@ -35,24 +35,9 @@ module.exports = (models) => {
     });
   }
 
-  if (models.Course && models.Subject) {
-    models.Course.belongsTo(models.Subject, {
-      foreignKey: 'SubjectId',
-      as: 'Subject',
-      onDelete: 'SET NULL',
-      onUpdate: 'CASCADE',
-    });
-  }
+ 
 
-  if (models.Subject && models.Course) {
-    models.Subject.belongsTo(models.Course, {
-        foreignKey: 'CourseId',
-        as: 'Course',
-        onDelete: 'CASCADE',
-        onUpdate: 'CASCADE',
-    });
-}
-
+  
   if (models.Course && models.Location) {
     models.Course.belongsTo(models.Location, {
       foreignKey: 'LocationId',
@@ -364,7 +349,23 @@ module.exports = (models) => {
       onUpdate: 'CASCADE',
     });
   }
+  if (models.Subject && models.Course) {
+    // Subject has many Courses
+    models.Subject.hasMany(models.Course, {
+      foreignKey: 'SubjectId', // Внешний ключ в таблице Courses
+      as: 'Courses', // Алиас для доступа к курсам
+      onDelete: 'CASCADE', // Удаление курсов при удалении предмета
+      onUpdate: 'CASCADE', // Обновление курсов при обновлении предмета
+    });
   
+    // Course belongs to Subject
+    models.Course.belongsTo(models.Subject, {
+      foreignKey: 'SubjectId', // Внешний ключ в таблице Courses
+      as: 'Subject', // Алиас для доступа к предмету
+      onDelete: 'SET NULL', // При удалении предмета, SubjectId в Course становится NULL
+      onUpdate: 'CASCADE', // Обновление SubjectId в Course при обновлении Subject
+    });
+  }
   
 };
 

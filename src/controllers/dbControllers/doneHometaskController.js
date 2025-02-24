@@ -162,7 +162,7 @@ exports.getCheckedHomeTasksByStudentId = async (req, res) => {
   }
 };
 
-exports.getCheckedHomeTasksByStudentIdAndHometaskId = async (req, res) => {
+exports.getPedingHomeTasksByStudentIdAndHometaskId = async (req, res) => {
   try {
     const { studentId, homeTaskId } = req.params;
 
@@ -178,14 +178,14 @@ exports.getCheckedHomeTasksByStudentIdAndHometaskId = async (req, res) => {
     // Условия для поиска
     const whereConditions = {
       StudentId: studentId,
-      Mark: { [Op.gte]: 0 }, // Оценка -1 значит дз еще на проверке 
+      Mark: { [Op.gte]:-1 }, // Оценка -1 значит дз еще на проверке 
       HomeTaskId:homeTaskId
     };
 
     
 
 
-    // Получаем все ДЗ, которые уже проверены (оценка >= 0)
+    // Получаем все ДЗ, которые на проверке
     const checkedTasks = await DoneHomeTask.findAll({
       where: whereConditions,
       include: [

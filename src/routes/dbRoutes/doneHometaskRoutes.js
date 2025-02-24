@@ -142,6 +142,6 @@ router.get('/pendingHometask/:studentId', doneHometaskController.getPendingHomeT
 
 router.get('/doneHometask/:studentId', doneHometaskController.getCheckedHomeTasksByStudentId);
 //отдельная выгрузка таска,для модального окна 
-router.get('/checkedHomeTasks/:studentId/:homeTaskId', doneHometaskController.getCheckedHomeTasksByStudentIdAndHometaskId);
+router.get('/checkedHomeTasks/:studentId/:homeTaskId', doneHometaskController.getPedingHomeTasksByStudentIdAndHometaskId);
 
 module.exports = router;
