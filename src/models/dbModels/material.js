@@ -28,7 +28,6 @@ module.exports = (sequelize, DataTypes) => {
             type: DataTypes.STRING(255),
             allowNull: true,
             validate: {
-                isUrl: { msg: 'FilePath must be a valid URL' },
                 len: { args: [1, 255], msg: 'FilePath must be between 1 and 255 characters' },
             },
         },
