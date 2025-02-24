@@ -1,5 +1,5 @@
 const { log } = require('winston');
-const { Subject,HomeTask,Group,Course } = require('../../models/dbModels');
+const { Subject,HomeTask,Group,Course,Student } = require('../../models/dbModels');
 const { parseQueryParams } = require('../../utils/dbUtils/queryUtils');
 const { Op } = require('sequelize');
 
@@ -122,4 +122,61 @@ exports.getNameSubjectByIdHometask = async (req, res) => {
 } catch (error) {
     res.status(500).json({ message: 'Error subject:', error: error.message });
 }
+};
+
+exports.getSubjectsByStudentId = async (req, res) => {
+  try {
+    const { studentId } = req.params;
+
+    // Находим студента по ID и включаем связанные группы
+    const student = await Student.findByPk(studentId, {
+      include: [{
+        model: Group,
+        as: 'Groups', // Алиас для групп студента
+        include: [{
+          model: Course,
+          as: 'Course', // Алиас для курса в группе
+          include: [{
+            model: Subject,
+            as: 'Subject', // Алиас для предмета в курсе
+            attributes: ['SubjectId', 'SubjectName']
+          }]
+        }]
+      }]
+    });
+
+    // Если студент не найден
+    if (!student) {
+      return res.status(404).json({ message: 'Student not found' });
+    }
+
+    // Собираем все уникальные предметы
+    const subjects = [];
+    const subjectMap = new Map(); // Для исключения дубликатов
+
+    student.Groups.forEach(group => {
+      if (group.Course && group.Course.Subject) {
+        const subject = group.Course.Subject;
+        if (!subjectMap.has(subject.SubjectId)) {
+          subjectMap.set(subject.SubjectId, true);
+          subjects.push({
+            SubjectId: subject.SubjectId,
+            SubjectName: subject.SubjectName
+          });
+        }
+      }
+    });
+
+    // Если предметов нет
+    if (subjects.length === 0) {
+      return res.status(404).json({ message: 'No subjects found for this student' });
+    }
+
+    // Возвращаем список предметов
+    res.json(subjects);
+
+  } catch (error) {
+    console.error('Error retrieving subjects:', error);
+    res.status(500).json({ message: 'Error retrieving subjects', error: error.message });
+  }
 };

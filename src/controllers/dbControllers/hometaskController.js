@@ -1,4 +1,4 @@
-const { HomeTask, Group, GroupStudent, Student } = require('../../models/dbModels');
+const { HomeTask, Group, GroupStudent, Student,DoneHomeTask } = require('../../models/dbModels');
 const { parseQueryParams } = require('../../utils/dbUtils/queryUtils');
 const { Op } = require('sequelize');
 
@@ -135,9 +135,17 @@ exports.getNewHomeTasksByStudentId = async (req, res) => {
       ],
     });
 
+    const DoneHomeTasks = await DoneHomeTask.findAll({
+      attributes: ['HomeTaskId'],
+      where: { StudentId: studentId },
+    });
+    const DoneHomeTaskIds = DoneHomeTasks.map((task) => task.HomeTaskId);
+    const filteredHomeTasks = homeTasks.filter(
+      (task) => !DoneHomeTaskIds.includes(task.HomeTaskId)
+    );
     res.status(200).json({
       message: `Home tasks for student ID: ${studentId}`,
-      data: homeTasks,
+      data: filteredHomeTasks,
     });
   } catch (error) {
     console.error('Error in getNewHomeTasksByStudentId:', error);

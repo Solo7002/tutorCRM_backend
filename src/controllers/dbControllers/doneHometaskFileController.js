@@ -89,3 +89,27 @@ exports.deleteDoneHometaskFile = async (req, res) => {
     res.status(400).json({ error: error.message });
   }
 };
+
+
+
+exports.getDoneHometaskFilesByDoneHomeTaskId = async (req, res) => {
+  try {
+    const { DoneHomeTaskId } = req.params;
+    
+    // Валидация параметра
+    if (!DoneHomeTaskId || isNaN(DoneHomeTaskId)) {
+      return res.status(400).json({ message: 'DoneHomeTaskId is required and must be a number' });
+    }
+
+    // Ищем файлы по DoneHomeTaskId
+    const doneHometaskFiles = await DoneHomeTaskFile.findAll({
+      where: { DoneHomeTaskId },
+    });
+
+    // Возвращаем массив файлов
+    res.status(200).json(doneHometaskFiles);
+  } catch (error) {
+    console.error('Error in getDoneHometaskFiles:', error);
+    res.status(500).json({ error: error.message });
+  }
+};

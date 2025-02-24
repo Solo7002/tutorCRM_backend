@@ -89,6 +89,7 @@ router.get('/search', doneHometaskFileController.searchDoneHomeTaskFiles);
  *               $ref: '#/components/schemas/DoneHomeTaskFile'
  */
 router.get('/:id', doneHometaskFileController.getDoneHometaskFileById);
+router.get('/getByDoneHomeTask/:DoneHomeTaskId', doneHometaskFileController.getDoneHometaskFilesByDoneHomeTaskId);
 
 /**
  * @swagger
