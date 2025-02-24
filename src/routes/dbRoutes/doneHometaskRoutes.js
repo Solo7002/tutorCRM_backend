@@ -141,5 +141,7 @@ router.delete('/:id', doneHometaskController.deleteDoneHometask);
 router.get('/pendingHometask/:studentId', doneHometaskController.getPendingHomeTasksByStudentId);
 
 router.get('/doneHometask/:studentId', doneHometaskController.getCheckedHomeTasksByStudentId);
+//отдельная выгрузка таска,для модального окна 
+router.get('/checkedHomeTasks/:studentId/:homeTaskId', doneHometaskController.getCheckedHomeTasksByStudentIdAndHometaskId);
 
 module.exports = router;

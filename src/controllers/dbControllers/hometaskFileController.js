@@ -90,3 +90,18 @@ exports.deleteHometaskFile = async (req, res) => {
     res.status(400).json({ error: error.message });
   }
 };
+
+exports.getHometaskFilesByHometaskId = async (req, res) => {
+  try {
+    const hometaskFiles = await HomeTaskFile.findAll({ 
+      where: { homeTaskId: req.params.hometaskId } 
+    });
+
+   
+
+    res.status(200).json(hometaskFiles);
+  } catch (error) {
+    console.error("Error in getHometaskFilesByHometaskId:", error);
+    res.status(400).json({ error: error.message });
+  }
+};

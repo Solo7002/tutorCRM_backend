@@ -161,3 +161,63 @@ exports.getCheckedHomeTasksByStudentId = async (req, res) => {
     });
   }
 };
+
+exports.getCheckedHomeTasksByStudentIdAndHometaskId = async (req, res) => {
+  try {
+    const { studentId, homeTaskId } = req.params;
+
+    // Валидация параметров
+    if (isNaN(studentId)) {
+      return res.status(400).json({ message: 'StudentId must be a number' });
+    }
+
+    if (homeTaskId && isNaN(homeTaskId)) {
+      return res.status(400).json({ message: 'HomeTaskId must be a number' });
+    }
+    console.log(studentId, homeTaskId);
+    // Условия для поиска
+    const whereConditions = {
+      StudentId: studentId,
+      Mark: { [Op.gte]: 0 }, // Оценка -1 значит дз еще на проверке 
+      HomeTaskId:homeTaskId
+    };
+
+    
+
+
+    // Получаем все ДЗ, которые уже проверены (оценка >= 0)
+    const checkedTasks = await DoneHomeTask.findAll({
+      where: whereConditions,
+      include: [
+        {
+          model: HomeTask,
+          as: 'HomeTask',
+          include: [
+            {
+              model: Group,
+              as: 'Group',
+              attributes: ['GroupId', 'GroupName'],
+            },
+          ],
+        },
+      ],
+    });
+
+    // Если данные не найдены
+    if (checkedTasks.length === 0) {
+      return res.status(404).json({
+        message: 'No checked home tasks found for the given criteria',
+      });
+    }
+
+    res.status(200).json({
+      message: `Checked home tasks for student ID: ${studentId}`,
+      data: checkedTasks,
+    });
+  } catch (error) {
+    console.error('Error in getCheckedHomeTasksByStudentId:', error);
+    res.status(500).json({
+      message: `Error in getCheckedHomeTasksByStudentId: ${error.message}`,
+    });
+  }
+};

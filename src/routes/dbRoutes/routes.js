@@ -58,7 +58,7 @@ router.use('/api/groupsStudents',authenticateToken, groupStudentRoutes);
 router.use('/api/plannedLessons',authenticateToken, plannedLessonRoutes);
 router.use('/api/hometasks',authenticateToken, hometaskRoutes);
 router.use('/api/hometaskFiles',authenticateToken, hometaskFileRoutes);
-router.use('/api/doneHometasks',authenticateToken, doneHometaskRoutes);
+router.use('/api/doneHometasks', doneHometaskRoutes);
 router.use('/api/doneHometaskFiles',authenticateToken, doneHometaskFileRoutes);
 router.use('/api/tests',authenticateToken, testRoutes);
 router.use('/api/testQuestions',authenticateToken, testQuestionRoutes);
