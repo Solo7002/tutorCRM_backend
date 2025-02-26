@@ -3,7 +3,7 @@ module.exports = (sequelize, DataTypes) => {
     MarkId: {
       type: DataTypes.INTEGER,
       autoIncrement: true,
-      primaryKey: true
+      primaryKey: true,
     },
     Mark: {
       type: DataTypes.INTEGER,
@@ -15,7 +15,7 @@ module.exports = (sequelize, DataTypes) => {
       },
     },
     MarkType: {
-      type: DataTypes.ENUM('test', 'homework'),
+      type: DataTypes.ENUM('test', 'homework', 'classwork'),
       allowNull: false,
       validate: {
         notEmpty: { msg: 'MarkType cannot be empty' },
@@ -27,10 +27,27 @@ module.exports = (sequelize, DataTypes) => {
       validate: {
         isDate: { msg: 'MarkDate must be a valid date' },
       },
-    }
+    },
   }, {
+    tableName: 'MarkHistory',
     timestamps: false,
   });
+
+  MarkHistory.associate = (models) => {
+    MarkHistory.belongsTo(models.Student, {
+      foreignKey: 'StudentId',
+      as: 'Student',
+      onDelete: 'SET NULL',
+      onUpdate: 'CASCADE',
+    });
+
+    MarkHistory.belongsTo(models.Course, {
+      foreignKey: 'CourseId',
+      as: 'Course',
+      onDelete: 'SET NULL',
+      onUpdate: 'CASCADE',
+    });
+  };
 
   return MarkHistory;
 };

@@ -35,9 +35,6 @@ module.exports = (models) => {
     });
   }
 
- 
-
-  
   if (models.Course && models.Location) {
     models.Course.belongsTo(models.Location, {
       foreignKey: 'LocationId',
@@ -78,6 +75,24 @@ module.exports = (models) => {
     models.HomeTask.belongsTo(models.Group, {
       foreignKey: 'GroupId',
       as: 'Group',
+      onDelete: 'CASCADE',
+      onUpdate: 'CASCADE',
+    });
+  }
+
+  if (models.HomeTask && models.Group) {
+    models.Group.hasMany(models.HomeTask, {
+      foreignKey: 'GroupId',
+      as: 'HomeTasks',
+      onDelete: 'CASCADE',
+      onUpdate: 'CASCADE',
+    });
+  }
+
+  if (models.PlannedLesson && models.Group) {
+    models.Group.hasMany(models.PlannedLesson, {
+      foreignKey: 'GroupId',
+      as: 'PlannedLessons',
       onDelete: 'CASCADE',
       onUpdate: 'CASCADE',
     });
@@ -298,16 +313,16 @@ module.exports = (models) => {
   }
   if (models.Teacher && models.User) {
     models.Teacher.belongsTo(models.User, {
-      foreignKey: 'UserId', 
-      as: 'User', 
+      foreignKey: 'UserId',
+      as: 'User',
       onDelete: 'CASCADE',
       onUpdate: 'CASCADE',
     });
   }
   if (models.Teacher && models.Subscription) {
     models.Teacher.belongsTo(models.Subscription, {
-      foreignKey: 'SubscriptionLevelId', 
-      as: 'Subscription', 
+      foreignKey: 'SubscriptionLevelId',
+      as: 'Subscription',
       onDelete: 'SET NULL',
       onUpdate: 'CASCADE',
     });
@@ -315,7 +330,7 @@ module.exports = (models) => {
     models.Subscription.hasMany(models.Teacher, {
       foreignKey: 'SubscriptionLevelId',
       as: 'Teachers',
-      onDelete: 'SET NULL', 
+      onDelete: 'SET NULL',
       onUpdate: 'CASCADE',
     });
   }
@@ -330,7 +345,7 @@ module.exports = (models) => {
       onUpdate: 'CASCADE',
     });
   }
-  
+
   if (models.Group && models.Student) {
     models.Group.belongsToMany(models.Student, {
       through: models.GroupStudent,
@@ -357,7 +372,7 @@ module.exports = (models) => {
       onDelete: 'CASCADE', // Удаление курсов при удалении предмета
       onUpdate: 'CASCADE', // Обновление курсов при обновлении предмета
     });
-  
+
     // Course belongs to Subject
     models.Course.belongsTo(models.Subject, {
       foreignKey: 'SubjectId', // Внешний ключ в таблице Courses
@@ -366,8 +381,5 @@ module.exports = (models) => {
       onUpdate: 'CASCADE', // Обновление SubjectId в Course при обновлении Subject
     });
   }
-  
+
 };
-
-
-

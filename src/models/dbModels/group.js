@@ -44,17 +44,33 @@ module.exports = (sequelize, DataTypes) => {
 
   Group.associate = (models) => {
     Group.belongsToMany(models.Student, {
-      through: models.GroupStudent, 
-      foreignKey: 'GroupId', 
+      through: models.GroupStudent,
+      foreignKey: 'GroupId',
       otherKey: 'StudentId',
-      as: 'Students'
+      as: 'Students',
+      onDelete: 'CASCADE',
+      onUpdate: 'CASCADE',
     });
     Group.belongsTo(models.Course, {
       foreignKey: 'CourseId',
-      as: 'Courses',
-  });
+      as: 'Course',
+      onDelete: 'SET NULL',
+      onUpdate: 'CASCADE',
+    });
+    Group.hasMany(models.PlannedLesson, {
+      foreignKey: 'GroupId',
+      as: 'PlannedLessons',
+      onDelete: 'CASCADE',
+      onUpdate: 'CASCADE',
+    });
+    Group.hasMany(models.HomeTask, {
+      foreignKey: 'GroupId',
+      as: 'HomeTasks',
+      onDelete: 'CASCADE',
+      onUpdate: 'CASCADE',
+    });
   };
-  
- 
+
+
   return Group;
 };
