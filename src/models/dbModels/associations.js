@@ -35,6 +35,15 @@ module.exports = (models) => {
     });
   }
 
+  if (models.Course && models.Teacher) {
+    models.Teacher.hasMany(models.Course, {
+      foreignKey: 'TeacherId',
+      as: 'Courses',
+      onDelete: 'CASCADE',
+      onUpdate: 'CASCADE',
+    });
+  }
+
   if (models.Course && models.Location) {
     models.Course.belongsTo(models.Location, {
       foreignKey: 'LocationId',
