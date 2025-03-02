@@ -13,48 +13,46 @@ module.exports = (sequelize, DataTypes) => {
         len: { args: [1, 255], msg: 'LessonHeader must be between 1 and 255 characters' },
       },
     },
-    LessonDescription: {
-      type: DataTypes.TEXT,
+    StartLessonTime: {
+      type: DataTypes.TIME,
+      allowNull: false,
+    },
+    EndLessonTime: {
+      type: DataTypes.TIME,
+      allowNull: false,
+      validate: {
+        isAfterStartTime(value) {
+          if (value <= this.StartLessonTime) {
+            throw new Error('EndLessonTime must be after StartLessonTime');
+          }
+        },
+      }
+    },
+    LessonType: {
+      type: DataTypes.ENUM('online', 'offline'), 
+      allowNull: false,
+      defaultValue: 'offline',
+      validate: {
+        isIn: {
+          args: [['online', 'offline']],
+          msg: 'LessonType must be either "online" or "offline"',
+        },
+      },
+    },
+    LessonAddress: {
+      type: DataTypes.STRING,
       allowNull: true,
       validate: {
-        len: { args: [1, 1000], msg: 'LessonDescription must be between 1 and 1000 characters' },
+        len: { args: [1, 255], msg: 'LessonAddress must be between 1 and 255 characters' },
       },
     },
-    LessonPrice: {
-      type: DataTypes.DECIMAL(10, 2),
+    LessonLink: {
+      type: DataTypes.STRING, 
       allowNull: true,
       validate: {
-        isDecimal: { msg: 'LessonPrice must be a valid decimal number' },
-        min: { args: [0], msg: 'LessonPrice must be greater than or equal to 0' },
+        isUrl: { msg: 'LessonLink must be a valid URL' },
+        len: { args: [1, 255], msg: 'LessonLink must be between 1 and 255 characters' },
       },
-    },
-    IsPaid: {
-      type: DataTypes.BOOLEAN,
-      allowNull: false,
-      validate: {
-        isIn: { args: [[true, false]], msg: 'IsPaid must be either true or false' },
-      },
-    },
-    LessonDate: {
-      type: DataTypes.DATE,
-      defaultValue: DataTypes.NOW,
-      validate: {
-        isDate: { msg: 'LessonDate must be a valid date' },
-      },
-    },
-    LessonTime: {
-      type: DataTypes.STRING, // Время в формате 'HH:MM - HH:MM'
-      allowNull: false,
-      validate: {
-        notEmpty: { msg: 'LessonTime cannot be empty' },
-        is: /^([0-9]{2}:[0-9]{2} - [0-9]{2}:[0-9]{2})$/, // Валидация формата времени
-        len: { args: [1, 20], msg: 'LessonTime must be between 1 and 20 characters' },
-      },
-    },
-    TimeZone: {
-      type: DataTypes.STRING, // Часовой пояс
-      allowNull: false,
-      defaultValue: 'UTC',
     },
     GroupId: {
       type: DataTypes.INTEGER,
