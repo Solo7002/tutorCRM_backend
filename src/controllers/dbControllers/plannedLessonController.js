@@ -1,13 +1,29 @@
 const { PlannedLesson } = require('../../models/dbModels');
 const { parseQueryParams } = require('../../utils/dbUtils/queryUtils');
 const { Op } = require('sequelize');
+const { isValidTimeZone } = require('../../utils/dbUtils/timeUtils');
 
 exports.createPlannedLesson = async (req, res) => {
   try {
-    const plannedLesson = await PlannedLesson.create(req.body);
+    const { LessonHeader, LessonDescription, LessonPrice, IsPaid, LessonDate, LessonTime, TimeZone, GroupId, TeacherId } = req.body;
+
+    isValidTimeZone(TimeZone);
+
+    const plannedLesson = await PlannedLesson.create({
+      LessonHeader,
+      LessonDescription,
+      LessonPrice,
+      IsPaid,
+      LessonDate,
+      LessonTime,
+      TimeZone,
+      GroupId,
+      TeacherId,
+    });
+
     res.status(201).json(plannedLesson);
   } catch (error) {
-    console.error('Error in createPlannedLesson:', error);
+    console.error('Error in createPlannedLesson:', error.message);
     res.status(400).json({ error: error.message });
   }
 };

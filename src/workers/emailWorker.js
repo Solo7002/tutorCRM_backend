@@ -31,4 +31,6 @@ async function startEmailWorker() {
   }
 }
 
+console.log("\n\n--------------------------------------------------\n");
+
 startEmailWorker();

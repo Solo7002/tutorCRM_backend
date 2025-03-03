@@ -27,6 +27,7 @@ const login=async(req,res)=>{
       }
 
 }
+
 const resetPassword=async(req,res)=>{
     try{
         const{Email}=req.body;
@@ -52,6 +53,18 @@ const changePassword=async(req,res)=>{
     }
     
 }
+
+const resetPasswordWithNew = async (req, res) => {
+  try {
+    const { Email } = req.body;
+    await authService.resetPasswordWithNew(Email);
+    logger.info(`New password reset email sent to: ${Email}`);
+    res.status(200).json({ message: 'Новый пароль отправлен на Email' });
+  } catch (error) {
+    logger.error(`Reset new password error: ${error.message}`);
+    res.status(400).json({ message: error.message });
+  }
+};
 
 const sendConfirmEmail=async(req,res)=>{
     try{
@@ -80,7 +93,33 @@ const confirmEmail=async(req,res)=>{
 }
 
 
-const oauthCallback=async(req,res)=>{
+const sendVerificationCode = async (req, res) => {
+    try {
+        const userData = req.body;
+        await authService.registerAndSendEmailCode(userData);
+        logger.info(`Verification code sent to: ${userData.Email}`);
+        res.status(200).json({ message: 'Verification code has been sent to your email.' });
+    } catch (error) {
+        logger.error(`Send verification code error: ${error.message}`);
+        res.status(400).json({ message: error.message });
+    }
+};
+
+const confirmEmailWithCode = async (req, res) => {
+    try {
+        const { Email, Code } = req.body;
+        const userData = req.body;
+        const newUser = await authService.verifyEmailCodeAndRegisterUser(Email, Code, userData);
+        logger.info(`Email confirmed for user: ${newUser.id}`);
+        res.status(201).json({ message: 'User registered successfully and email confirmed', user: newUser });
+    } catch (error) {
+        logger.error(`Email confirmation with code error: ${error.message}`);
+        res.status(400).json({ message: error.message });
+    }
+};
+
+
+/*const oauthCallback=async(req,res)=>{
     try{
             const user=req.user;
             const token =authService.loginToOuth2(user);
@@ -90,14 +129,36 @@ const oauthCallback=async(req,res)=>{
         logger.error(`OAuth login error: ${error.message}`);
         res.status(400).json({message:error.message});
     }
-}
+}*/
+
+const oauthCallback = async (req, res) => {
+  try {
+    const user = req.user;
+    const token = authService.loginToOuth2(user);
+    logger.info(`OAuth login successful for user: ${user}`);
+
+    if (user.isRegistered) {
+      res.redirect(`http://localhost:3000/student/home?token=${token}`);
+    } else {
+      const firstName = user.Firstname || '';
+      const lastName = user.Lastname || '';
+      res.redirect(`http://localhost:3000/auth/register?token=${token}&email=${user.Email}&firstName=${firstName}&lastName=${lastName}`);
+    }
+  } catch (error) {
+    logger.error(`OAuth login error: ${error.message}`);
+    res.redirect(`http://localhost:3000/auth/login?error=${encodeURIComponent(error.message)}`);
+  }
+};
 
 module.exports={
     register,
     login,
     resetPassword,
     changePassword,
+    resetPasswordWithNew,
     sendConfirmEmail,
     confirmEmail,
-    oauthCallback
+    oauthCallback,
+    sendVerificationCode,
+    confirmEmailWithCode
 }

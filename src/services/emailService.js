@@ -86,7 +86,8 @@ async function sendRegistrationEmail(email, username, activationLink) {
     html: htmlContent,
   };
 
-  await sendToQueue(emailData); 
+  //await sendToQueue(emailData);
+  await sendEmail(emailData.to, emailData.subject, emailData.text, emailData.html); 
 }
 
 
@@ -106,7 +107,8 @@ async function sendResetPasswordEmail(email, username, resetLink) {
       html: htmlContent,
     };
   
-    await sendToQueue(emailData); 
+    //await sendToQueue(emailData); 
+    await sendEmail(emailData.to, emailData.subject, emailData.text, emailData.html); 
   } catch (error) {
     logger.error(`Ошибка отправки письма сброса пароля на почту ${email}: ${error.message}`);
     throw error;
@@ -129,9 +131,51 @@ async function sendLoginEmail(email, username, cancelLink) {
       html: htmlContent,
     };
   
-    await sendToQueue(emailData); 
+    //await sendToQueue(emailData); 
+    await sendEmail(emailData.to, emailData.subject, emailData.text, emailData.html); 
   } catch (error) {
     logger.error(`Ошибка отправки уведомления о входе на почту ${email}: ${error.message}`);
+    throw error;
+  }
+}
+
+/**
+ * Отправка письма с кодом подтверждения email
+ * @param {string} email - Email получателя
+ * @param {string} username - Имя пользователя
+ * @param {string} code - Код подтверждения
+ */
+const sendVerificationCode = async (email, username, code) => {
+  try {
+    const formattedCode = code.split("").map((char, index) => (index === 3 ? " " + char : char)).join(" ");
+    const htmlContent = await renderTemplate('verification_code', { username, formattedCode });
+
+    const emailData = {
+      to: email,
+      subject: 'Підтвердження email',
+      text: `Підтвердження email для реєстрації в додатку TUTOCT`,
+      html: htmlContent,
+    };
+
+    await sendEmail(emailData.to, emailData.subject, emailData.text, emailData.html);
+  } catch (error) {
+    logger.error(`Ошибка отправки кода подтверждения на почту ${email}: ${error.message}`);
+    throw error;
+  }
+};
+
+async function sendResetPasswordWithNewEmail(email, username, newPassword) {
+  try {
+    const htmlContent = await renderTemplate('reset_password_with_new', { username, newPassword });
+    const emailData = {
+      to: email,
+      subject: 'Зміна пароля',
+      text: 'Ваш новий пароль',
+      html: htmlContent,
+    };
+    await sendEmail(emailData.to, emailData.subject, emailData.text, emailData.html);
+  } catch (error) {
+    logger.error(`Ошибка отправки нового пароля на почту ${email}: ${error.message}`);
     throw error;
   }
 }
@@ -141,4 +185,6 @@ module.exports = {
   sendRegistrationEmail,
   sendResetPasswordEmail,
   sendLoginEmail,
+  sendVerificationCode,
+  sendResetPasswordWithNewEmail
 };

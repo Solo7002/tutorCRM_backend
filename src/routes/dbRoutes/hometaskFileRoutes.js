@@ -133,5 +133,6 @@ router.put('/:id', hometaskFileController.updateHometaskFile);
  *         description: The home task file was successfully deleted
  */
 router.delete('/:id', hometaskFileController.deleteHometaskFile);
+router.get('/getFilebyHometaskId/:hometaskId', hometaskFileController.getHometaskFilesByHometaskId);
 
 module.exports = router;

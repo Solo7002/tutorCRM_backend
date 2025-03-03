@@ -217,6 +217,8 @@ router.post('/request-password-resest/',authController.resetPassword);
 //Маршрут после отправки сброса пароля по Email
 router.post('/reset-password/:token',authenticateToken,authController.changePassword);
 
+router.post('/reset-password-new', authController.resetPasswordWithNew);
+
 /**
  * @swagger
  * /api/auth/register-email:
@@ -256,6 +258,51 @@ router.post('/register-email', authController.sendConfirmEmail);
 //Маршрут потверждения почты и регистрации 
 router.post('/confirm-email/:token',authenticateToken, authController.confirmEmail);
 
+
+/**
+ * @swagger
+ * /api/auth/register-email-code:
+ *   post:
+ *     summary: Register and send email verification code
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/RegisterUser'
+ *     responses:
+ *       200:
+ *         description: Verification code has been sent to your email
+ */
+// Маршрут для регистрации и отправки кода
+router.post('/register-email-code', authController.sendVerificationCode);
+
+/**
+ * @swagger
+ * /api/auth/confirm-email-code:
+ *   post:
+ *     summary: Confirm email with code and register user
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email:
+ *                 type: string
+ *               code:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: User registered successfully and email confirmed
+ */
+// Маршрут для подтверждения email через код
+router.post('/confirm-email-code', authController.confirmEmailWithCode);
+
+
 /**
  * @swagger
  * /api/auth/google:
@@ -267,7 +314,7 @@ router.post('/confirm-email/:token',authenticateToken, authController.confirmEma
  *         description: Redirect to Google for authentication
  */
 //Вход через Gmail(Oauth2)
-router.get('/google',passport.authenticate('google',{scope:['profile','email']}));
+router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
 
 /**
  * @swagger
@@ -279,7 +326,7 @@ router.get('/google',passport.authenticate('google',{scope:['profile','email']})
  *       200:
  *         description: Login successful
  */
-router.get('/google-callback',passport.authenticate('google',{session:false}),authController.oauthCallback);
+router.get('/google-callback', passport.authenticate('google', { session: false }), authController.oauthCallback);
 
 
 /**
@@ -293,7 +340,7 @@ router.get('/google-callback',passport.authenticate('google',{session:false}),au
  *         description: Redirect to Facebook for authentication
  */
 //Вход через Facebook(Oauth2)
-router.get('/facebook',passport.authenticate('facebook',{scope:['email']}));
+router.get('/facebook', passport.authenticate('facebook', { scope: ['email'] }));
 
 /**
  * @swagger
@@ -305,6 +352,7 @@ router.get('/facebook',passport.authenticate('facebook',{scope:['email']}));
  *       200:
  *         description: Login successful
  */
-router.get('/facebook-callback',passport.authenticate('facebook',{session:false}),authController.oauthCallback);
+router.get('/facebook-callback', passport.authenticate('facebook', { session: false }), authController.oauthCallback);
+
 
 module.exports=router;

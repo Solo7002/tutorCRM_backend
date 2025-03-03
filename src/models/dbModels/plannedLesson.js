@@ -3,7 +3,7 @@ module.exports = (sequelize, DataTypes) => {
     PlannedLessonId: {
       type: DataTypes.INTEGER,
       primaryKey: true,
-      autoIncrement: true
+      autoIncrement: true,
     },
     LessonHeader: {
       type: DataTypes.STRING,
@@ -13,34 +13,77 @@ module.exports = (sequelize, DataTypes) => {
         len: { args: [1, 255], msg: 'LessonHeader must be between 1 and 255 characters' },
       },
     },
-    LessonDescription: {
-      type: DataTypes.TEXT,
-      allowNull: true,
-      validate: {
-        len: { args: [1, 1000], msg: 'LessonDescription must be between 1 and 1000 characters' },
-      },
+    StartLessonTime: {
+      type: DataTypes.TIME,
+      allowNull: false,
     },
-    LessonPrice: {
-      type: DataTypes.DECIMAL(10, 2),
-      allowNull: true,
-      validate: {
-        isDecimal: { msg: 'LessonPrice must be a valid decimal number' },
-        min: { args: [0], msg: 'LessonPrice must be greater than or equal to 0' },
-      },
-    },
-    IsPaid: {
-      type: DataTypes.BOOLEAN,
+    EndLessonTime: {
+      type: DataTypes.TIME,
       allowNull: false,
       validate: {
+        isAfterStartTime(value) {
+          if (value <= this.StartLessonTime) {
+            throw new Error('EndLessonTime must be after StartLessonTime');
+          }
+        },
+      }
+    },
+    LessonType: {
+      type: DataTypes.ENUM('online', 'offline'), 
+      allowNull: false,
+      defaultValue: 'offline',
+      validate: {
         isIn: {
-          args: [[true, false]],
-          msg: 'IsPaid must be either true or false',
+          args: [['online', 'offline']],
+          msg: 'LessonType must be either "online" or "offline"',
         },
       },
-    }
+    },
+    LessonAddress: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      validate: {
+        len: { args: [1, 255], msg: 'LessonAddress must be between 1 and 255 characters' },
+      },
+    },
+    LessonLink: {
+      type: DataTypes.STRING, 
+      allowNull: true,
+      validate: {
+        isUrl: { msg: 'LessonLink must be a valid URL' },
+        len: { args: [1, 255], msg: 'LessonLink must be between 1 and 255 characters' },
+      },
+    },
+    GroupId: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: {
+        model: 'Groups',
+        key: 'GroupId',
+      },
+      onUpdate: 'CASCADE',
+      onDelete: 'CASCADE',
+    },
   }, {
+    tableName: 'PlannedLessons',
     timestamps: false,
   });
 
+  PlannedLesson.associate = (models) => {
+    PlannedLesson.belongsTo(models.Group, {
+      foreignKey: 'GroupId',
+      as: 'Group',
+      onDelete: 'CASCADE',
+      onUpdate: 'CASCADE',
+    });
+
+    PlannedLesson.belongsTo(models.Teacher, {
+      foreignKey: 'TeacherId',
+      as: 'Teacher',
+      onDelete: 'SET NULL',
+      onUpdate: 'CASCADE',
+    });
+  };
+
   return PlannedLesson;
-};  
+};

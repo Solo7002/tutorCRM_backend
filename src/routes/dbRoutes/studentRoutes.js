@@ -66,6 +66,11 @@ router.post('/', studentController.createStudent);
  */
 router.get('/', studentController.getStudents);
 router.get('/search', studentController.searchStudents);
+router.get('/:id/leaders', studentController.getLeadersInGroupsByStudentId);
+router.get('/:id/grades', studentController.getMarksByStudentId);
+router.get('/:id/events', studentController.getEventsByStudentId);
+router.get('/:id/days', studentController.getDaysByStudentId);
+router.get('/searchTeachers', studentController.searchTeachersForStudent);
 
 /**
  * @swagger

@@ -8,9 +8,7 @@ module.exports = (sequelize, DataTypes) => {
     FilePath: {
       type: DataTypes.STRING,
       allowNull: true,
-      validate: {
-        isUrl: { msg: 'FilePath must be a valid URL' },
-      },
+      
     },
     FileName: {
       type: DataTypes.STRING,

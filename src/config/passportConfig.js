@@ -12,14 +12,17 @@ passport.use(new GoogleStrategy({
     callbackURL:`${process.env.BASE_URL}/api/auth/google-callback`
 },async(accessToken,refreshToken,profile,done)=>{
     try{
-        const user=await User.findOne({
-            where:{Email:profile.emails[0].value},
-            defaults:{
-                name:profile.displayName,
-                provider:'google',
-            },
-        });
-        
+        let user = await User.findOne({ where: { Email: profile.emails[0].value } });
+        if (!user) {
+            user = {
+                Email: profile.emails[0].value,
+                Lastname: profile.name.familyName,
+                Firstname: profile.name.givenName,
+                isRegistered: false
+            };
+        } else {
+            user.isRegistered = true;
+        }
         
         done(null,user);
     }catch(error){

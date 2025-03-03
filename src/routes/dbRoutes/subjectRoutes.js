@@ -129,5 +129,6 @@ router.put('/:id', subjectController.updateSubject);
 router.delete('/:id', subjectController.deleteSubject);
 
 router.get('/hometaskSubjectName/:hometaskId', subjectController.getNameSubjectByIdHometask);
+router.get('/subjectsByStudentId/:studentId', subjectController.getSubjectsByStudentId);
 
 module.exports = router;
