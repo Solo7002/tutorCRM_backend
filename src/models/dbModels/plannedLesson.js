@@ -14,11 +14,11 @@ module.exports = (sequelize, DataTypes) => {
       },
     },
     StartLessonTime: {
-      type: DataTypes.TIME,
+      type: DataTypes.DATE,
       allowNull: false,
     },
     EndLessonTime: {
-      type: DataTypes.TIME,
+      type: DataTypes.DATE,
       allowNull: false,
       validate: {
         isAfterStartTime(value) {
@@ -27,6 +27,10 @@ module.exports = (sequelize, DataTypes) => {
           }
         },
       }
+    },
+    LessonDate: {
+      type: DataTypes.DATE,
+      allowNull: false,
     },
     LessonType: {
       type: DataTypes.ENUM('online', 'offline'), 

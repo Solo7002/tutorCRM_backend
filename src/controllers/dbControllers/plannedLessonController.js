@@ -1,24 +1,21 @@
-const { PlannedLesson } = require('../../models/dbModels');
+const { PlannedLesson,Course,Group } = require('../../models/dbModels');
 const { parseQueryParams } = require('../../utils/dbUtils/queryUtils');
 const { Op } = require('sequelize');
 const { isValidTimeZone } = require('../../utils/dbUtils/timeUtils');
 
 exports.createPlannedLesson = async (req, res) => {
   try {
-    const { LessonHeader, LessonDescription, LessonPrice, IsPaid, LessonDate, LessonTime, TimeZone, GroupId, TeacherId } = req.body;
-
-    isValidTimeZone(TimeZone);
+    const { LessonHeader, GroupId, StartLessonTime, EndLessonTime, LessonType, LessonAddress, LessonLink,LessonDate } = req.body;
 
     const plannedLesson = await PlannedLesson.create({
       LessonHeader,
-      LessonDescription,
-      LessonPrice,
-      IsPaid,
-      LessonDate,
-      LessonTime,
-      TimeZone,
       GroupId,
-      TeacherId,
+      StartLessonTime,
+      EndLessonTime,
+      LessonType,
+      LessonAddress,
+      LessonLink,
+      LessonDate
     });
 
     res.status(201).json(plannedLesson);
@@ -100,6 +97,42 @@ exports.deletePlannedLesson = async (req, res) => {
     res.status(204).send();
   } catch (error) {
     console.error('Error in deletePlannedLesson:', error);
+    res.status(400).json({ error: error.message });
+  }
+};
+
+exports.getPlannedLessonByTeacherId = async (req, res) => {
+  try {
+    const courses = await Course.findAll({
+      where: { TeacherId: req.params.teacherId },
+      include: [
+        {
+          model: Group,
+          as: 'Groups',
+          include: [
+            {
+              model: PlannedLesson,
+              as: 'PlannedLessons'
+            }
+          ]
+        }
+      ]
+    });
+
+    let plannedLessons = [];
+    courses.forEach(course => {
+      course.Groups.forEach(group => {
+        plannedLessons = plannedLessons.concat(group.PlannedLessons);
+      });
+    });
+
+    if (plannedLessons.length === 0) {
+      return res.status(404).json({ error: "No planned lessons found for this teacher" });
+    }
+
+    res.status(200).json(plannedLessons);
+  } catch (error) {
+    console.error('Error in getPlannedLessonByTeacherId:', error);
     res.status(400).json({ error: error.message });
   }
 };
