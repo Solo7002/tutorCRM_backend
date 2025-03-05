@@ -433,3 +433,46 @@ exports.searchTeachersForStudent = async (req, res) => {
     return res.status(500).json({ success: false, message: 'Server error.' });
   }
 };
+
+exports.searchUserByStudentId = async (req, res) => {
+  try {
+    const studentId = req.params.id;
+
+    if (isNaN(studentId) || studentId <= 0) {
+      return res.status(400).json({ error: 'Invalid student ID' });
+    }
+
+    const student = await Student.findByPk(studentId, {
+      include: [
+        {
+          model: User,
+          as: 'User',
+          attributes: ['UserId', 'FirstName', 'LastName', 'Email', 'ImageFilePath', 'Username'],
+          required: true
+        }
+      ]
+    });
+
+    if (!student) {
+      return res.status(404).json({ message: 'Student not found' });
+    }
+
+    if (!student.User) {
+      return res.status(404).json({ message: 'User not found for this student' });
+    }
+
+    const userData = {
+      userId: student.User.UserId,
+      username: student.User.Username,
+      firstName: student.User.FirstName,
+      lastName: student.User.LastName,
+      email: student.User.Email,
+      image: student.User.ImageFilePath || '/assets/images/avatar.jpg'
+    };
+
+    res.status(200).json(userData);
+  } catch (error) {
+    console.error('Error in searchUserByStudentId:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+};
