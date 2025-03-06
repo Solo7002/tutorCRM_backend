@@ -373,6 +373,14 @@ module.exports = (models) => {
       onUpdate: 'CASCADE',
     });
   }
+  if (models.Course && models.Group) {
+    models.Course.hasMany(models.Group, {
+      foreignKey: 'CourseId',
+      as: 'Groups',
+      onDelete: 'CASCADE',
+      onUpdate: 'CASCADE',
+    });
+  }
   if (models.Subject && models.Course) {
     // Subject has many Courses
     models.Subject.hasMany(models.Course, {

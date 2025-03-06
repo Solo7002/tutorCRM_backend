@@ -1,6 +1,8 @@
-const { Teacher,HomeTask,Group,User,Course} = require('../../models/dbModels');
+const { Teacher, HomeTask, Group, User, Course, Student, UserReview, StudentCourseRating, GroupStudent, DoneHomeTask, Subject, PlannedLesson, MarkHistory, sequelize } = require('../../models/dbModels');
 const { parseQueryParams } = require('../../utils/dbUtils/queryUtils');
 const { Op } = require('sequelize');
+const moment = require('moment');
+const momentTimezone = require('moment-timezone');
 
 exports.createTeacher = async (req, res) => {
   try {
@@ -77,43 +79,622 @@ exports.deleteTeacher = async (req, res) => {
   }
 };
 
-
-
 exports.getNameTeacherByIdHometask = async (req, res) => {
   try {
-      const { teacherId } = req.params;
+    const { teacherId } = req.params;
 
-      const homeTask = await HomeTask.findByPk(teacherId, {
+    const homeTask = await HomeTask.findByPk(teacherId, {
+      include: {
+        model: Group,
+        as: 'Group',
+        include: {
+          model: Course,
+          as: 'Course',
           include: {
-              model: Group,
-              as: 'Group',
-              include: {
-                  model: Course,
-                  as: 'Course',
-                  include: {
-                      model: Teacher,
-                      as: 'Teacher',
-                      include: {
-                          model: User,
-                          as: 'User',
-                          attributes: ['FirstName', 'LastName']
-                      }
-                  }
-              }
+            model: Teacher,
+            as: 'Teacher',
+            include: {
+              model: User,
+              as: 'User',
+              attributes: ['FirstName', 'LastName']
+            }
           }
-      });
-     
-      if (!homeTask?.Group?.Course?.Teacher?.User) {
-          return res.status(404).json({ message: 'Не удалось найти преподавателя' });
+        }
       }
+    });
 
-      res.json({
-          FirstName: homeTask.Group.Course.Teacher.User.FirstName,
-          LastName: homeTask.Group.Course.Teacher.User.LastName
-      });
+    if (!homeTask?.Group?.Course?.Teacher?.User) {
+      return res.status(404).json({ message: 'Не удалось найти преподавателя' });
+    }
+
+    res.json({
+      FirstName: homeTask.Group.Course.Teacher.User.FirstName,
+      LastName: homeTask.Group.Course.Teacher.User.LastName
+    });
 
   } catch (error) {
-     
-      res.status(500).json({ message: 'Error teacher:', error: error.message });
+
+    res.status(500).json({ message: 'Error teacher:', error: error.message });
+  }
+};
+
+exports.searchUserByTeacherId = async (req, res) => {
+  try {
+    const teacherId = req.params.id;
+
+    if (isNaN(teacherId) || teacherId <= 0) {
+      return res.status(400).json({ error: 'Invalid teacher ID' });
+    }
+
+    const teacher = await Teacher.findByPk(teacherId, {
+      include: [
+        {
+          model: User,
+          as: 'User',
+          attributes: ['UserId', 'FirstName', 'LastName', 'Email', 'ImageFilePath', 'Username'],
+          required: true
+        }
+      ]
+    });
+
+    if (!teacher) {
+      return res.status(404).json({ message: 'Teacher not found' });
+    }
+
+    if (!teacher.User) {
+      return res.status(404).json({ message: 'User not found for this teacher' });
+    }
+
+    const userData = {
+      userId: teacher.User.UserId,
+      username: teacher.User.Username,
+      firstName: teacher.User.FirstName,
+      lastName: teacher.User.LastName,
+      email: teacher.User.Email,
+      image: teacher.User.ImageFilePath || '/assets/images/avatar.jpg'
+    };
+
+    res.status(200).json(userData);
+  } catch (error) {
+    console.error('Error in searchUserByTeacherId:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+};
+
+exports.getLeadersByTeacherId = async (req, res) => {
+  try {
+    const teacherId = req.params.id;
+
+    if (isNaN(teacherId) || teacherId <= 0) {
+      return res.status(400).json({ error: 'Invalid teacher ID' });
+    }
+    const courses = await Course.findAll({
+      where: { TeacherId: teacherId },
+      include: [
+        {
+          model: Group,
+          as: 'Groups',
+          required: false,
+          include: [
+            {
+              model: Student,
+              as: 'Students',
+              through: { attributes: [] },
+              required: false,
+              include: [
+                {
+                  model: User,
+                  as: 'User',
+                  attributes: ['FirstName', 'LastName', 'ImageFilePath', 'Email'],
+                  required: true,
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+
+    if (!courses.length) {
+      console.log(`No courses found for teacher with ID: ${teacherId}`);
+      return res.status(404).json({ message: 'No courses found for the teacher' });
+    }
+
+    const leaders = [];
+    for (const course of courses) {
+      const groups = course.Groups || [];
+      for (const group of groups) {
+        const students = group.Students || [];
+        for (const student of students) {
+          if (!student.User) {
+            console.warn(`No user found for student ${student.StudentId} in group ${group.GroupId}`);
+            continue;
+          }
+
+          leaders.push({
+            name: `${student.User.FirstName} ${student.User.LastName}`,
+            group: group.GroupName,
+            image: student.User.ImageFilePath || '/assets/images/avatar.jpg',
+            email: student.User.Email,
+          });
+        }
+      }
+    }
+
+    const uniqueLeaders = Array.from(new Map(leaders.map(leader => [leader.email, leader])).values());
+
+    res.status(200).json(uniqueLeaders);
+  } catch (error) {
+    console.error('Error in getLeadersByTeacherId:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+}; 
+
+exports.getLatestActivitiesByTeacherId = async (req, res) => {
+  try {
+    const teacherId = req.params.id;
+
+    if (isNaN(teacherId) || teacherId <= 0) {
+      return res.status(400).json({ error: 'Invalid teacher ID' });
+    }
+
+    const activities = await DoneHomeTask.findAll({
+      include: [
+        {
+          model: HomeTask,
+          as: 'HomeTask',
+          required: true,
+          include: [
+            {
+              model: Group,
+              as: 'Group',
+              required: true,
+              include: [
+                {
+                  model: Course,
+                  as: 'Course',
+                  required: true,
+                  where: { TeacherId: teacherId },
+                },
+              ],
+            },
+          ],
+        },
+        {
+          model: Student,
+          as: 'Student',
+          required: true,
+          include: [
+            {
+              model: User,
+              as: 'User',
+              attributes: ['FirstName', 'LastName', 'ImageFilePath'],
+              required: true,
+            },
+          ],
+        },
+      ],
+      attributes: ['DoneDate'],
+      order: [['DoneDate', 'DESC']],
+      //limit: 10,
+    });
+
+    if (!activities.length) {
+      console.log(`No activities found for teacher with ID: ${teacherId}`);
+      return res.status(404).json({ message: 'No activities found for the teacher' });
+    }
+
+    const formattedActivities = activities.map(activity => {
+      const student = activity.Student.User;
+      const groupName = activity.HomeTask.Group.GroupName;
+
+      return {
+        date: moment(activity.DoneDate).format('DD.MM.YYYY'),
+        name: `${student.FirstName} ${student.LastName}`,
+        image: student.ImageFilePath || '/assets/images/avatar.jpg',
+        subject: groupName,
+        type: 'Домашня робота',
+      };
+    });
+
+    res.status(200).json(formattedActivities);
+  } catch (error) {
+    console.error('Error in getLatestActivitiesByTeacherId:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+};
+
+exports.getDaysByTeacherId = async (req, res) => {
+  try {
+    const teacherId = req.params.id;
+
+    if (isNaN(teacherId) || teacherId <= 0) {
+      return res.status(400).json({ error: 'Invalid teacher ID' });
+    }
+
+    const groups = await Group.findAll({
+      include: [
+        {
+          model: Course,
+          as: 'Course',
+          required: true,
+          where: { TeacherId: teacherId },
+        },
+        {
+          model: PlannedLesson,
+          as: 'PlannedLessons',
+          required: false,
+          attributes: ['LessonDate'],
+        },
+        {
+          model: HomeTask,
+          as: 'HomeTasks',
+          required: false,
+          attributes: ['DeadlineDate'],
+        },
+      ],
+    });
+
+    if (!groups.length) {
+      console.log(`No groups found for teacher with ID: ${teacherId}`);
+      return res.status(404).json({ message: 'No groups found for the teacher' });
+    }
+
+    const days = [];
+    groups.forEach(group => {
+      if (group.PlannedLessons && group.PlannedLessons.length > 0) {
+        group.PlannedLessons.forEach(plannedLesson => {
+          const lessonDate = moment(plannedLesson.LessonDate).format('YYYY-MM-DD');
+          days.push({
+            date: lessonDate,
+            type: 'Lesson',
+          });
+        });
+      }
+
+      if (group.HomeTasks && group.HomeTasks.length > 0) {
+        group.HomeTasks.forEach(homeTask => {
+          const deadlineDate = moment(homeTask.DeadlineDate).format('YYYY-MM-DD');
+          days.push({
+            date: deadlineDate,
+            type: 'Homework',
+          });
+        });
+      }
+    });
+
+    const uniqueDays = Array.from(new Set(days.map(day => day.date)), date => ({
+      date,
+      type: days.find(dayObj => dayObj.date === date).type,
+    }));
+
+    res.status(200).json(uniqueDays);
+  } catch (error) {
+    console.error('Error in getDaysByTeacherId:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+};
+
+const convertStandardTimeZoneToUTC = (timeZone) => {
+  return timeZone || 'UTC';
+};
+
+exports.getEventsByTeacherId = async (req, res) => {
+  try {
+    const teacherId = req.params.id;
+
+    if (isNaN(teacherId) || teacherId <= 0) {
+      return res.status(400).json({ error: 'Invalid teacher ID' });
+    }
+
+    const events = await PlannedLesson.findAll({
+      include: [
+        {
+          model: Group,
+          as: 'Group',
+          required: true,
+          include: [
+            {
+              model: Course,
+              as: 'Course',
+              required: true,
+              where: { TeacherId: teacherId },
+              include: [
+                {
+                  model: Subject,
+                  as: 'Subject',
+                  attributes: ['SubjectName'],
+                  required: true,
+                },
+                {
+                  model: Teacher,
+                  as: 'Teacher',
+                  required: true,
+                  include: [
+                    {
+                      model: User,
+                      as: 'User',
+                      attributes: ['ImageFilePath'],
+                      required: true,
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+      attributes: ['LessonHeader', 'LessonDate', 'LessonTime', 'TimeZone'],
+      where: {
+        LessonDate: {
+          [require('sequelize').Op.gte]: new Date(),
+        },
+      },
+      order: [['LessonDate', 'ASC']],
+      //limit: 3,
+    });
+
+    if (!events.length) {
+      console.log(`No events found for teacher with ID: ${teacherId}`);
+      return res.status(404).json({ message: 'No events found for the teacher' });
+    }
+
+    const formattedEvents = events.map(event => {
+      const lessonDate = moment(event.LessonDate)
+        .tz(event.TimeZone || 'UTC')
+        .format('YYYY-MM-DD');
+
+      return {
+        title: event.LessonHeader,
+        date: lessonDate,
+        time: event.LessonTime,
+        image: event.Group.Course.Teacher.User.ImageFilePath || '/assets/images/avatar.jpg',
+        link: '/',
+      };
+    });
+
+    res.status(200).json(formattedEvents);
+  } catch (error) {
+    console.error('Error in getEventsByTeacherId:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+};
+
+exports.getMarksByTeacherId = async (req, res) => {
+  try {
+    const teacherId = req.params.id;
+
+    if (isNaN(teacherId) || teacherId <= 0) {
+      return res.status(400).json({ error: 'Invalid teacher ID' });
+    }
+
+    const marks = await MarkHistory.findAll({
+      include: [
+        {
+          model: Course,
+          as: 'Course',
+          required: true,
+          where: { TeacherId: teacherId },
+          include: [
+            {
+              model: Group,
+              as: 'Groups',
+              required: true,
+              attributes: ['GroupName'],
+            },
+          ],
+        },
+      ],
+      attributes: ['Mark', 'MarkDate', 'MarkType'],
+    });
+
+    if (!marks.length) {
+      console.log(`No marks found for teacher with ID: ${teacherId}`);
+      return res.status(404).json({ message: 'No marks found for the teacher' });
+    }
+
+    const grades = marks.map(mark => ({
+      group: mark.Course.Groups[0].GroupName,
+      grade: mark.Mark,
+      type: mark.MarkType.charAt(0).toUpperCase() + mark.MarkType.slice(1),
+      date: mark.MarkDate ? mark.MarkDate.toISOString().split('T')[0] : null,
+    }));
+
+    res.status(200).json(grades);
+  } catch (error) {
+    console.error('Error in getMarksByTeacherId:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+};
+
+exports.getProductivityByTeacherId = async (req, res) => {
+  try {
+    const teacherId = req.params.id;
+
+    if (isNaN(teacherId) || teacherId <= 0) {
+      return res.status(400).json({ error: 'Invalid teacher ID' });
+    }
+
+    const now = moment();
+    const startOfCurrentMonth = now.clone().startOf('month');
+    const endOfCurrentMonth = now.clone().endOf('month');
+    const startOfPrevMonth = now.clone().subtract(1, 'month').startOf('month');
+    const endOfPrevMonth = now.clone().subtract(1, 'month').endOf('month');
+
+    const tasksChecked = await DoneHomeTask.count({
+      include: [
+        {
+          model: HomeTask,
+          as: 'HomeTask',
+          required: true,
+          include: [
+            {
+              model: Group,
+              as: 'Group',
+              required: true,
+              include: [
+                {
+                  model: Course,
+                  as: 'Course',
+                  required: true,
+                  where: { TeacherId: teacherId },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+      where: { DoneDate: { [Op.between]: [startOfCurrentMonth, endOfCurrentMonth] } },
+    });
+
+    const prevTasksChecked = await DoneHomeTask.count({
+      include: [
+        {
+          model: HomeTask,
+          as: 'HomeTask',
+          required: true,
+          include: [
+            {
+              model: Group,
+              as: 'Group',
+              required: true,
+              include: [
+                {
+                  model: Course,
+                  as: 'Course',
+                  required: true,
+                  where: { TeacherId: teacherId },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+      where: { DoneDate: { [Op.between]: [startOfPrevMonth, endOfPrevMonth] } },
+    });
+
+    const lessonsConducted = await PlannedLesson.count({
+      include: [
+        {
+          model: Group,
+          as: 'Group',
+          required: true,
+          include: [
+            {
+              model: Course,
+              as: 'Course',
+              required: true,
+              where: { TeacherId: teacherId },
+            },
+          ],
+        },
+      ],
+    });
+
+    const prevLessonsConducted = await PlannedLesson.count({
+      include: [
+        {
+          model: Group,
+          as: 'Group',
+          required: true,
+          include: [
+            {
+              model: Course,
+              as: 'Course',
+              required: true,
+              where: { TeacherId: teacherId },
+            },
+          ],
+        },
+      ],
+      where: { LessonDate: { [Op.between]: [startOfPrevMonth, endOfPrevMonth] } },
+    });
+
+    const newClients = await GroupStudent.count({
+      include: [
+        {
+          model: Group,
+          as: 'Group',
+          required: true,
+          include: [
+            {
+              model: Course,
+              as: 'Course',
+              required: true,
+              where: { TeacherId: teacherId },
+            },
+          ],
+        },
+      ],
+    });
+
+    const prevNewClients = await GroupStudent.count({
+      include: [
+        {
+          model: Group,
+          as: 'Group',
+          required: true,
+          include: [
+            {
+              model: Course,
+              as: 'Course',
+              required: true,
+              where: { TeacherId: teacherId },
+            },
+          ],
+        },
+      ],
+      where: { JoinDate: { [Op.between]: [startOfPrevMonth, endOfPrevMonth] } },
+    });
+
+    const reviewsReceived = await UserReview.count({
+      where: {
+        UserIdFor: {
+          [Op.in]: sequelize.literal(`(SELECT UserId FROM Teachers WHERE TeacherId = ${teacherId})`),
+        },
+      },
+    });
+
+    const prevReviewsReceived = await UserReview.count({
+      where: {
+        UserIdFor: {
+          [Op.in]: sequelize.literal(`(SELECT UserId FROM Teachers WHERE TeacherId = ${teacherId})`),
+        },
+        CreateDate: { [Op.between]: [startOfPrevMonth, endOfPrevMonth] },
+      },
+    });
+
+    const ratings = await StudentCourseRating.findAll({
+      include: [
+        {
+          model: Course,
+          as: 'Course',
+          required: true,
+          where: { TeacherId: teacherId },
+        },
+      ],
+      attributes: ['Rating'],
+    });
+
+    const rating = ratings.length
+      ? ratings.reduce((sum, r) => sum + parseFloat(r.Rating), 0) / ratings.length
+      : 0;
+
+    const productivityData = {
+      tasksChecked,
+      prevTasksChecked,
+      lessonsConducted,
+      prevLessonsConducted,
+      newClients,
+      prevNewClients,
+      reviewsReceived,
+      prevReviewsReceived,
+      rating: parseFloat(rating.toFixed(1)),
+    };
+
+    res.status(200).json(productivityData);
+  } catch (error) {
+    console.error('Error in getProductivityByTeacherId:', error);
+    res.status(500).json({ error: 'Server error' });
   }
 };

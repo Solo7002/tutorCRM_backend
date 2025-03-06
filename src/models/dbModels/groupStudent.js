@@ -5,7 +5,7 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: false,
       references: {
         model: 'Students',
-        key: 'id',
+        key: 'StudentId',
       },
       onDelete: 'CASCADE',
       onUpdate: 'CASCADE',
@@ -15,11 +15,21 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: false,
       references: {
         model: 'Groups',
-        key: 'id',
+        key: 'GroupId',
       },
       onDelete: 'CASCADE',
       onUpdate: 'CASCADE',
     },
+    JoinDate: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+      validate: {
+        isDate: { msg: 'JoinDate must be a valid date' },
+      },
+    },
+  }, {
+    timestamps: false,
   });
 
   return GroupStudent;

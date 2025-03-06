@@ -72,6 +72,13 @@ router.post('/', teacherController.createTeacher);
  */
 router.get('/', teacherController.getTeachers);
 router.get('/search', teacherController.searchTeachers);
+router.get('/:id/user', teacherController.searchUserByTeacherId);
+router.get('/:id/leaders', teacherController.getLeadersByTeacherId);
+router.get('/:id/activities', teacherController.getLatestActivitiesByTeacherId);
+router.get('/:id/events', teacherController.getEventsByTeacherId);
+router.get('/:id/grades', teacherController.getMarksByTeacherId);
+router.get('/:id/days', teacherController.getDaysByTeacherId);
+router.get('/:id/productivity', teacherController.getProductivityByTeacherId);
 
 /**
  * @swagger
