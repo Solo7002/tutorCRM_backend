@@ -109,20 +109,25 @@ exports.getPlannedLessonByTeacherId = async (req, res) => {
         {
           model: Group,
           as: 'Groups',
+          attributes: ['GroupName'],
           include: [
             {
               model: PlannedLesson,
-              as: 'PlannedLessons'
-            }
-          ]
-        }
-      ]
+              as: 'PlannedLessons',
+            },
+          ],
+        },
+      ],
     });
 
     let plannedLessons = [];
     courses.forEach(course => {
       course.Groups.forEach(group => {
-        plannedLessons = plannedLessons.concat(group.PlannedLessons);
+        const lessonsWithGroupName = group.PlannedLessons.map(lesson => ({
+          ...lesson.toJSON(),
+          GroupName: group.GroupName, 
+        }));
+        plannedLessons = plannedLessons.concat(lessonsWithGroupName);
       });
     });
 
