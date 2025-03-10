@@ -4,10 +4,22 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.INTEGER,
       primaryKey: true,
       autoIncrement: true
+    },
+    TestQuestionId: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
+    DoneTestId: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
+    TestAnswerId: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
     }
   }, {
     timestamps: false,
   });
 
   return SelectedAnswer;
-};  
+};

@@ -45,58 +45,6 @@ services:
     networks:
       - monitoring
 
-  cadvisor:
-    image: gcr.io/cadvisor/cadvisor:latest
-    container_name: tutor-crm-api-cadvisor
-    restart: always
-    ports:
-      - "8080:8080"
-    networks:
-      - monitoring
-    volumes:
-      - /:/rootfs:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - /sys/fs/cgroup:/sys/fs/cgroup:ro
-      - /var/lib/docker/containers:/var/lib/docker/containers:ro
-
-  prometheus:
-    image: prom/prometheus:latest
-    container_name: tutor-crm-api-prometheus
-    restart: always
-    ports:
-      - '9090:9090'
-    volumes:
-      - /etc/localtime:/etc/localtime:ro
-      - /etc/timezone:/etc/timezone:ro
-      - ./src/prometheus:/etc/prometheus
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-    networks:
-      - monitoring
-
-  alertmanager:
-    image: prom/alertmanager:v0.23.0
-    restart: unless-stopped
-    ports:
-      - "9093:9093"
-    volumes:
-      - "./alertmanager:/config"
-      - alertmanager-data:/data
-    command: --config.file=/config/alertmanager.yml --log.level=debug --cluster.advertise-address=0.0.0.0:9093
-    networks:
-      - monitoring
-
-  discord-alerts:
-    image: benjojo/alertmanager-discord
-    container_name: discord-alerts
-    restart: unless-stopped
-    environment:
-      - DISCORD_WEBHOOK=${DISCORD_WEBHOOK_URL}
-    ports:
-      - 9094:9094
-    networks:
-      - monitoring
-
 networks:
   monitoring:
 

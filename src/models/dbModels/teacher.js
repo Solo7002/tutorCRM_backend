@@ -23,40 +23,46 @@ module.exports = (sequelize, DataTypes) => {
             type: DataTypes.ENUM('group', 'solo'),
             allowNull: true,
             validate: {
-                notEmpty: { msg: 'LessonType cannot be empty' },
+                isIn: {
+                    args: [['group', 'solo', null]],
+                    msg: 'LessonType must be either "group", "solo", or null',
+                },
             },
         },
         MeetingType: {
             type: DataTypes.ENUM('offline', 'online'),
             allowNull: true,
             validate: {
-                notEmpty: { msg: 'MeetingType cannot be empty' },
+                isIn: {
+                    args: [['offline', 'online', null]],
+                    msg: 'MeetingType must be either "offline", "online", or null',
+                },
             },
         },
         UserId: {
-          type: DataTypes.INTEGER,
-          allowNull: false,
+            type: DataTypes.INTEGER,
+            allowNull: false,
         },
         SubscriptionLevelId: {
-          type: DataTypes.INTEGER,
-          allowNull: true,
-          references: {
-            model: 'Subscriptions', 
-            key: 'id'
-          },
+            type: DataTypes.INTEGER,
+            allowNull: true,
+            references: {
+                model: 'Subscriptions',
+                key: 'SubscriptionLevelId',
+            },
         },
     }, {
         timestamps: false,
     });
+
     Teacher.associate = (models) => {
-       
         Teacher.belongsTo(models.User, {
-            foreignKey: 'UserId', // Поле в таблице Teacher, которое ссылается на User
-            as: 'User', // Имя ассоциации
+            foreignKey: 'UserId',
+            as: 'User',
             onDelete: 'CASCADE',
             onUpdate: 'CASCADE',
-          });
-      };
-    
+        });
+    };
+
     return Teacher;
 };

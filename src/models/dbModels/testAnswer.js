@@ -22,10 +22,14 @@ module.exports = (sequelize, DataTypes) => {
     IsRightAnswer: {
       type: DataTypes.BOOLEAN,
       allowNull: false
+    },
+    TestQuestionId: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
     }
   }, {
     timestamps: false,
   });
 
   return TestAnswer;
-};  
+};

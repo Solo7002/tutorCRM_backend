@@ -1,4 +1,4 @@
-const { uploadFileToBlob, deleteFileFromBlob, generateTemporaryUrl } = require('../storage/azureBlob');
+const { uploadFileToBlob, uploadFileToBlobAndReturnLink, deleteFileFromBlob, generateTemporaryUrl } = require('../storage/azureBlob');
 const logger = require('../utils/logger');
 
 const createFile = async (file) => {
@@ -60,6 +60,37 @@ const uploadFile = async (req, res) => {
       res.status(500).json({ error: 'Внутренняя ошибка сервера' });
     }
   };
+
+const uploadFileAndRetunLink = async (req, res) => {
+  try {
+    const file = req.file;
+
+    if (!file) {
+      logger.warn('Попытка загрузить файл без вложения');
+      return res.status(400).json({ error: 'Файл не найден' });
+    }
+
+    const allowedTypes = process.env.ALLOWED_FILE_TYPES.split(',');
+    if (!allowedTypes.includes(file.mimetype)) {
+      logger.warn(`Попытка загрузить недопустимый формат файла: ${file.mimetype}`);
+      return res.status(400).json({ error: 'Недопустимый формат файла' });
+    }
+
+    const maxSize = parseInt(process.env.MAX_FILE_SIZE, 10);
+    if (file.size > maxSize) {
+      logger.warn(`Файл превышает допустимый размер: ${file.size} байт`);
+      return res.status(400).json({ error: 'Размер файла превышает допустимый лимит' });
+    }
+
+    const fileUrl = await uploadFileToBlobAndReturnLink(file);
+
+    logger.info(`Файл успешно загружен: ${file.originalname}, URL: ${fileUrl}`);
+    res.status(201).json({ message: 'Файл успешно загружен', fileUrl });
+  } catch (error) {
+    logger.error(`Ошибка при загрузке файла: ${error.message}`);
+    res.status(500).json({ error: 'Внутренняя ошибка сервера' });
+  }
+};
   
 
 const deleteFile = async (req, res) => {
@@ -98,4 +129,4 @@ const downloadFile = async (req, res) => {
   }
 };
 
-module.exports = { uploadFile, createFile, deleteFile, downloadFile };
+module.exports = { uploadFile, uploadFileAndRetunLink, createFile, deleteFile, downloadFile };

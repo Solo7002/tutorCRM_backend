@@ -98,6 +98,8 @@ router.get('/search', doneTestController.searchDoneTests);
  */
 router.get('/:id', doneTestController.getDoneTestById);
 
+router.get('/complete/:id', doneTestController.getDoneTestInfoById);
+
 /**
  * @swagger
  * /api/doneTests/{id}:

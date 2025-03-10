@@ -12,6 +12,8 @@ const fileRoutes = require('./routes/fileRoutes');
 const { connectRedis } = require('./utils/cacheUtils');
 const { metricsMiddleware, register } = require('./utils/metrics');
 
+const { populateDatabase } = require('./services/fillDataForTests');
+
 require('./config/passportConfig');
 
 
@@ -57,6 +59,16 @@ exec('npx sequelize-cli db:migrate', (err, stdout, stderr) => {
 
     console.log(`stdout: ${stdout}`);
 });
+
+app.get('/populate', async (req, res) => {
+    try {
+      await populateDatabase();
+      res.send('База даних успішно заповнена');
+    } catch (error) {
+      console.error(error);
+      res.status(500).send('Помилка при заповненні бази даних');
+    }
+  });
 
 /**
  * @swagger

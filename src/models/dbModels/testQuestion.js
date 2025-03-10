@@ -33,10 +33,14 @@ module.exports = (sequelize, DataTypes) => {
       validate: {
         isUrl: { msg: 'AudioPath must be a valid URL' },
       },
+    },
+    TestId: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
     }
   }, {
     timestamps: false,
   });
-  
+
   return TestQuestion;
 };
