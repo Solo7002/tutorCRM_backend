@@ -365,6 +365,15 @@ module.exports = (models) => {
       onUpdate: 'CASCADE',
     });
   }
+  if (models.Course && models.Group) {
+    models.Course.hasMany(models.Group, {
+      foreignKey: 'CourseId',
+      as: 'Groups',
+      onDelete: 'CASCADE',
+      onUpdate: 'CASCADE',
+    });
+  }
+ 
   if (models.Group && models.Course) {
     models.Group.belongsTo(models.Course, {
       foreignKey: 'CourseId',
@@ -373,6 +382,8 @@ module.exports = (models) => {
       onUpdate: 'CASCADE',
     });
   }
+
+  
   if (models.Course && models.Group) {
     models.Course.hasMany(models.Group, {
       foreignKey: 'CourseId',

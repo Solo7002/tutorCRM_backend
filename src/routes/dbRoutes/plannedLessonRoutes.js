@@ -140,5 +140,6 @@ router.put('/:id', plannedLessonController.updatePlannedLesson);
  *         description: The planned lesson was successfully deleted
  */
 router.delete('/:id', plannedLessonController.deletePlannedLesson);
+router.get('/getLessonByTecher/:teacherId',plannedLessonController.getPlannedLessonByTeacherId)
 
 module.exports = router;
