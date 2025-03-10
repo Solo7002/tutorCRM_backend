@@ -79,6 +79,7 @@ router.get('/:id/events', teacherController.getEventsByTeacherId);
 router.get('/:id/grades', teacherController.getMarksByTeacherId);
 router.get('/:id/days', teacherController.getDaysByTeacherId);
 router.get('/:id/productivity', teacherController.getProductivityByTeacherId);
+router.get('/info', teacherController.getAllAboutTeacher);
 
 /**
  * @swagger

@@ -1,3 +1,4 @@
+const { where } = require('../../config/database');
 const { Teacher, HomeTask, Group, User, Course, Student, UserReview, StudentCourseRating, GroupStudent, DoneHomeTask, Subject, PlannedLesson, MarkHistory, sequelize } = require('../../models/dbModels');
 const { parseQueryParams } = require('../../utils/dbUtils/queryUtils');
 const { Op } = require('sequelize');
@@ -36,10 +37,11 @@ exports.getTeacherById = async (req, res) => {
 
 exports.searchTeachers = async (req, res) => {
   try {
-    const { lessonType, meetingType, aboutTeacher } = req.query;
+    const { lessonType, meetingType, aboutTeacher, UserId } = req.query;
     let whereConditions = {};
     if (lessonType) whereConditions.LessonType = lessonType;
     if (meetingType) whereConditions.MeetingType = meetingType;
+    if (UserId) whereConditions.UserId = UserId;
     if (aboutTeacher) whereConditions.AboutTeacher = { [Op.like]: `%${aboutTeacher}%` };
 
     const teachers = await Teacher.findAll({
@@ -51,6 +53,37 @@ exports.searchTeachers = async (req, res) => {
     }
 
     return res.status(200).json({ success: true, data: teachers });
+  } catch (error) {
+    console.error('Error in searchTeachers:', error);
+    return res.status(500).json({ success: false, message: 'Server error.' });
+  }
+};
+
+exports.getAllAboutTeacher = async (req, res) => {
+  try {
+    const { UserId } = req.query;
+    let whereConditions = {};
+    if (UserId) whereConditions.UserId = UserId;
+
+    const teacher = (await Teacher.findAll({
+      where: whereConditions,
+    }))[0];
+
+    if (!teacher) {
+      return res.status(404).json({ success: false, message: 'No teachers found.' });
+    }
+    const courses = await Course.findAll({
+        where: {
+            TeacherId: teacher.TeacherId
+        }
+    });
+    const reviews = await UserReview.findAll({
+        where: {
+            //UserIdFor: UserId
+        }
+    });
+
+    return res.status(200).json({ teacher, courses, reviews });
   } catch (error) {
     console.error('Error in searchTeachers:', error);
     return res.status(500).json({ success: false, message: 'Server error.' });

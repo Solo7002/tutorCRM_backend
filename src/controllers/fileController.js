@@ -54,7 +54,7 @@ const uploadFile = async (req, res) => {
       const fileUrl = await uploadFileToBlob(file);
   
       logger.info(`Файл успешно загружен: ${file.originalname}, URL: ${fileUrl}`);
-      res.status(201).json({ message: 'Файл успешно загружен', fileUrl });
+      res.status(201).json({ message: 'Файл успешно загружен', fileUrl: `https://${accountName}.blob.core.windows.net/${containerName}/${fileUrl}` });
     } catch (error) {
       logger.error(`Ошибка при загрузке файла: ${error.message}`);
       res.status(500).json({ error: 'Внутренняя ошибка сервера' });
