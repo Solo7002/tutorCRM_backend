@@ -52,6 +52,37 @@ exports.searchStudents = async (req, res) => {
   }
 };
 
+exports.searchStudentsByUserId = async (req, res) => {
+  try {
+    const userId = req.params.id;
+    
+    const students = await Student.findAll({
+      where: {
+        UserId: userId
+      }
+    });
+
+    if (!students.length) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'No students found with this UserId.' 
+      });
+    }
+
+    return res.status(200).json({ 
+      success: true, 
+      data: students 
+    });
+    
+  } catch (error) {
+    console.error('Error in searchStudentsByUserId:', error);
+    return res.status(500).json({ 
+      success: false, 
+      message: 'Server error.' 
+    });
+  }
+};
+
 exports.updateStudent = async (req, res) => {
   try {
     const student = await Student.findByPk(req.params.id);

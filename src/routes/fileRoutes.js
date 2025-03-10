@@ -1,6 +1,6 @@
 const express = require('express');
 const multer = require('multer');
-const { uploadFile, deleteFile, downloadFile } = require('../controllers/fileController');
+const { uploadFile, uploadFileAndRetunLink, deleteFile, downloadFile } = require('../controllers/fileController');
 
 const router = express.Router();
 const upload = multer();
@@ -71,6 +71,8 @@ const upload = multer();
  *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.post('/upload', upload.single('file'), uploadFile);
+
+router.post('/uploadAndReturnLink', upload.single('file'), uploadFileAndRetunLink);
 
 /**
  * @swagger

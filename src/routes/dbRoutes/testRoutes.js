@@ -138,4 +138,8 @@ router.put('/:id', testController.updateTest);
  */
 router.delete('/:id', testController.deleteTest);
 
+router.get("/test-info/:id", testController.getTestInfo);
+
+router.get("/tests-by-student/:id", testController.getTestsByStudentId)
+
 module.exports = router;

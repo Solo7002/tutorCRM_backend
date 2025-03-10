@@ -26,6 +26,16 @@ async function uploadFileToBlob(file) {
     return file.originalname;
 }
 
+async function uploadFileToBlobAndReturnLink(file) {
+  const containerClient = blobServiceClient.getContainerClient(containerName);
+  await containerClient.createIfNotExists();
+
+  const blockBlobClient = containerClient.getBlockBlobClient(file.originalname);
+  await blockBlobClient.upload(file.buffer, file.buffer.length);
+
+  return `https://${accountName}.blob.core.windows.net/${containerName}/${file.originalname}`;
+}
+
 async function deleteFileFromBlob(fileName) {
   const containerClient = blobServiceClient.getContainerClient(containerName);
   const blockBlobClient = containerClient.getBlockBlobClient(fileName);
@@ -49,4 +59,4 @@ function generateTemporaryUrl(fileName, expiryTimeInMinutes = 60) {
   return `https://${accountName}.blob.core.windows.net/${containerName}/${fileName}?${sasToken}`;
 }
 
-module.exports = { uploadFileToBlob, deleteFileFromBlob, generateTemporaryUrl };
+module.exports = { uploadFileToBlob, uploadFileToBlobAndReturnLink, deleteFileFromBlob, generateTemporaryUrl };

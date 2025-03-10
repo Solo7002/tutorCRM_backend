@@ -26,10 +26,54 @@ module.exports = (sequelize, DataTypes) => {
       validate: {
         isDate: { msg: 'CreatedDate must be a valid date' },
       },
-    }
+    },
+    DeadlineDate: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      validate: {
+        isDate: { msg: 'DeadlineDate must be a valid date' },
+      },
+    },
+    AttemptsTotal: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 1,
+      validate: {
+        isInt: { msg: 'AttemptsTotal must be an integer' },
+        min: { args: 1, msg: 'AttemptsTotal must be at least 1' },
+      },
+    },
+    MaxMark: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 100,
+    },
+    ShowAnswers: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
+    TimeLimit: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
+    ImageFilePath: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+    },
+    GroupId: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: {
+        model: 'Groups',
+        key: 'GroupId',
+      },
+      onUpdate: 'CASCADE',
+      onDelete: 'CASCADE',
+    },
   }, {
     timestamps: false,
   });
 
   return Test;
-};  
+};

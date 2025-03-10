@@ -174,9 +174,25 @@ module.exports = (models) => {
   }
 
   if (models.SelectedAnswer && models.DoneTest) {
+    models.DoneTest.hasMany(models.SelectedAnswer, {
+      foreignKey: 'DoneTestId',
+      as: 'SelectedAnswers',
+      onDelete: 'CASCADE',
+      onUpdate: 'CASCADE'
+    });
+  
     models.SelectedAnswer.belongsTo(models.DoneTest, {
       foreignKey: 'DoneTestId',
       as: 'DoneTest',
+      onDelete: 'CASCADE',
+      onUpdate: 'CASCADE'
+    });
+  }
+
+  if (models.SelectedAnswer && models.TestAnswer) {
+    models.SelectedAnswer.belongsTo(models.TestAnswer, {
+      foreignKey: 'TestAnswerId',
+      as: 'TestAnswer',
       onDelete: 'CASCADE',
       onUpdate: 'CASCADE',
     });
@@ -191,21 +207,46 @@ module.exports = (models) => {
     });
   }
 
-  if (models.TestAnswer && models.TestQuestion) {
-    models.TestAnswer.belongsTo(models.TestQuestion, {
-      foreignKey: 'TestQuestionId',
-      as: 'TestQuestion',
+  if (models.Test && models.DoneTest) {
+    models.Test.hasMany(models.DoneTest, {
+      foreignKey: 'TestId',
+      as: 'DoneTests',
+      onDelete: 'CASCADE',
+      onUpdate: 'CASCADE'
+    });
+  }
+
+  if (models.DoneTest && models.Test) {
+    models.DoneTest.belongsTo(models.Test, {
+      foreignKey: 'TestId',
+      as: 'Test',
+      onDelete: 'CASCADE',
+      onUpdate: 'CASCADE'
+    });
+  }
+
+  if (models.Test && models.Group) {
+    models.Group.hasMany(models.Test, {
+      foreignKey: 'GroupId',
+      as: 'Tests',
       onDelete: 'CASCADE',
       onUpdate: 'CASCADE',
     });
   }
 
-  if (models.TestAnswer && models.SelectedAnswer) {
-    models.TestAnswer.belongsTo(models.SelectedAnswer, {
-      foreignKey: 'SelectedAnswerId',
-      as: 'SelectedAnswer',
+  if (models.TestAnswer && models.TestQuestion) {
+    models.TestQuestion.hasMany(models.TestAnswer, {
+      foreignKey: 'TestQuestionId',
+      as: 'TestAnswers',
       onDelete: 'CASCADE',
-      onUpdate: 'CASCADE',
+      onUpdate: 'CASCADE'
+    });
+  
+    models.TestAnswer.belongsTo(models.TestQuestion, {
+      foreignKey: 'TestQuestionId',
+      as: 'TestQuestion',
+      onDelete: 'CASCADE',
+      onUpdate: 'CASCADE'
     });
   }
 
@@ -215,6 +256,13 @@ module.exports = (models) => {
       as: 'Test',
       onDelete: 'CASCADE',
       onUpdate: 'CASCADE',
+    });
+
+    models.Test.hasMany(models.TestQuestion, {
+      foreignKey: 'TestId',
+      as: 'TestQuestions',
+      onDelete: 'CASCADE',
+      onUpdate: 'CASCADE'
     });
   }
 

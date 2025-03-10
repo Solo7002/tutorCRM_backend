@@ -200,10 +200,10 @@ const verifyEmailCodeAndRegisterUser = async (email, code, userData) => {
         } else if (userData.Role === 'Teacher') {
             const newTeacher = await Teacher.create({
                 UserId: newUser.UserId,
-                AboutTeacher: "-1",
-                LessonPrice: "-1",
-                LessonType: "-1",
-                MeetingType: "-1",
+                AboutTeacher: null,
+                LessonPrice: null,
+                LessonType: null,
+                MeetingType: null,
                 SubscriptionLevelId: null,
             });
             additionalId = newTeacher.TeacherId;

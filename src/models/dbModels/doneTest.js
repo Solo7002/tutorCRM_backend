@@ -9,16 +9,16 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.INTEGER,
       allowNull: false,
       validate: {
-        isInt: { msg: 'Mark must be an integer', },
-        min: { args: [0], msg: 'Mark cannot be less than 0', },
-        max: { args: [100], msg: 'Mark cannot exceed 100', },
+        isInt: { msg: 'Mark must be an integer' },
+        min: { args: [0], msg: 'Mark cannot be less than 0' },
+        max: { args: [100], msg: 'Mark cannot exceed 100' },
       },
     },
     DoneDate: {
       type: DataTypes.DATE,
       defaultValue: DataTypes.NOW,
       validate: {
-        isDate: { msg: 'Done date must be a valid date', },
+        isDate: { msg: 'Done date must be a valid date' },
       },
     },
     SpentTime: {
@@ -30,10 +30,18 @@ module.exports = (sequelize, DataTypes) => {
           msg: 'Spent time must be a valid time in HH:MM:SS format',
         },
       },
+    },
+    StudentId: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
+    TestId: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
     }
   }, {
     timestamps: false,
   });
 
   return DoneTest;
-};  
+};
