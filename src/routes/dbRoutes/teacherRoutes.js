@@ -72,6 +72,7 @@ router.post('/', teacherController.createTeacher);
  */
 router.get('/', teacherController.getTeachers);
 router.get('/search', teacherController.searchTeachers);
+router.get('/info', teacherController.getAllAboutTeacher);
 
 /**
  * @swagger

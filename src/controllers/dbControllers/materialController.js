@@ -87,10 +87,12 @@ exports.searchMaterials = async (req, res) => {
         const { MaterialName, Type, TeacherId, FileExtension, FileImage, appearanceDateFrom, appearanceDateTo, ParentId } = req.query;
         const whereConditions = {};
 
-        if (MaterialName) whereConditions.MaterialName = { [Op.like]: `%${MaterialName}%` };
+        if (MaterialName){ 
+            whereConditions.MaterialName = { [Op.like]: `%${MaterialName}%` };
+        }
         if (Type) whereConditions.Type = Type;
         if (TeacherId) whereConditions.TeacherId = TeacherId;
-        whereConditions.ParentId = ParentId ?? null;
+        if (ParentId) whereConditions.ParentId = ParentId;
         if (FileImage) whereConditions.FileImage = { [Op.like]: `%${FileImage}%` };
         if (appearanceDateFrom || appearanceDateTo) {
             whereConditions.AppearanceDate = {};
