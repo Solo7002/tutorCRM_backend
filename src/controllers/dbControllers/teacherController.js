@@ -228,7 +228,7 @@ exports.getLeadersByTeacherId = async (req, res) => {
     console.error('Error in getLeadersByTeacherId:', error);
     res.status(500).json({ error: 'Server error' });
   }
-}; 
+};
 
 exports.getLatestActivitiesByTeacherId = async (req, res) => {
   try {
@@ -516,154 +516,54 @@ exports.getProductivityByTeacherId = async (req, res) => {
     }
 
     const now = moment();
-    const startOfCurrentMonth = now.clone().startOf('month');
-    const endOfCurrentMonth = now.clone().endOf('month');
-    const startOfPrevMonth = now.clone().subtract(1, 'month').startOf('month');
-    const endOfPrevMonth = now.clone().subtract(1, 'month').endOf('month');
 
-    const tasksChecked = await DoneHomeTask.count({
-      include: [
-        {
-          model: HomeTask,
-          as: 'HomeTask',
-          required: true,
-          include: [
-            {
-              model: Group,
-              as: 'Group',
-              required: true,
-              include: [
-                {
-                  model: Course,
-                  as: 'Course',
-                  required: true,
-                  where: { TeacherId: teacherId },
-                },
-              ],
-            },
-          ],
-        },
-      ],
-      where: { DoneDate: { [Op.between]: [startOfCurrentMonth, endOfCurrentMonth] } },
-    });
-
-    const prevTasksChecked = await DoneHomeTask.count({
-      include: [
-        {
-          model: HomeTask,
-          as: 'HomeTask',
-          required: true,
-          include: [
-            {
-              model: Group,
-              as: 'Group',
-              required: true,
-              include: [
-                {
-                  model: Course,
-                  as: 'Course',
-                  required: true,
-                  where: { TeacherId: teacherId },
-                },
-              ],
-            },
-          ],
-        },
-      ],
-      where: { DoneDate: { [Op.between]: [startOfPrevMonth, endOfPrevMonth] } },
-    });
-
-    const lessonsConducted = await PlannedLesson.count({
-      include: [
-        {
-          model: Group,
-          as: 'Group',
-          required: true,
-          include: [
-            {
-              model: Course,
-              as: 'Course',
-              required: true,
-              where: { TeacherId: teacherId },
-            },
-          ],
-        },
-      ],
-    });
-
-    const prevLessonsConducted = await PlannedLesson.count({
-      include: [
-        {
-          model: Group,
-          as: 'Group',
-          required: true,
-          include: [
-            {
-              model: Course,
-              as: 'Course',
-              required: true,
-              where: { TeacherId: teacherId },
-            },
-          ],
-        },
-      ],
-      where: { LessonDate: { [Op.between]: [startOfPrevMonth, endOfPrevMonth] } },
-    });
-
-    const newClients = await GroupStudent.count({
-      include: [
-        {
-          model: Group,
-          as: 'Group',
-          required: true,
-          include: [
-            {
-              model: Course,
-              as: 'Course',
-              required: true,
-              where: { TeacherId: teacherId },
-            },
-          ],
-        },
-      ],
-    });
-
-    const prevNewClients = await GroupStudent.count({
-      include: [
-        {
-          model: Group,
-          as: 'Group',
-          required: true,
-          include: [
-            {
-              model: Course,
-              as: 'Course',
-              required: true,
-              where: { TeacherId: teacherId },
-            },
-          ],
-        },
-      ],
-      where: { JoinDate: { [Op.between]: [startOfPrevMonth, endOfPrevMonth] } },
-    });
-
-    const reviewsReceived = await UserReview.count({
-      where: {
-        UserIdFor: {
-          [Op.in]: sequelize.literal(`(SELECT UserId FROM Teachers WHERE TeacherId = ${teacherId})`),
-        },
+    // Define period boundaries
+    const periods = {
+      Day: {
+        currentStart: now.clone().startOf('day').toISOString(),
+        currentEnd: now.clone().endOf('day').toISOString(),
+        prevStart: now.clone().subtract(1, 'day').startOf('day').toISOString(),
+        prevEnd: now.clone().subtract(1, 'day').endOf('day').toISOString(),
       },
-    });
-
-    const prevReviewsReceived = await UserReview.count({
-      where: {
-        UserIdFor: {
-          [Op.in]: sequelize.literal(`(SELECT UserId FROM Teachers WHERE TeacherId = ${teacherId})`),
-        },
-        CreateDate: { [Op.between]: [startOfPrevMonth, endOfPrevMonth] },
+      Week: {
+        currentStart: now.clone().startOf('week').toISOString(),
+        currentEnd: now.clone().endOf('week').toISOString(),
+        prevStart: now.clone().subtract(1, 'week').startOf('week').toISOString(),
+        prevEnd: now.clone().subtract(1, 'week').endOf('week').toISOString(),
       },
-    });
+      Month: {
+        currentStart: now.clone().startOf('month').toISOString(),
+        currentEnd: now.clone().endOf('month').toISOString(),
+        prevStart: now.clone().subtract(1, 'month').startOf('month').toISOString(),
+        prevEnd: now.clone().subtract(1, 'month').endOf('month').toISOString(),
+      },
+      ThreeMonth: {
+        currentStart: now.clone().subtract(2, 'months').startOf('month').toISOString(),
+        currentEnd: now.clone().endOf('month').toISOString(),
+        prevStart: now.clone().subtract(5, 'months').startOf('month').toISOString(),
+        prevEnd: now.clone().subtract(3, 'months').endOf('month').toISOString(),
+      },
+      HalfYear: {
+        currentStart: now.clone().subtract(5, 'months').startOf('month').toISOString(),
+        currentEnd: now.clone().endOf('month').toISOString(),
+        prevStart: now.clone().subtract(11, 'months').startOf('month').toISOString(),
+        prevEnd: now.clone().subtract(6, 'months').endOf('month').toISOString(),
+      },
+      Year: {
+        currentStart: now.clone().startOf('year').toISOString(),
+        currentEnd: now.clone().endOf('year').toISOString(),
+        prevStart: now.clone().subtract(1, 'year').startOf('year').toISOString(),
+        prevEnd: now.clone().subtract(1, 'year').endOf('year').toISOString(),
+      },
+      AllTime: {
+        currentStart: moment('2000-01-01').toISOString(),
+        currentEnd: now.clone().toISOString(),
+        prevStart: null,
+        prevEnd: null,
+      },
+    };
 
+    // Calculate rating once for all periods
     const ratings = await StudentCourseRating.findAll({
       include: [
         {
@@ -680,17 +580,179 @@ exports.getProductivityByTeacherId = async (req, res) => {
       ? ratings.reduce((sum, r) => sum + parseFloat(r.Rating), 0) / ratings.length
       : 0;
 
-    const productivityData = {
-      tasksChecked,
-      prevTasksChecked,
-      lessonsConducted,
-      prevLessonsConducted,
-      newClients,
-      prevNewClients,
-      reviewsReceived,
-      prevReviewsReceived,
-      rating: parseFloat(rating.toFixed(1)),
-    };
+    const productivityData = {};
+
+    for (const [periodName, period] of Object.entries(periods)) {
+      // Tasks Checked
+      const tasksChecked = await DoneHomeTask.count({
+        include: [
+          {
+            model: HomeTask,
+            as: 'HomeTask',
+            required: true,
+            include: [
+              {
+                model: Group,
+                as: 'Group',
+                required: true,
+                include: [
+                  {
+                    model: Course,
+                    as: 'Course',
+                    required: true,
+                    where: { TeacherId: teacherId },
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+        where: { DoneDate: { [Op.between]: [period.currentStart, period.currentEnd] } },
+      });
+
+      const prevTasksChecked = period.prevStart
+        ? await DoneHomeTask.count({
+            include: [
+              {
+                model: HomeTask,
+                as: 'HomeTask',
+                required: true,
+                include: [
+                  {
+                    model: Group,
+                    as: 'Group',
+                    required: true,
+                    include: [
+                      {
+                        model: Course,
+                        as: 'Course',
+                        required: true,
+                        where: { TeacherId: teacherId },
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+            where: { DoneDate: { [Op.between]: [period.prevStart, period.prevEnd] } },
+          })
+        : 0;
+
+      // Lessons Conducted
+      const lessonsConducted = await PlannedLesson.count({
+        include: [
+          {
+            model: Group,
+            as: 'Group',
+            required: true,
+            include: [
+              {
+                model: Course,
+                as: 'Course',
+                required: true,
+                where: { TeacherId: teacherId },
+              },
+            ],
+          },
+        ],
+        where: { LessonDate: { [Op.between]: [period.currentStart, period.currentEnd] } },
+      });
+
+      const prevLessonsConducted = period.prevStart
+        ? await PlannedLesson.count({
+            include: [
+              {
+                model: Group,
+                as: 'Group',
+                required: true,
+                include: [
+                  {
+                    model: Course,
+                    as: 'Course',
+                    required: true,
+                    where: { TeacherId: teacherId },
+                  },
+                ],
+              },
+            ],
+            where: { LessonDate: { [Op.between]: [period.prevStart, period.prevEnd] } },
+          })
+        : 0;
+
+      // New Clients
+      const newClients = await GroupStudent.count({
+        include: [
+          {
+            model: Group,
+            as: 'Group',
+            required: true,
+            include: [
+              {
+                model: Course,
+                as: 'Course',
+                required: true,
+                where: { TeacherId: teacherId },
+              },
+            ],
+          },
+        ],
+        where: { JoinDate: { [Op.between]: [period.currentStart, period.currentEnd] } },
+      });
+
+      const prevNewClients = period.prevStart
+        ? await GroupStudent.count({
+            include: [
+              {
+                model: Group,
+                as: 'Group',
+                required: true,
+                include: [
+                  {
+                    model: Course,
+                    as: 'Course',
+                    required: true,
+                    where: { TeacherId: teacherId },
+                  },
+                ],
+              },
+            ],
+            where: { JoinDate: { [Op.between]: [period.prevStart, period.prevEnd] } },
+          })
+        : 0;
+
+      // Reviews Received
+      const reviewsReceived = await UserReview.count({
+        where: {
+          UserIdFor: {
+            [Op.in]: sequelize.literal(`(SELECT UserId FROM Teachers WHERE TeacherId = ${teacherId})`),
+          },
+          CreateDate: { [Op.between]: [period.currentStart, period.currentEnd] },
+        },
+      });
+
+      const prevReviewsReceived = period.prevStart
+        ? await UserReview.count({
+            where: {
+              UserIdFor: {
+                [Op.in]: sequelize.literal(`(SELECT UserId FROM Teachers WHERE TeacherId = ${teacherId})`),
+              },
+              CreateDate: { [Op.between]: [period.prevStart, period.prevEnd] },
+            },
+          })
+        : 0;
+
+      productivityData[periodName] = {
+        tasksChecked,
+        prevTasksChecked,
+        lessonsConducted,
+        prevLessonsConducted,
+        newClients,
+        prevNewClients,
+        reviewsReceived,
+        prevReviewsReceived,
+        rating: parseFloat(rating.toFixed(1)),
+      };
+    }
 
     res.status(200).json(productivityData);
   } catch (error) {
