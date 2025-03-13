@@ -103,6 +103,7 @@ router.get('/info', teacherController.getAllAboutTeacher);
  *               $ref: '#/components/schemas/Teacher'
  */
 router.get('/:id', teacherController.getTeacherById);
+router.get('/:id/octocoins', teacherController.getTeacherOctoCoinsById);
 
 /**
  * @swagger
@@ -128,6 +129,7 @@ router.get('/:id', teacherController.getTeacherById);
  *         description: The teacher was successfully updated
  */
 router.put('/:id', teacherController.updateTeacher);
+router.put('/:id/octocoins', teacherController.updateTeacherOctoCoins);
 
 /**
  * @swagger

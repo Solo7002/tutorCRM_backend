@@ -51,6 +51,15 @@ module.exports = (sequelize, DataTypes) => {
                 key: 'SubscriptionLevelId',
             },
         },
+        OctoCoinId: {
+            type: DataTypes.INTEGER,
+            allowNull: true,
+            unique: true,
+            references: {
+                model: 'OctoCoins',
+                key: 'OctoCoinId',
+            },
+        },
     }, {
         timestamps: false,
     });
@@ -59,6 +68,12 @@ module.exports = (sequelize, DataTypes) => {
         Teacher.belongsTo(models.User, {
             foreignKey: 'UserId',
             as: 'User',
+            onDelete: 'CASCADE',
+            onUpdate: 'CASCADE',
+        });
+        Teacher.hasOne(models.OctoCoins, {
+            foreignKey: 'TeacherId',
+            as: 'OctoCoins',
             onDelete: 'CASCADE',
             onUpdate: 'CASCADE',
         });

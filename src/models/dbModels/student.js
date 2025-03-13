@@ -11,34 +11,47 @@ module.exports = (sequelize, DataTypes) => {
             validate: {
                 len: { args: [1, 255], msg: 'SchoolName must be between 1 and 255 characters' },
             },
-            defaultValue: "-1"
+            defaultValue: "-1",
         },
         Grade: {
             type: DataTypes.STRING,
             allowNull: true,
-             validate: {
+            validate: {
                 len: { args: [1, 50], msg: 'Grade must be between 1 and 50 characters' },
             },
-            defaultValue: "-1"
+            defaultValue: "-1",
         },
         UserId: {
-          type: DataTypes.INTEGER,
-          allowNull: false,
+            type: DataTypes.INTEGER,
+            allowNull: false,
+        },
+        TrophyId: {
+            type: DataTypes.INTEGER,
+            allowNull: true,
+            unique: true,
+            references: {
+                model: 'Trophies',
+                key: 'TrophyId',
+            },
         },
     }, {
         timestamps: false,
     });
 
-
     Student.associate = (models) => {
         Student.belongsToMany(models.Group, {
-          through: models.GroupStudent, 
-          foreignKey: 'StudentId', 
-          otherKey: 'GroupId',
-          as: 'Groups'
+            through: models.GroupStudent,
+            foreignKey: 'StudentId',
+            otherKey: 'GroupId',
+            as: 'Groups',
         });
-      };
-      
+        Student.hasOne(models.Trophies, {
+            foreignKey: 'StudentId',
+            as: 'Trophies',
+            onDelete: 'CASCADE',
+            onUpdate: 'CASCADE',
+        });
+    };
 
     return Student;
-};  
+};

@@ -1,4 +1,4 @@
-const { Group, Student, Course, Subject, User, GroupStudent, MarkHistory, PlannedLesson, Teacher, HomeTask } = require('../../models/dbModels');
+const { Group, Student, Course, Subject, User, GroupStudent, MarkHistory, PlannedLesson, Teacher, HomeTask, Trophies } = require('../../models/dbModels');
 const { parseQueryParams } = require('../../utils/dbUtils/queryUtils');
 const { Op } = require('sequelize');
 const moment = require('moment-timezone');
@@ -8,6 +8,11 @@ const { convertStandardTimeZoneToUTC } = require('../../utils/dbUtils/timeUtils'
 exports.createStudent = async (req, res) => {
   try {
     const student = await Student.create(req.body);
+    const trophy = await Trophies.create({
+      StudentId: student.StudentId,
+      Amount: 0,
+    });
+    await student.update({ TrophyId: trophy.TrophyId });
     res.status(201).json(student);
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -58,7 +63,7 @@ exports.searchStudents = async (req, res) => {
 exports.searchStudentsByUserId = async (req, res) => {
   try {
     const userId = req.params.id;
-    
+
     const students = await Student.findAll({
       where: {
         UserId: userId
@@ -66,22 +71,22 @@ exports.searchStudentsByUserId = async (req, res) => {
     });
 
     if (!students.length) {
-      return res.status(404).json({ 
-        success: false, 
-        message: 'No students found with this UserId.' 
+      return res.status(404).json({
+        success: false,
+        message: 'No students found with this UserId.'
       });
     }
 
-    return res.status(200).json({ 
-      success: true, 
-      data: students 
+    return res.status(200).json({
+      success: true,
+      data: students
     });
-    
+
   } catch (error) {
     console.error('Error in searchStudentsByUserId:', error);
-    return res.status(500).json({ 
-      success: false, 
-      message: 'Server error.' 
+    return res.status(500).json({
+      success: false,
+      message: 'Server error.'
     });
   }
 };
@@ -317,7 +322,7 @@ exports.getEventsByStudentId = async (req, res) => {
 
     const formattedEvents = events.map(event => {
       const lessonDate = moment(event.LessonDate).format('YYYY-MM-DD');
-      
+
       // timezone conversion
       // const lessonDate = moment(event.LessonDate).tz(event.Group.Course.TimeZone || 'UTC').format('YYYY-MM-DD');
 
@@ -506,5 +511,31 @@ exports.searchUserByStudentId = async (req, res) => {
   } catch (error) {
     console.error('Error in searchUserByStudentId:', error);
     res.status(500).json({ error: 'Server error' });
+  }
+};
+
+exports.updateStudentTrophiesById = async (req, res) => {
+  try {
+    const studentId = req.params.id;
+    const trophies = await Trophies.findOne({ where: { StudentId: studentId } });
+    if (!trophies) {
+      return res.status(404).json({ message: 'Trophies not found for this student' });
+    }
+    await trophies.update({ Amount: req.body.Amount });
+    res.status(200).json(trophies);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
+exports.getStudentTrophiesById = async (req, res) => {
+  try {
+    const trophies = await Trophies.findOne({
+      where: { StudentId: req.params.id },
+    });
+    if (!trophies) return res.status(404).json({ message: 'Trophies not found for this student' });
+    res.status(200).json(trophies);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
 };

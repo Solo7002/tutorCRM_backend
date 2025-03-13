@@ -448,4 +448,35 @@ module.exports = (models) => {
     });
   }
 
+  if (models.Student && models.Trophies) {
+    models.Student.hasOne(models.Trophies, {
+      foreignKey: 'StudentId',
+      as: 'Trophies',
+      onDelete: 'CASCADE',
+      onUpdate: 'CASCADE',
+    });
+
+    models.Trophies.belongsTo(models.Student, {
+      foreignKey: 'StudentId',
+      as: 'Student',
+      onDelete: 'CASCADE',
+      onUpdate: 'CASCADE',
+    });
+  }
+
+  if (models.Teacher && models.OctoCoins) {
+    models.Teacher.hasOne(models.OctoCoins, {
+      foreignKey: 'TeacherId',
+      as: 'OctoCoins',
+      onDelete: 'CASCADE',
+      onUpdate: 'CASCADE',
+    });
+
+    models.OctoCoins.belongsTo(models.Teacher, {
+      foreignKey: 'TeacherId',
+      as: 'Teacher',
+      onDelete: 'CASCADE',
+      onUpdate: 'CASCADE',
+    });
+  }
 };
