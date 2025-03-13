@@ -118,6 +118,7 @@ router.get('/:id', doneHometaskController.getDoneHometaskById);
  *         description: The done hometask was successfully updated
  */
 router.put('/:id', doneHometaskController.updateDoneHometask);
+router.put('/:id/mark', doneHometaskController.setMarkForDoneHometask);
 
 /**
  * @swagger
