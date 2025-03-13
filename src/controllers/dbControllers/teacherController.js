@@ -457,10 +457,10 @@ exports.getEventsByTeacherId = async (req, res) => {
           ],
         },
       ],
-      attributes: ['LessonHeader', 'LessonDate', 'LessonTime', 'TimeZone'],
+      attributes: ['LessonHeader', 'LessonDate', 'StartLessonTime'],
       where: {
         LessonDate: {
-          [require('sequelize').Op.gte]: new Date(),
+          [Op.gte]: new Date(),
         },
       },
       order: [['LessonDate', 'ASC']],
@@ -473,14 +473,12 @@ exports.getEventsByTeacherId = async (req, res) => {
     }
 
     const formattedEvents = events.map(event => {
-      const lessonDate = moment(event.LessonDate)
-        .tz(event.TimeZone || 'UTC')
-        .format('YYYY-MM-DD');
+      const lessonDate = moment(event.LessonDate).format('YYYY-MM-DD');
 
       return {
         title: event.LessonHeader,
         date: lessonDate,
-        time: event.LessonTime,
+        time: moment(event.StartLessonTime).format('HH:mm'),
         image: event.Group.Course.Teacher.User.ImageFilePath || '/assets/images/avatar.jpg',
         link: '/',
       };

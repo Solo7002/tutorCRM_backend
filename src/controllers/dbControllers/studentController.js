@@ -307,7 +307,7 @@ exports.getEventsByStudentId = async (req, res) => {
           ],
         },
       ],
-      attributes: ['LessonHeader', 'LessonDate', 'LessonTime', 'TimeZone'],
+      attributes: ['LessonHeader', 'LessonDate', 'StartLessonTime'],
     });
 
     if (!events.length) {
@@ -316,16 +316,17 @@ exports.getEventsByStudentId = async (req, res) => {
     }
 
     const formattedEvents = events.map(event => {
-      const lessonDate = moment(event.LessonDate).tz(event.Group.Course.TimeZone || event.TimeZone).format('YYYY-MM-DD');
-      const convertedTimeZone = convertStandardTimeZoneToUTC(event.TimeZone);
+      const lessonDate = moment(event.LessonDate).format('YYYY-MM-DD');
+      
+      // timezone conversion
+      // const lessonDate = moment(event.LessonDate).tz(event.Group.Course.TimeZone || 'UTC').format('YYYY-MM-DD');
 
       return {
-        title: event.Group.Course.Subject.SubjectName, // Название предмета через группу и курс
-        date: lessonDate, // Дата в формате YYYY-MM-DD
-        time: event.LessonTime, // Время в формате 'HH:MM - HH:MM'
-        image: event.Group.Course.Teacher.User.ImageFilePath || '/assets/images/avatar.jpg', // Аватар преподавателя через курс
-        link: '/', // Ссылка (заглушка)
-        timeZone: convertedTimeZone, // Преобразованный часовой пояс
+        title: event.Group.Course.Subject.SubjectName,
+        date: lessonDate,
+        time: moment(event.StartLessonTime).format('HH:mm'),
+        image: event.Group.Course.Teacher.User.ImageFilePath || '/assets/images/avatar.jpg',
+        link: '/',
       };
     });
 
