@@ -141,5 +141,6 @@ router.delete('/:id', testController.deleteTest);
 router.get("/test-info/:id", testController.getTestInfo);
 
 router.get("/tests-by-student/:id", testController.getTestsByStudentId)
+router.post("/generate-test-by-AI/", testController.getTestCreatedByAI)
 
 module.exports = router;

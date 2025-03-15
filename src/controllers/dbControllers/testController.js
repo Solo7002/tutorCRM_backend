@@ -1,7 +1,7 @@
 const { Student, GroupStudent, Test, DoneTest, Group, Course, Subject, Teacher, User, TestQuestion } = require('../../models/dbModels');
 const { parseQueryParams } = require('../../utils/dbUtils/queryUtils');
 const { Op } = require('sequelize');
-
+const testService=require('../../services/testCreatedAIService');
 exports.createTest = async (req, res) => {
   try {
     const test = await Test.create(req.body);
@@ -203,9 +203,9 @@ exports.getTestsByStudentId = async (req, res) => {
         },
       });
 
-      const doneTestId = doneTests.length > 0 
-      ? doneTests.reduce((max, current) => max.Mark > current.Mark ? max : current).DoneTestId 
-      : null;
+      const doneTestId = doneTests.length > 0
+        ? doneTests.reduce((max, current) => max.Mark > current.Mark ? max : current).DoneTestId
+        : null;
       const isDone = doneTests.length > 0;
       const mark = isDone ? Math.max(...doneTests.map(dt => dt.Mark)) : null;
       const doneDate = isDone
@@ -241,3 +241,21 @@ exports.getTestsByStudentId = async (req, res) => {
     res.status(400).json({ error: error.message });
   }
 };
+
+exports.getTestCreatedByAI = async (req, res) => {
+  try {
+    const { text, count, language } = req.body;
+
+    const validationErrors = testService.validateRequestParams( text, count, language );
+    if (validationErrors.length > 0) {
+      return res.status(400).json({ errors: validationErrors });
+    }
+    let questionsData = await testService.generateQuestions(text, count, language);
+    questionsData = await testService.validateAnswers(questionsData);
+    res.status(200).json(questionsData);
+
+  } catch (error) {
+    console.error('Error in getTestCreatedByAI:', error);
+    res.status(400).json({ error: error.message });
+  }
+}
