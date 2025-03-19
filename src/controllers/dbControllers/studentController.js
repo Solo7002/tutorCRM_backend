@@ -1,4 +1,4 @@
-const { Group, Student, Course, Subject, User, GroupStudent, MarkHistory, PlannedLesson, Teacher, HomeTask, Trophies } = require('../../models/dbModels');
+const { Group, Student, Course, Subject, User, GroupStudent, MarkHistory, PlannedLesson, Teacher, HomeTask, Trophies, StudentCourseRating } = require('../../models/dbModels');
 const { parseQueryParams } = require('../../utils/dbUtils/queryUtils');
 const { Op } = require('sequelize');
 const moment = require('moment-timezone');
@@ -422,8 +422,7 @@ exports.searchTeachersForStudent = async (req, res) => {
     let whereConditions = {};
     if (lessonType) whereConditions.LessonType = lessonType;
     if (meetingType) whereConditions.MeetingType = meetingType;
-    if (aboutTeacher)
-      whereConditions.AboutTeacher = { [Op.like]: `%${aboutTeacher}%` };
+    if (aboutTeacher) whereConditions.AboutTeacher = { [Op.like]: `%${aboutTeacher}%` };
 
     const teachers = await Teacher.findAll({
       where: whereConditions,
@@ -443,22 +442,43 @@ exports.searchTeachersForStudent = async (req, res) => {
               as: 'Subject',
               attributes: ['SubjectName'],
             },
+            {
+              model: StudentCourseRating,
+              as: 'Ratings', // Подключаем рейтинги курсов
+              attributes: ['Rating'],
+            },
           ],
         },
       ],
       attributes: ['TeacherId', 'AboutTeacher', 'LessonPrice'],
     });
 
-    const formattedTeachers = teachers.map((teacher) => ({
-      TeacherId: teacher.TeacherId,
-      FullName: `${teacher.User.FirstName} ${teacher.User.LastName}`,
-      ImagePathUrl: teacher.User.ImageFilePath || null,
-      SubjectName: teacher.Courses?.length > 0
-        ? teacher.Courses.slice(0, 2).map((course) => course.Subject?.SubjectName).filter(Boolean).join(', ')
-        : 'Не вказано',
-      AboutTeacher: teacher.AboutTeacher || 'Без опису',
-      LessonPrice: teacher.LessonPrice || 0,
-    }));
+    const formattedTeachers = teachers.map((teacher) => {
+      // Собираем все рейтинги из курсов учителя
+      const ratings = teacher.Courses?.flatMap((course) =>
+        course.Ratings?.map((rating) => parseFloat(rating.Rating)) || []
+      ) || [];
+
+      // Вычисляем средний рейтинг
+      const rating = ratings.length
+        ? ratings.reduce((sum, r) => sum + r, 0) / ratings.length
+        : 0;
+
+      return {
+        TeacherId: teacher.TeacherId,
+        FullName: `${teacher.User.FirstName} ${teacher.User.LastName}`,
+        ImagePathUrl: teacher.User.ImageFilePath || null,
+        SubjectName: teacher.Courses?.length > 0
+          ? teacher.Courses.slice(0, 2)
+              .map((course) => course.Subject?.SubjectName)
+              .filter(Boolean)
+              .join(', ')
+          : 'Не вказано',
+        AboutTeacher: teacher.AboutTeacher || 'Без опису',
+        LessonPrice: teacher.LessonPrice || 0,
+        Rating: parseFloat(rating.toFixed(1)), // Добавляем рейтинг
+      };
+    });
 
     if (!formattedTeachers.length) {
       return res.status(404).json({ success: false, message: 'No teachers found.' });

@@ -353,6 +353,15 @@ module.exports = (models) => {
     });
   }
 
+  if (models.Course && models.StudentCourseRating) {
+    models.Course.hasMany(models.StudentCourseRating, {
+      foreignKey: 'CourseId',
+      as: 'Ratings',
+      onDelete: 'CASCADE',
+      onUpdate: 'CASCADE',
+    });
+  }
+
   if (models.BlockedUser && models.User) {
     models.BlockedUser.belongsTo(models.User, {
       foreignKey: 'UserId',
