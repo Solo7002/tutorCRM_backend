@@ -73,6 +73,7 @@ router.get('/:id/events', studentController.getEventsByStudentId);
 router.get('/:id/days', studentController.getDaysByStudentId);
 router.get('/:id/user', studentController.searchUserByStudentId);
 router.get('/searchTeachers', studentController.searchTeachersForStudent);
+router.get('/search/user/:userId', studentController.getStudentByUserId);
 
 /**
  * @swagger

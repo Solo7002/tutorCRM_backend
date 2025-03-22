@@ -80,6 +80,7 @@ router.get('/:id/grades', teacherController.getMarksByTeacherId);
 router.get('/:id/days', teacherController.getDaysByTeacherId);
 router.get('/:id/productivity', teacherController.getProductivityByTeacherId);
 router.get('/info', teacherController.getAllAboutTeacher);
+router.get('/search/user/:userId', teacherController.getTeacherByUserId);
 
 /**
  * @swagger

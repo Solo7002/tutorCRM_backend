@@ -233,10 +233,10 @@ exports.getLeadersByTeacherId = async (req, res) => {
       ],
     });
 
-    if (!courses.length) {
-      console.log(`No courses found for teacher with ID: ${teacherId}`);
-      return res.status(404).json({ message: 'No courses found for the teacher' });
-    }
+    // if (!courses.length) {
+    //   console.log(`No courses found for teacher with ID: ${teacherId}`);
+    //   return res.status(404).json({ message: 'No courses found for the teacher' });
+    // }
 
     const leaders = [];
     for (const course of courses) {
@@ -317,10 +317,10 @@ exports.getLatestActivitiesByTeacherId = async (req, res) => {
       //limit: 10,
     });
 
-    if (!activities.length) {
-      console.log(`No activities found for teacher with ID: ${teacherId}`);
-      return res.status(404).json({ message: 'No activities found for the teacher' });
-    }
+    // if (!activities.length) {
+    //   console.log(`No activities found for teacher with ID: ${teacherId}`);
+    //   return res.status(404).json({ message: 'No activities found for the teacher' });
+    // }
 
     const formattedActivities = activities.map(activity => {
       const student = activity.Student.User;
@@ -373,10 +373,10 @@ exports.getDaysByTeacherId = async (req, res) => {
       ],
     });
 
-    if (!groups.length) {
-      console.log(`No groups found for teacher with ID: ${teacherId}`);
-      return res.status(404).json({ message: 'No groups found for the teacher' });
-    }
+    // if (!groups.length) {
+    //   console.log(`No groups found for teacher with ID: ${teacherId}`);
+    //   return res.status(404).json({ message: 'No groups found for the teacher' });
+    // }
 
     const days = [];
     groups.forEach(group => {
@@ -472,10 +472,10 @@ exports.getEventsByTeacherId = async (req, res) => {
       //limit: 3,
     });
 
-    if (!events.length) {
-      console.log(`No events found for teacher with ID: ${teacherId}`);
-      return res.status(404).json({ message: 'No events found for the teacher' });
-    }
+    // if (!events.length) {
+    //   console.log(`No events found for teacher with ID: ${teacherId}`);
+    //   return res.status(404).json({ message: 'No events found for the teacher' });
+    // }
 
     const formattedEvents = events.map(event => {
       const lessonDate = moment(event.LessonDate).format('YYYY-MM-DD');
@@ -524,10 +524,10 @@ exports.getMarksByTeacherId = async (req, res) => {
       attributes: ['Mark', 'MarkDate', 'MarkType'],
     });
 
-    if (!marks.length) {
-      console.log(`No marks found for teacher with ID: ${teacherId}`);
-      return res.status(404).json({ message: 'No marks found for the teacher' });
-    }
+    // if (!marks.length) {
+    //   console.log(`No marks found for teacher with ID: ${teacherId}`);
+    //   return res.status(404).json({ message: 'No marks found for the teacher' });
+    // }
 
     const grades = marks.map(mark => ({
       group: mark.Course.Groups[0].GroupName,
@@ -820,5 +820,28 @@ exports.getTeacherOctoCoinsById = async (req, res) => {
     res.status(200).json(octoCoins);
   } catch (error) {
     res.status(500).json({ error: error.message });
+  }
+};
+
+exports.getTeacherByUserId = async (req, res) => {
+  try {
+    const userId = req.params.userId;
+    const teachers = await Teacher.findAll({
+      where: { UserId: userId },
+      include: [{
+        model: User,
+        as: 'User',
+        attributes: ['UserId', 'FirstName', 'LastName', 'Email', 'ImageFilePath', 'Username']
+      }]
+    });
+    
+    if (!teachers.length) {
+      return res.status(404).json({ success: false, message: 'Teacher not found' });
+    }
+    
+    res.status(200).json({ success: true, data: teachers });
+  } catch (error) {
+    console.error('Error in getTeacherByUserId:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
   }
 };

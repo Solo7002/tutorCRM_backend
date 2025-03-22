@@ -243,10 +243,10 @@ exports.getMarksByStudentId = async (req, res) => {
       attributes: ['Mark', 'MarkDate', 'MarkType'],
     });
 
-    if (!marks.length) {
-      console.log(`No marks found for student with ID: ${studentId}`);
-      return res.status(404).json({ message: 'No marks found for the student' });
-    }
+    // if (!marks.length) {
+    //   console.log(`No marks found for student with ID: ${studentId}`);
+    //   return res.status(404).json({ message: 'No marks found for the student' });
+    // }
 
     const grades = marks.map(mark => ({
       subject: mark.Course.Subject.SubjectName,
@@ -557,5 +557,27 @@ exports.getStudentTrophiesById = async (req, res) => {
     res.status(200).json(trophies);
   } catch (error) {
     res.status(500).json({ error: error.message });
+  }
+};
+
+exports.getStudentByUserId = async (req, res) => {
+  try {
+    const userId = req.params.userId;
+    const students = await Student.findAll({
+      where: { UserId: userId },
+      include: [{
+        model: User,
+        as: 'User'
+      }]
+    });
+    
+    if (!students.length) {
+      return res.status(404).json({ success: false, message: 'Student not found' });
+    }
+    
+    res.status(200).json({ success: true, data: students });
+  } catch (error) {
+    console.error('Error in getStudentByUserId:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
   }
 };
