@@ -614,7 +614,7 @@ exports.getProductivityByTeacherId = async (req, res) => {
 
     const rating = ratings.length
       ? ratings.reduce((sum, r) => sum + parseFloat(r.Rating), 0) / ratings.length
-      : 0;
+      : 5;
 
     const productivityData = {};
 

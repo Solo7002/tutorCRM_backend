@@ -462,7 +462,7 @@ exports.searchTeachersForStudent = async (req, res) => {
       // Вычисляем средний рейтинг
       const rating = ratings.length
         ? ratings.reduce((sum, r) => sum + r, 0) / ratings.length
-        : 0;
+        : 5;
 
       return {
         TeacherId: teacher.TeacherId,
