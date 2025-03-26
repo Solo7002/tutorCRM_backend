@@ -1,4 +1,4 @@
-const { Group, Student, Course, Subject, User, GroupStudent, MarkHistory, PlannedLesson, Teacher, HomeTask, Trophies, StudentCourseRating } = require('../../models/dbModels');
+const { Group, Student, Course, Subject, User, GroupStudent, MarkHistory, PlannedLesson, Teacher, HomeTask, Trophies, StudentCourseRating, sequelize } = require('../../models/dbModels');
 const { parseQueryParams } = require('../../utils/dbUtils/queryUtils');
 const { Op } = require('sequelize');
 const moment = require('moment-timezone');
@@ -417,13 +417,79 @@ exports.getDaysByStudentId = async (req, res) => {
 
 exports.searchTeachersForStudent = async (req, res) => {
   try {
-    const { lessonType, meetingType, aboutTeacher } = req.query;
+    const { 
+      lessonType, 
+      meetingType, 
+      aboutTeacher, 
+      priceMin, 
+      priceMax, 
+      rating, 
+      format,
+      priceSort,
+      page = 1,
+      limit = 12 
+    } = req.query;
 
     let whereConditions = {};
-    if (lessonType) whereConditions.LessonType = lessonType;
-    if (meetingType) whereConditions.MeetingType = meetingType;
-    if (aboutTeacher) whereConditions.AboutTeacher = { [Op.like]: `%${aboutTeacher}%` };
+    let orderConditions = [];
 
+    // Фильтрация по типу урока
+    if (lessonType) whereConditions.LessonType = lessonType;
+    
+    // Фильтрация по формату встречи (поддержка обоих параметров)
+    if (format) whereConditions.MeetingType = format;
+    if (meetingType) whereConditions.MeetingType = meetingType;
+    
+    // Поиск по имени и описанию
+    if (aboutTeacher) {
+      whereConditions = {
+        [Op.or]: [
+          { AboutTeacher: { [Op.like]: `%${aboutTeacher}%` } },
+          { '$User.FirstName$': { [Op.like]: `%${aboutTeacher}%` } },
+          { '$User.LastName$': { [Op.like]: `%${aboutTeacher}%` } }
+        ]
+      };
+    }
+
+    // Фильтрация по цене
+    if (priceMin || priceMax) {
+      whereConditions.LessonPrice = {};
+      
+      if (priceMin) {
+        whereConditions.LessonPrice[Op.gte] = priceMin;
+      }
+      
+      if (priceMax) {
+        whereConditions.LessonPrice = {
+          [Op.or]: [
+            { [Op.lte]: priceMax },
+            { [Op.eq]: 0 }
+          ]
+        };
+      }
+    }
+
+    // Сортировка по цене или рейтингу
+    if (priceSort) {
+      orderConditions.push(['LessonPrice', priceSort === 'desc' ? 'DESC' : 'ASC']);
+    } else if (rating) {
+      orderConditions.push([sequelize.literal('averageRating'), rating === 'desc' ? 'DESC' : 'ASC']);
+    }
+
+    // Получаем общее количество учителей для пагинации
+    const totalCount = await Teacher.count({
+      where: whereConditions,
+      include: [
+        {
+          model: User,
+          as: 'User',
+          attributes: ['FirstName', 'LastName', 'ImageFilePath'],
+          required: aboutTeacher ? true : false
+        }
+      ]
+    });
+
+    // Получаем учителей с пагинацией
     const teachers = await Teacher.findAll({
       where: whereConditions,
       include: [
@@ -431,6 +497,7 @@ exports.searchTeachersForStudent = async (req, res) => {
           model: User,
           as: 'User',
           attributes: ['FirstName', 'LastName', 'ImageFilePath'],
+          required: aboutTeacher ? true : false
         },
         {
           model: Course,
@@ -441,50 +508,55 @@ exports.searchTeachersForStudent = async (req, res) => {
               model: Subject,
               as: 'Subject',
               attributes: ['SubjectName'],
-            },
-            {
-              model: StudentCourseRating,
-              as: 'Ratings', // Подключаем рейтинги курсов
-              attributes: ['Rating'],
-            },
+            }
           ],
         },
       ],
-      attributes: ['TeacherId', 'AboutTeacher', 'LessonPrice'],
+      attributes: [
+        'TeacherId', 
+        'AboutTeacher', 
+        'LessonPrice',
+        [
+          sequelize.literal(`(
+            SELECT COALESCE(AVG(Rating), 5)
+            FROM StudentsCourseRating 
+            WHERE CourseId IN (
+              SELECT CourseId 
+              FROM Courses 
+              WHERE TeacherId = Teacher.TeacherId
+            )
+          )`),
+          'averageRating'
+        ]
+      ],
+      order: orderConditions.length > 0 ? orderConditions : [[sequelize.literal('averageRating'), 'DESC']],
+      limit: parseInt(limit),
+      offset: (parseInt(page) - 1) * parseInt(limit),
     });
 
-    const formattedTeachers = teachers.map((teacher) => {
-      // Собираем все рейтинги из курсов учителя
-      const ratings = teacher.Courses?.flatMap((course) =>
-        course.Ratings?.map((rating) => parseFloat(rating.Rating)) || []
-      ) || [];
+    const formattedTeachers = teachers.map((teacher) => ({
+      TeacherId: teacher.TeacherId,
+      FullName: `${teacher.User.FirstName} ${teacher.User.LastName}`,
+      ImagePathUrl: teacher.User.ImageFilePath || null,
+      SubjectName: teacher.Courses?.length > 0
+        ? teacher.Courses.slice(0, 2)
+            .map((course) => course.Subject?.SubjectName)
+            .filter(Boolean)
+            .join(', ')
+        : 'Не вказано',
+      AboutTeacher: teacher.AboutTeacher || 'Без опису',
+      LessonPrice: teacher.LessonPrice || 0,
+      Rating: Number(teacher.getDataValue('averageRating')).toFixed(1),
+    }));
 
-      // Вычисляем средний рейтинг
-      const rating = ratings.length
-        ? ratings.reduce((sum, r) => sum + r, 0) / ratings.length
-        : 5;
-
-      return {
-        TeacherId: teacher.TeacherId,
-        FullName: `${teacher.User.FirstName} ${teacher.User.LastName}`,
-        ImagePathUrl: teacher.User.ImageFilePath || null,
-        SubjectName: teacher.Courses?.length > 0
-          ? teacher.Courses.slice(0, 2)
-              .map((course) => course.Subject?.SubjectName)
-              .filter(Boolean)
-              .join(', ')
-          : 'Не вказано',
-        AboutTeacher: teacher.AboutTeacher || 'Без опису',
-        LessonPrice: teacher.LessonPrice || 0,
-        Rating: parseFloat(rating.toFixed(1)), // Добавляем рейтинг
-      };
+    return res.status(200).json({ 
+      success: true, 
+      data: formattedTeachers,
+      total: totalCount,
+      currentPage: parseInt(page),
+      totalPages: Math.ceil(totalCount / parseInt(limit)),
+      hasMore: parseInt(page) * parseInt(limit) < totalCount
     });
-
-    if (!formattedTeachers.length) {
-      return res.status(404).json({ success: false, message: 'No teachers found.' });
-    }
-
-    return res.status(200).json({ success: true, data: formattedTeachers });
   } catch (error) {
     console.error('Error in searchTeachersForStudent:', error);
     return res.status(500).json({ success: false, message: 'Server error.' });
