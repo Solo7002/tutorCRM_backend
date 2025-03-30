@@ -15,6 +15,7 @@ module.exports = (sequelize, DataTypes) => {
         LessonPrice: {
             type: DataTypes.INTEGER,
             allowNull: true,
+            defaultValue: 0,
             validate: {
                 isInt: { msg: 'LessonPrice must be an integer' },
             },
