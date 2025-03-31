@@ -448,7 +448,7 @@ exports.searchTeachersForStudent = async (req, res) => {
       FullName: `${teacher.User.FirstName} ${teacher.User.LastName}`,
       ImagePathUrl: teacher.User.ImageFilePath || null,
       SubjectName: teacher.Courses?.length > 0
-        ? teacher.Courses.map((course) => course.Subject?.SubjectName).filter(Boolean).join(', ')
+        ? teacher.Courses.slice(0, 2).map((course) => course.Subject?.SubjectName).filter(Boolean).join(', ')
         : 'Не вказано',
       AboutTeacher: teacher.AboutTeacher || 'Без опису',
       LessonPrice: teacher.LessonPrice || 0,

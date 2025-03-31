@@ -114,12 +114,26 @@ module.exports = (models) => {
       onDelete: 'CASCADE',
       onUpdate: 'CASCADE',
     });
+
+    models.HomeTask.hasMany(models.HomeTaskFile, {
+      foreignKey: 'HomeTaskId',
+      as: 'HomeTaskFiles',
+      onDelete: 'CASCADE',
+      onUpdate: 'CASCADE',
+    });
   }
 
   if (models.DoneHomeTask && models.HomeTask) {
     models.DoneHomeTask.belongsTo(models.HomeTask, {
       foreignKey: 'HomeTaskId',
       as: 'HomeTask',
+      onDelete: 'SET NULL',
+      onUpdate: 'CASCADE',
+    });
+
+    models.HomeTask.hasMany(models.DoneHomeTask, {
+      foreignKey: 'HomeTaskId',
+      as: 'DoneHomeTasks',
       onDelete: 'SET NULL',
       onUpdate: 'CASCADE',
     });
@@ -138,6 +152,13 @@ module.exports = (models) => {
     models.DoneHomeTaskFile.belongsTo(models.DoneHomeTask, {
       foreignKey: 'DoneHomeTaskId',
       as: 'DoneHomeTask',
+      onDelete: 'CASCADE',
+      onUpdate: 'CASCADE',
+    });
+
+    models.DoneHomeTask.hasMany(models.DoneHomeTaskFile, {
+      foreignKey: 'DoneHomeTaskId',
+      as: 'DoneHomeTaskFiles',
       onDelete: 'CASCADE',
       onUpdate: 'CASCADE',
     });

@@ -25,11 +25,7 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.DATE,
       defaultValue: DataTypes.NOW,
       validate: {
-        isDate: { msg: 'StartDate must be a valid date' },
-        isBefore: {
-          args: new Date().toISOString(),
-          msg: 'StartDate must be before the current date and time',
-        },
+        isDate: { msg: 'StartDate must be a valid date' }
       },
     },
     DeadlineDate: {

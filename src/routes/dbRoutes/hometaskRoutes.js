@@ -1,6 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const hometaskController = require('../../controllers/dbControllers/hometaskController');
+const multer = require('multer');
+
+const upload = multer({ dest: 'uploads/' });
 
 /**
  * @swagger
@@ -148,6 +151,10 @@ router.put('/:id', hometaskController.updateHomeTask);
  */
 router.delete('/:id', hometaskController.deleteHomeTask);
 
+// router.post('/check-homework', upload.fields([{ name: 'teacherFiles' }, { name: 'studentFiles' }]), hometaskController.checkWithAI);
+router.post('/check-homework', hometaskController.checkWithAI);
+
+router.get('/hometask-data-by-teacher-id/:userId', hometaskController.getHomeTasksDataByTeacherId);
 
 router.get('/newHometask/:studentId', hometaskController.getNewHomeTasksByStudentId);
 module.exports = router;

@@ -138,7 +138,8 @@ router.put('/:id', testController.updateTest);
  */
 router.delete('/:id', testController.deleteTest);
 
-router.get("/test-info/:id", testController.getTestInfo);
+router.get("/test-info/:id", testController.getTestInfo); //getTestInfoByDoneTestId
+router.get("/testByDoneTest/:id", testController.getTestInfoByDoneTestId);
 
 router.get("/tests-by-student/:id", testController.getTestsByStudentId)
 

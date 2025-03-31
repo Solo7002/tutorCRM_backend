@@ -1,4 +1,5 @@
-const { Course, Subject, Group, GroupStudent, Test, TestQuestion, TestAnswer, SelectedAnswer, DoneTest, Location  } = require('../models/dbModels');
+const {sequelize, Course, Subject, Group, GroupStudent, Test, TestQuestion, TestAnswer, SelectedAnswer, DoneTest, Location, Teacher, Student, HomeTask, HomeTaskFile, DoneHomeTask, DoneHomeTaskFile, User  } = require('../models/dbModels');
+const { Op } = require('sequelize');
 
 async function populateDatabase() {
     // Створення Subject
@@ -234,4 +235,151 @@ async function populateDatabase() {
     }*/
 }
 
-module.exports = {populateDatabase};
+async function populateWithHometasks() {
+  const transaction = await sequelize.transaction();
+
+  try {
+    const teacher = await Teacher.findByPk(1, { transaction });
+    if (!teacher) {
+      throw new Error('Учитель с teacherId=1 не найден');
+    }
+
+    const [englishSubject, slovakSubject] = await Promise.all([
+      Subject.findOrCreate({
+        where: { SubjectName: 'Английский' },
+        defaults: { SubjectName: 'Английский' },
+        transaction,
+      }),
+      Subject.findOrCreate({
+        where: { SubjectName: 'Словацкий' },
+        defaults: { SubjectName: 'Словацкий' },
+        transaction,
+      }),
+    ]);
+
+    const courses = await Course.bulkCreate([
+      {
+        CourseName: 'Основы английского',
+        TeacherId: teacher.TeacherId,
+        SubjectId: englishSubject[0].SubjectId,
+        LocationId: 1
+      },
+      {
+        CourseName: 'Основы словацкого',
+        TeacherId: teacher.TeacherId,
+        SubjectId: slovakSubject[0].SubjectId,
+        LocationId: 1
+      },
+    ], { transaction });
+
+    const groups = await Group.bulkCreate([
+      { GroupName: 'AВ-246', GroupPrice: 0, CourseId: courses[0].CourseId },
+      { GroupName: 'БД-896', GroupPrice: 0, CourseId: courses[0].CourseId },
+      { GroupName: 'СЛ-112', GroupPrice: 0, CourseId: courses[1].CourseId },
+      { GroupName: 'БВ-221', GroupPrice: 0, CourseId: courses[1].CourseId },
+    ], { transaction });
+
+    const existingStudents = await Student.findAll({
+      where: { StudentId: { [Op.in]: [7, 9] } },
+      include: [{ model: User, as: 'User' }],
+      transaction,
+    });
+
+    const newUsers = await User.bulkCreate([
+      { Username: 'student1', Password: 'password', LastName: 'Иванов', FirstName: 'Иван', Email: 'student1@example.com' },
+      { Username: 'student2', Password: 'password', LastName: 'Петров', FirstName: 'Петр', Email: 'student2@example.com' },
+      { Username: 'student3', Password: 'password', LastName: 'Сидоров', FirstName: 'Сидор', Email: 'student3@example.com' },
+      { Username: 'student4', Password: 'password', LastName: 'Кузнецов', FirstName: 'Алексей', Email: 'student4@example.com' },
+      { Username: 'student5', Password: 'password', LastName: 'Смирнов', FirstName: 'Дмитрий', Email: 'student5@example.com' },
+    ], { transaction });
+
+    const newStudents = await Student.bulkCreate(newUsers.map(user => ({
+      UserId: user.UserId,
+    })), { transaction });
+
+    const allStudents = [...existingStudents, ...newStudents];
+
+    const groupStudents = [
+      { GroupId: groups[0].GroupId, StudentId: existingStudents[0].StudentId },
+      { GroupId: groups[0].GroupId, StudentId: existingStudents[1].StudentId },
+      { GroupId: groups[0].GroupId, StudentId: newStudents[0].StudentId },
+      { GroupId: groups[0].GroupId, StudentId: newStudents[1].StudentId },
+      { GroupId: groups[1].GroupId, StudentId: newStudents[2].StudentId },
+      { GroupId: groups[1].GroupId, StudentId: newStudents[3].StudentId },
+      { GroupId: groups[2].GroupId, StudentId: existingStudents[0].StudentId },
+      { GroupId: groups[2].GroupId, StudentId: newStudents[0].StudentId },
+      { GroupId: groups[2].GroupId, StudentId: newStudents[4].StudentId },
+      { GroupId: groups[3].GroupId, StudentId: existingStudents[1].StudentId },
+      { GroupId: groups[3].GroupId, StudentId: newStudents[1].StudentId },
+      { GroupId: groups[3].GroupId, StudentId: newStudents[2].StudentId },
+    ];
+
+    await sequelize.models.GroupStudent.bulkCreate(groupStudents, { transaction });
+
+    const today = new Date('2025-03-19');
+
+    for (const group of groups) {
+      const numHomeTasks = group.GroupName.includes('А') ? 3 : 4;
+      for (let i = 1; i <= numHomeTasks; i++) {
+        const startDate = new Date(today);
+        startDate.setDate(today.getDate() - 7 - i);
+        const deadlineDate = new Date(startDate);
+        deadlineDate.setDate(startDate.getDate() + 28);
+
+        console.log("startDate: ", startDate.toDateString());
+        console.log("DeadLine: ", deadlineDate.toDateString());
+        console.log("\n------------------------\n");
+
+        const homeTask = await HomeTask.create({
+          HomeTaskHeader: `Домашнее задание ${i} для ${group.GroupName}`,
+          HomeTaskDescription: `Внимательно проанализировать и сделать задание в тетради ${i}`,
+          ImageFilePath: `https://blobstorage226122007.blob.core.windows.net/blob-storage-container/task_cover2.jpg`,
+          StartDate: startDate,
+          DeadlineDate: deadlineDate,
+          MaxMark: 100,
+          GroupId: group.GroupId,
+        }, { transaction });
+
+        await HomeTaskFile.bulkCreate([
+          { FilePath: `https://blobstorage226122007.blob.core.windows.net/blob-storage-container/Примеры задание 1.docx`, FileName: `Примеры задание 1.docx`, HomeTaskId: homeTask.HomeTaskId },
+          { FilePath: `https://blobstorage226122007.blob.core.windows.net/blob-storage-container/Уравнения задание 2.pdf`, FileName: `Уравнения задание 2.pdf`, HomeTaskId: homeTask.HomeTaskId },
+        ], { transaction });
+
+        const groupStudents = await sequelize.models.GroupStudent.findAll({
+          where: { GroupId: group.GroupId },
+          transaction,
+        });
+
+        const numDoneTasks = Math.floor(Math.random() * groupStudents.length) + 1;
+        const selectedStudents = groupStudents.slice(0, numDoneTasks);
+
+        for (const gs of selectedStudents) {
+          const student = await Student.findByPk(gs.StudentId, { transaction });
+          const doneDate = new Date(startDate);
+          doneDate.setDate(startDate.getDate() + Math.floor(Math.random() * 7));
+
+          const doneHomeTask = await DoneHomeTask.create({
+            Mark: Math.floor(Math.random() * 13),
+            DoneDate: doneDate,
+            HomeTaskId: homeTask.HomeTaskId,
+            StudentId: student.StudentId,
+          }, { transaction });
+
+          await DoneHomeTaskFile.bulkCreate([
+            { FilePath: `https://blobstorage226122007.blob.core.windows.net/blob-storage-container/done_ht.jpg`, FileName: `done_ht.jpg`, DoneHomeTaskId: doneHomeTask.DoneHomeTaskId },
+            { FilePath: `https://blobstorage226122007.blob.core.windows.net/blob-storage-container/done_ht2.jpg`, FileName: `Уравнения done_ht2.jpg`, DoneHomeTaskId: doneHomeTask.DoneHomeTaskId },
+          ], { transaction });
+        }
+      }
+    }
+
+    await transaction.commit();
+    console.log('Тестовые данные успешно добавлены');
+  } catch (error) {
+    await transaction.rollback();
+    console.error('Ошибка при добавлении тестовых данных:', error);
+    throw error;
+  }
+}
+
+module.exports = {populateDatabase, populateWithHometasks };
