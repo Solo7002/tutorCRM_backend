@@ -140,4 +140,6 @@ router.put('/:id', courseController.updateCourse);
  */
 router.delete('/:id', courseController.deleteCourse);
 
+router.get("/courses-by-teacher/:id", courseController.getCoursesByTeacherId)
+
 module.exports = router;

@@ -26,7 +26,52 @@ exports.getSubjects = async (req, res) => {
     res.status(400).json({ error: error.message });
   }
 };
+exports.getSubjectByGroupId = async (req, res) => {
+  try {
+    const { groupId } = req.params;
 
+    if (!groupId) {
+      return res.status(400).json({ error: "GroupId is required" });
+    }
+
+    const group = await Group.findByPk(groupId, {
+      include: [
+        {
+          model: Course,
+          as: "Course",
+          include: [
+            {
+              model: Subject,
+              as: "Subject",
+            },
+          ],
+        },
+      ],
+    });
+
+    if (!group) {
+      return res.status(404).json({ error: "Group not found" });
+    }
+
+    if (!group.Course || !group.Course.Subject) {
+      return res.status(404).json({ error: "Subject not found for this group" });
+    }
+
+    const subjectInfo = {
+      GroupId: group.GroupId,
+      GroupName: group.GroupName,
+      CourseName: group.Course.CourseName,
+      SubjectName: group.Course.Subject.SubjectName,
+    };
+
+    console.log(subjectInfo); 
+
+    res.status(200).json(subjectInfo);
+  } catch (error) {
+    console.error("Error in getSubjectByGroupId:", error);
+    res.status(400).json({ error: error.message });
+  }
+};
 exports.getSubjectById = async (req, res) => {
   try {
     const subject = await Subject.findByPk(req.params.id);
@@ -150,10 +195,9 @@ exports.getSubjectsByStudentId = async (req, res) => {
       return res.status(404).json({ message: 'Student not found' });
     }
 
-    // Собираем все уникальные предметы
-    const subjects = [];
-    const subjectMap = new Map(); // Для исключения дубликатов
 
+    const subjects = [];
+    const subjectMap = new Map(); 
     student.Groups.forEach(group => {
       if (group.Course && group.Course.Subject) {
         const subject = group.Course.Subject;
@@ -167,12 +211,12 @@ exports.getSubjectsByStudentId = async (req, res) => {
       }
     });
 
-    // Если предметов нет
+
     if (subjects.length === 0) {
       return res.status(404).json({ message: 'No subjects found for this student' });
     }
 
-    // Возвращаем список предметов
+ 
     res.json(subjects);
 
   } catch (error) {

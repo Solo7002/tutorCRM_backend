@@ -1,4 +1,4 @@
-const { Group, GroupStudent } = require('../../models/dbModels');
+const { Group, GroupStudent,Course,Teacher } = require('../../models/dbModels');
 const { parseQueryParams } = require('../../utils/dbUtils/queryUtils');
 const { Op } = require('sequelize');
 
@@ -93,6 +93,51 @@ exports.deleteGroup = async (req, res) => {
     res.status(204).send();
   } catch (error) {
     console.error('Error in deleteGroup:', error);
+    res.status(400).json({ error: error.message });
+  }
+};
+
+exports.getGroupsByTeacherId = async (req, res) => {
+  try {
+    const { id } = req.params; 
+
+    
+    if (!id) {
+      return res.status(400).json({ error: "TeacherId is required" });
+    }
+
+
+    const groups = await Group.findAll({
+      include: [
+        {
+          model: Course,
+          as: "Course",
+          include: [
+            {
+              model: Teacher,
+              as: "Teacher",
+              where: { TeacherId: id },
+            },
+          ],
+        },
+      ],
+    });
+
+  
+    if (!groups || groups.length === 0) {
+      return res.status(404).json({ error: "No groups found for this teacher" });
+    }
+
+   
+    const groupInfo = groups.map((group) => ({
+      GroupId: group.GroupId,
+      GroupName: group.GroupName,
+      CourseName: group.Course ? group.Course.CourseName : null, 
+    }));
+
+    res.status(200).json(groupInfo);
+  } catch (error) {
+    console.error("Error in getGroupsByTeacher:", error);
     res.status(400).json({ error: error.message });
   }
 };
