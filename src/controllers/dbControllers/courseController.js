@@ -82,3 +82,23 @@ exports.deleteCourse = async (req, res) => {
     res.status(400).json({ error: error.message });
   }
 };
+
+exports.getCoursesByTeacherId = async (req, res) => {
+  try {
+    const { id } = req.params; 
+
+    const courses = await Course.findAll({
+      where: { TeacherId: id },
+      attributes: ["CourseId", "CourseName"],
+    });
+
+    if (!courses || courses.length === 0) {
+      return res.status(404).json({ error: "No courses found for this teacher" });
+    }
+
+    res.status(200).json(courses);
+  } catch (error) {
+    console.error("Error in getCoursesByTeacher:", error);
+    res.status(400).json({ error: error.message });
+  }
+};

@@ -142,5 +142,7 @@ router.get("/test-info/:id", testController.getTestInfo);
 
 router.get("/tests-by-student/:id", testController.getTestsByStudentId)
 router.post("/generate-test-by-AI/", testController.getTestCreatedByAI)
-
+router.get("/tests-by-teacher/:id", testController.getTestsByTeacherId)
+router.get("/students-done/:testId", testController.getStudentsDoneTest);
+router.get("/students-not-done/:testId", testController.getStudentsNotDoneTest);
 module.exports = router;

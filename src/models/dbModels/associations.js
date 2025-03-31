@@ -438,7 +438,21 @@ module.exports = (models) => {
       onDelete: 'CASCADE', // Удаление курсов при удалении предмета
       onUpdate: 'CASCADE', // Обновление курсов при обновлении предмета
     });
-
+    if (models.Student && models.DoneTest) {
+      models.Student.hasMany(models.DoneTest, {
+        foreignKey: 'StudentId',
+        as: 'DoneTests',
+        onDelete: 'CASCADE',
+        onUpdate: 'CASCADE',
+      });
+    
+      models.DoneTest.belongsTo(models.Student, {
+        foreignKey: 'StudentId',
+        as: 'Student',
+        onDelete: 'CASCADE',
+        onUpdate: 'CASCADE',
+      });
+    }
     // Course belongs to Subject
     models.Course.belongsTo(models.Subject, {
       foreignKey: 'SubjectId', // Внешний ключ в таблице Courses

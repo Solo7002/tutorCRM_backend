@@ -1,4 +1,4 @@
-const { Student, GroupStudent, Test, DoneTest, Group, Course, Subject, Teacher, User, TestQuestion } = require('../../models/dbModels');
+const { Student, GroupStudent, Test, DoneTest, Group, Course, Subject, Teacher, User, TestQuestion} = require('../../models/dbModels');
 const { parseQueryParams } = require('../../utils/dbUtils/queryUtils');
 const { Op } = require('sequelize');
 const testService=require('../../services/testCreatedAIService');
@@ -28,11 +28,44 @@ exports.getTests = async (req, res) => {
 
 exports.getTestById = async (req, res) => {
   try {
-    const test = await Test.findByPk(req.params.id);
-    if (!test) return res.status(404).json({ error: "Test not found" });
-    res.status(200).json(test);
+    const { id } = req.params;
+
+    if (!id) {
+      return res.status(400).json({ error: "TestId is required" });
+    }
+
+    const test = await Test.findByPk(id, {
+      include: [
+        {
+          model: Group,
+          as: "Groups",
+          include: [
+            {
+              model: Course,
+              as: "Course",
+            },
+          ],
+        },
+      ],
+    });
+    if (!test) {
+      return res.status(404).json({ error: "Test not found" });
+    }
+    const testInfo = {
+      TestId: test.TestId,
+      TestName: test.TestName,
+      TestDescription: test.TestDescription,
+      CreatedDate: test.CreatedDate,
+      DeadlineDate: test.DeadlineDate,
+      MaxMark: test.MaxMark,
+      TimeLimit: test.TimeLimit,
+      GroupName: test.Groups?.GroupName || "N/A", 
+      CourseName: test.Groups?.Course?.CourseName || "N/A", 
+    };
+
+    res.status(200).json(testInfo);
   } catch (error) {
-    console.error('Error in getTestById:', error);
+    console.error("Error in getTestById:", error);
     res.status(400).json({ error: error.message });
   }
 };
@@ -259,3 +292,186 @@ exports.getTestCreatedByAI = async (req, res) => {
     res.status(400).json({ error: error.message });
   }
 }
+
+
+exports.getTestsByTeacherId = async (req, res) => {
+  try {
+    const { id } = req.params; 
+
+   
+    if (!id) {
+      return res.status(400).json({ error: 'TeacherId is required' });
+    }
+
+    
+    const tests = await Test.findAll({
+      include: [
+        {
+          model: Group,
+          as: 'Groups', 
+          include: [
+            {
+              model: Course,
+              as: 'Course',
+              include: [
+                {
+                  model: Teacher,
+                  as: 'Teacher', 
+                  where: { TeacherId: id },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+
+    
+    if (!tests || tests.length === 0) {
+      return res.status(404).json({ error: 'No tests found for this teacher' });
+    }
+
+   
+    const testInfo = tests.map(test => ({
+      TestId: test.TestId,
+      TestName: test.TestName,
+      TestDescription: test.TestDescription,
+      CreatedDate: test.CreatedDate,
+      DeadlineDate: test.DeadlineDate,
+      MaxMark: test.MaxMark,
+      TimeLimit: test.TimeLimit,
+      GroupName: test.Groups.GroupName, 
+      CourseName: test.Groups.Course.CourseName,
+    }));
+
+
+    res.status(200).json(testInfo);
+  } catch (error) {
+    console.error('Error in getTestsByTeacherId:', error);
+    res.status(400).json({ error: error.message });
+  }
+};
+
+
+exports.getStudentsNotDoneTest = async (req, res) => {
+  try {
+    const { testId } = req.params;
+
+    if (!testId) {
+      return res.status(400).json({ error: "TestId is required" });
+    }
+
+    const test = await Test.findByPk(testId, {
+      include: [
+        {
+          model: Group,
+          as: "Groups",
+          include: [
+            {
+              model: Student,
+              as: "Students",
+              through: { attributes: [] },
+              include: [
+                {
+                  model: DoneTest,
+                  as: "DoneTests",
+                  where: { TestId: testId },
+                  required: false,
+                },
+                {
+                  model: User,
+                  as: "User", 
+                  attributes: ["FirstName", "LastName","ImageFilePath"], 
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+
+    if (!test) {
+      return res.status(404).json({ error: "Test not found" });
+    }
+
+    const studentsNotDone = test.Groups.Students.filter(
+      (student) => !student.DoneTests || student.DoneTests.length === 0
+    ).map((student) => ({
+      StudentId: student.StudentId,
+      FirstName: student.User?.FirstName || "N/A", 
+      LastName: student.User?.LastName || "N/A", 
+      ImageFilePath: student.User?.ImageFilePath || null,
+      DoneDate: null, 
+      Score: null,
+      MaxScore: test.MaxMark,
+      Status: "Default",
+    }));
+
+    res.status(200).json(studentsNotDone);
+  } catch (error) {
+    console.error("Error in getStudentsNotDoneTest:", error);
+    res.status(400).json({ error: error.message });
+  }
+};
+
+exports.getStudentsDoneTest = async (req, res) => {
+  try {
+    const { testId } = req.params;
+
+    if (!testId) {
+      return res.status(400).json({ error: "TestId is required" });
+    }
+
+    const test = await Test.findByPk(testId, {
+      include: [
+        {
+          model: Group,
+          as: "Groups",
+          include: [
+            {
+              model: Student,
+              as: "Students",
+              through: { attributes: [] },
+              include: [
+                {
+                  model: DoneTest,
+                  as: "DoneTests",
+                  where: { TestId: testId },
+                  required: true,
+                },
+                {
+                  model: User,
+                  as: "User", 
+                  attributes: ["FirstName", "LastName","ImageFilePath"],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+
+    if (!test) {
+      return res.status(404).json({ error: "Test not found" });
+    }
+
+    const studentsDone = test.Groups.Students.map((student) => {
+      const doneTest = student.DoneTests[0];
+      return {
+        StudentId: student.StudentId,
+        FirstName: student.User?.FirstName || "N/A", // Access FirstName from User
+        LastName: student.User?.LastName || "N/A", // Access LastName from User
+        ImageFilePath: student.User?.ImageFilePath || null,
+        DoneDate: doneTest.DoneDate, 
+        Score: doneTest.Mark,
+        MaxScore: test.MaxMark,
+        Status: "Active",
+      };
+    });
+
+    res.status(200).json(studentsDone);
+  } catch (error) {
+    console.error("Error in getStudentsDoneTest:", error);
+    res.status(400).json({ error: error.message });
+  }
+};
