@@ -73,6 +73,7 @@ router.get('/:id/events', studentController.getEventsByStudentId);
 router.get('/:id/days', studentController.getDaysByStudentId);
 router.get('/:id/user', studentController.searchUserByStudentId);
 router.get('/searchTeachers', studentController.searchTeachersForStudent);
+router.get('/search/user/:userId', studentController.getStudentByUserId);
 
 /**
  * @swagger
@@ -96,6 +97,7 @@ router.get('/searchTeachers', studentController.searchTeachersForStudent);
  *               $ref: '#/components/schemas/Student'
  */
 router.get('/:id', studentController.getStudentById);
+router.get('/:id/trophies', studentController.getStudentTrophiesById);
 
 /**
  * @swagger
@@ -121,6 +123,7 @@ router.get('/:id', studentController.getStudentById);
  *         description: The student was successfully updated
  */
 router.put('/:id', studentController.updateStudent);
+router.put('/:id/trophies', studentController.updateStudentTrophiesById);
 
 /**
  * @swagger

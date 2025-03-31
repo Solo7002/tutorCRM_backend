@@ -124,6 +124,7 @@ router.get('/complete/:id', doneTestController.getDoneTestInfoById);
  *         description: The done test was successfully updated
  */
 router.put('/:id', doneTestController.updateDoneTest);
+router.put('/:id/mark', doneTestController.setMarkForDoneTest);
 
 /**
  * @swagger

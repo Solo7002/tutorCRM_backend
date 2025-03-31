@@ -1,4 +1,4 @@
-const { User } = require('../../models/dbModels');
+const { User, Student, Teacher, Trophies, OctoCoins } = require('../../models/dbModels');
 const { parseQueryParams } = require('../../utils/dbUtils/queryUtils');
 const { Op } = require('sequelize');
 
@@ -76,5 +76,54 @@ exports.deleteUser = async (req, res) => {
     res.status(200).json({ message: 'User deleted' });
   } catch (error) {
     res.status(400).json({ error: error.message });
+  }
+};
+
+exports.getUserBalance = async (req, res) => {
+  try {
+    const userId = req.params.id;
+
+    // Находим пользователя
+    const user = await User.findByPk(userId, {
+      include: [
+        { model: Student, as: 'Student', include: [{ model: Trophies, as: 'Trophies' }] },
+        { model: Teacher, as: 'Teacher', include: [{ model: OctoCoins, as: 'OctoCoins' }] },
+      ],
+    });
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Проверяем роль пользователя и возвращаем соответствующий баланс
+    if (user.Student) {
+      // Ученик: возвращаем трофеи
+      const trophies = user.Student.Trophies ? user.Student.Trophies.Amount : 0;
+      return res.status(200).json({
+        UserId: user.UserId,
+        Username: user.Username,
+        Role: 'Student',
+        Balance: {
+          Trophies: trophies,
+        },
+      });
+    } else if (user.Teacher) {
+      // Учитель: возвращаем монетки
+      const coins = user.Teacher.OctoCoins ? user.Teacher.OctoCoins.Amount : 0;
+      return res.status(200).json({
+        UserId: user.UserId,
+        Username: user.Username,
+        Role: 'Teacher',
+        Balance: {
+          OctoCoins: coins,
+        },
+      });
+    } else {
+      // Если пользователь не учитель и не ученик
+      return res.status(400).json({ message: 'User role not defined (neither Student nor Teacher)' });
+    }
+  } catch (error) {
+    console.error('Error in getUserBalance:', error);
+    res.status(500).json({ error: 'Server error, please try again later' });
   }
 };

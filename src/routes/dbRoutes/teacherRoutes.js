@@ -80,6 +80,7 @@ router.get('/:id/grades', teacherController.getMarksByTeacherId);
 router.get('/:id/days', teacherController.getDaysByTeacherId);
 router.get('/:id/productivity', teacherController.getProductivityByTeacherId);
 router.get('/info', teacherController.getAllAboutTeacher);
+router.get('/search/user/:userId', teacherController.getTeacherByUserId);
 
 /**
  * @swagger
@@ -103,6 +104,7 @@ router.get('/info', teacherController.getAllAboutTeacher);
  *               $ref: '#/components/schemas/Teacher'
  */
 router.get('/:id', teacherController.getTeacherById);
+router.get('/:id/octocoins', teacherController.getTeacherOctoCoinsById);
 
 /**
  * @swagger
@@ -128,6 +130,7 @@ router.get('/:id', teacherController.getTeacherById);
  *         description: The teacher was successfully updated
  */
 router.put('/:id', teacherController.updateTeacher);
+router.put('/:id/octocoins', teacherController.updateTeacherOctoCoins);
 
 /**
  * @swagger

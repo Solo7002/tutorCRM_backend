@@ -1,5 +1,5 @@
 const { where } = require('../../config/database');
-const { Teacher, HomeTask, Group, User, Course, Student, UserReview, StudentCourseRating, GroupStudent, DoneHomeTask, Subject, PlannedLesson, MarkHistory, sequelize } = require('../../models/dbModels');
+const { Teacher, HomeTask, Group, User, Course, Student, UserReview, StudentCourseRating, GroupStudent, DoneHomeTask, Subject, PlannedLesson, MarkHistory, OctoCoins, sequelize } = require('../../models/dbModels');
 const { parseQueryParams } = require('../../utils/dbUtils/queryUtils');
 const { Op } = require('sequelize');
 const moment = require('moment');
@@ -8,6 +8,11 @@ const momentTimezone = require('moment-timezone');
 exports.createTeacher = async (req, res) => {
   try {
     const teacher = await Teacher.create(req.body);
+    const octoCoin = await OctoCoins.create({
+      TeacherId: teacher.TeacherId,
+      Amount: 0,
+    });
+    await teacher.update({ OctoCoinId: octoCoin.OctoCoinId });
     res.status(201).json(teacher);
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -73,14 +78,14 @@ exports.getAllAboutTeacher = async (req, res) => {
       return res.status(404).json({ success: false, message: 'No teachers found.' });
     }
     const courses = await Course.findAll({
-        where: {
-            TeacherId: teacher.TeacherId
-        }
+      where: {
+        TeacherId: teacher.TeacherId
+      }
     });
     const reviews = await UserReview.findAll({
-        where: {
-            //UserIdFor: UserId
-        }
+      where: {
+        //UserIdFor: UserId
+      }
     });
 
     return res.status(200).json({ teacher, courses, reviews });
@@ -228,10 +233,10 @@ exports.getLeadersByTeacherId = async (req, res) => {
       ],
     });
 
-    if (!courses.length) {
-      console.log(`No courses found for teacher with ID: ${teacherId}`);
-      return res.status(404).json({ message: 'No courses found for the teacher' });
-    }
+    // if (!courses.length) {
+    //   console.log(`No courses found for teacher with ID: ${teacherId}`);
+    //   return res.status(404).json({ message: 'No courses found for the teacher' });
+    // }
 
     const leaders = [];
     for (const course of courses) {
@@ -312,10 +317,10 @@ exports.getLatestActivitiesByTeacherId = async (req, res) => {
       //limit: 10,
     });
 
-    if (!activities.length) {
-      console.log(`No activities found for teacher with ID: ${teacherId}`);
-      return res.status(404).json({ message: 'No activities found for the teacher' });
-    }
+    // if (!activities.length) {
+    //   console.log(`No activities found for teacher with ID: ${teacherId}`);
+    //   return res.status(404).json({ message: 'No activities found for the teacher' });
+    // }
 
     const formattedActivities = activities.map(activity => {
       const student = activity.Student.User;
@@ -368,10 +373,10 @@ exports.getDaysByTeacherId = async (req, res) => {
       ],
     });
 
-    if (!groups.length) {
-      console.log(`No groups found for teacher with ID: ${teacherId}`);
-      return res.status(404).json({ message: 'No groups found for the teacher' });
-    }
+    // if (!groups.length) {
+    //   console.log(`No groups found for teacher with ID: ${teacherId}`);
+    //   return res.status(404).json({ message: 'No groups found for the teacher' });
+    // }
 
     const days = [];
     groups.forEach(group => {
@@ -457,30 +462,28 @@ exports.getEventsByTeacherId = async (req, res) => {
           ],
         },
       ],
-      attributes: ['LessonHeader', 'LessonDate', 'LessonTime', 'TimeZone'],
+      attributes: ['LessonHeader', 'LessonDate', 'StartLessonTime'],
       where: {
         LessonDate: {
-          [require('sequelize').Op.gte]: new Date(),
+          [Op.gte]: new Date(),
         },
       },
       order: [['LessonDate', 'ASC']],
       //limit: 3,
     });
 
-    if (!events.length) {
-      console.log(`No events found for teacher with ID: ${teacherId}`);
-      return res.status(404).json({ message: 'No events found for the teacher' });
-    }
+    // if (!events.length) {
+    //   console.log(`No events found for teacher with ID: ${teacherId}`);
+    //   return res.status(404).json({ message: 'No events found for the teacher' });
+    // }
 
     const formattedEvents = events.map(event => {
-      const lessonDate = moment(event.LessonDate)
-        .tz(event.TimeZone || 'UTC')
-        .format('YYYY-MM-DD');
+      const lessonDate = moment(event.LessonDate).format('YYYY-MM-DD');
 
       return {
         title: event.LessonHeader,
         date: lessonDate,
-        time: event.LessonTime,
+        time: moment(event.StartLessonTime).format('HH:mm'),
         image: event.Group.Course.Teacher.User.ImageFilePath || '/assets/images/avatar.jpg',
         link: '/',
       };
@@ -521,10 +524,10 @@ exports.getMarksByTeacherId = async (req, res) => {
       attributes: ['Mark', 'MarkDate', 'MarkType'],
     });
 
-    if (!marks.length) {
-      console.log(`No marks found for teacher with ID: ${teacherId}`);
-      return res.status(404).json({ message: 'No marks found for the teacher' });
-    }
+    // if (!marks.length) {
+    //   console.log(`No marks found for teacher with ID: ${teacherId}`);
+    //   return res.status(404).json({ message: 'No marks found for the teacher' });
+    // }
 
     const grades = marks.map(mark => ({
       group: mark.Course.Groups[0].GroupName,
@@ -611,7 +614,7 @@ exports.getProductivityByTeacherId = async (req, res) => {
 
     const rating = ratings.length
       ? ratings.reduce((sum, r) => sum + parseFloat(r.Rating), 0) / ratings.length
-      : 0;
+      : 5;
 
     const productivityData = {};
 
@@ -645,30 +648,30 @@ exports.getProductivityByTeacherId = async (req, res) => {
 
       const prevTasksChecked = period.prevStart
         ? await DoneHomeTask.count({
-            include: [
-              {
-                model: HomeTask,
-                as: 'HomeTask',
-                required: true,
-                include: [
-                  {
-                    model: Group,
-                    as: 'Group',
-                    required: true,
-                    include: [
-                      {
-                        model: Course,
-                        as: 'Course',
-                        required: true,
-                        where: { TeacherId: teacherId },
-                      },
-                    ],
-                  },
-                ],
-              },
-            ],
-            where: { DoneDate: { [Op.between]: [period.prevStart, period.prevEnd] } },
-          })
+          include: [
+            {
+              model: HomeTask,
+              as: 'HomeTask',
+              required: true,
+              include: [
+                {
+                  model: Group,
+                  as: 'Group',
+                  required: true,
+                  include: [
+                    {
+                      model: Course,
+                      as: 'Course',
+                      required: true,
+                      where: { TeacherId: teacherId },
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+          where: { DoneDate: { [Op.between]: [period.prevStart, period.prevEnd] } },
+        })
         : 0;
 
       // Lessons Conducted
@@ -693,23 +696,23 @@ exports.getProductivityByTeacherId = async (req, res) => {
 
       const prevLessonsConducted = period.prevStart
         ? await PlannedLesson.count({
-            include: [
-              {
-                model: Group,
-                as: 'Group',
-                required: true,
-                include: [
-                  {
-                    model: Course,
-                    as: 'Course',
-                    required: true,
-                    where: { TeacherId: teacherId },
-                  },
-                ],
-              },
-            ],
-            where: { LessonDate: { [Op.between]: [period.prevStart, period.prevEnd] } },
-          })
+          include: [
+            {
+              model: Group,
+              as: 'Group',
+              required: true,
+              include: [
+                {
+                  model: Course,
+                  as: 'Course',
+                  required: true,
+                  where: { TeacherId: teacherId },
+                },
+              ],
+            },
+          ],
+          where: { LessonDate: { [Op.between]: [period.prevStart, period.prevEnd] } },
+        })
         : 0;
 
       // New Clients
@@ -734,23 +737,23 @@ exports.getProductivityByTeacherId = async (req, res) => {
 
       const prevNewClients = period.prevStart
         ? await GroupStudent.count({
-            include: [
-              {
-                model: Group,
-                as: 'Group',
-                required: true,
-                include: [
-                  {
-                    model: Course,
-                    as: 'Course',
-                    required: true,
-                    where: { TeacherId: teacherId },
-                  },
-                ],
-              },
-            ],
-            where: { JoinDate: { [Op.between]: [period.prevStart, period.prevEnd] } },
-          })
+          include: [
+            {
+              model: Group,
+              as: 'Group',
+              required: true,
+              include: [
+                {
+                  model: Course,
+                  as: 'Course',
+                  required: true,
+                  where: { TeacherId: teacherId },
+                },
+              ],
+            },
+          ],
+          where: { JoinDate: { [Op.between]: [period.prevStart, period.prevEnd] } },
+        })
         : 0;
 
       // Reviews Received
@@ -765,13 +768,13 @@ exports.getProductivityByTeacherId = async (req, res) => {
 
       const prevReviewsReceived = period.prevStart
         ? await UserReview.count({
-            where: {
-              UserIdFor: {
-                [Op.in]: sequelize.literal(`(SELECT UserId FROM Teachers WHERE TeacherId = ${teacherId})`),
-              },
-              CreateDate: { [Op.between]: [period.prevStart, period.prevEnd] },
+          where: {
+            UserIdFor: {
+              [Op.in]: sequelize.literal(`(SELECT UserId FROM Teachers WHERE TeacherId = ${teacherId})`),
             },
-          })
+            CreateDate: { [Op.between]: [period.prevStart, period.prevEnd] },
+          },
+        })
         : 0;
 
       productivityData[periodName] = {
@@ -791,5 +794,54 @@ exports.getProductivityByTeacherId = async (req, res) => {
   } catch (error) {
     console.error('Error in getProductivityByTeacherId:', error);
     res.status(500).json({ error: 'Server error' });
+  }
+};
+
+exports.updateTeacherOctoCoins = async (req, res) => {
+  try {
+    const teacherId = req.params.id;
+    const octoCoins = await OctoCoins.findOne({ where: { TeacherId: teacherId } });
+    if (!octoCoins) {
+      return res.status(404).json({ message: 'OctoCoins not found for this teacher' });
+    }
+    await octoCoins.update({ Amount: req.body.Amount });
+    res.status(200).json(octoCoins);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
+exports.getTeacherOctoCoinsById = async (req, res) => {
+  try {
+    const octoCoins = await OctoCoins.findOne({
+      where: { TeacherId: req.params.id },
+    });
+    if (!octoCoins) return res.status(404).json({ message: 'OctoCoins not found for this teacher' });
+    res.status(200).json(octoCoins);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.getTeacherByUserId = async (req, res) => {
+  try {
+    const userId = req.params.userId;
+    const teachers = await Teacher.findAll({
+      where: { UserId: userId },
+      include: [{
+        model: User,
+        as: 'User',
+        attributes: ['UserId', 'FirstName', 'LastName', 'Email', 'ImageFilePath', 'Username']
+      }]
+    });
+    
+    if (!teachers.length) {
+      return res.status(404).json({ success: false, message: 'Teacher not found' });
+    }
+    
+    res.status(200).json({ success: true, data: teachers });
+  } catch (error) {
+    console.error('Error in getTeacherByUserId:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
   }
 };

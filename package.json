@@ -44,7 +44,6 @@
     "redis": "^4.7.0",
     "response-time": "^2.3.3",
     "sequelize": "^6.37.5",
-    "sequelize-cli": "^6.6.2",
     "sequelize-mock": "^0.10.2",
     "sinon": "^19.0.2",
     "supertest": "^7.0.0",
@@ -56,6 +55,7 @@
   },
   "devDependencies": {
     "jest": "^29.7.0",
+    "sequelize-cli": "^6.6.2",
     "sinon": "^19.0.2",
     "supertest": "^7.0.0"
   }

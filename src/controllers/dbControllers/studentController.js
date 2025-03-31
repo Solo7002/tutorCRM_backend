@@ -1,4 +1,4 @@
-const { Group, Student, Course, Subject, User, GroupStudent, MarkHistory, PlannedLesson, Teacher, HomeTask } = require('../../models/dbModels');
+const { Group, Student, Course, Subject, User, GroupStudent, MarkHistory, PlannedLesson, Teacher, HomeTask, Trophies, StudentCourseRating, sequelize } = require('../../models/dbModels');
 const { parseQueryParams } = require('../../utils/dbUtils/queryUtils');
 const { Op } = require('sequelize');
 const moment = require('moment-timezone');
@@ -8,6 +8,11 @@ const { convertStandardTimeZoneToUTC } = require('../../utils/dbUtils/timeUtils'
 exports.createStudent = async (req, res) => {
   try {
     const student = await Student.create(req.body);
+    const trophy = await Trophies.create({
+      StudentId: student.StudentId,
+      Amount: 0,
+    });
+    await student.update({ TrophyId: trophy.TrophyId });
     res.status(201).json(student);
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -58,7 +63,7 @@ exports.searchStudents = async (req, res) => {
 exports.searchStudentsByUserId = async (req, res) => {
   try {
     const userId = req.params.id;
-    
+
     const students = await Student.findAll({
       where: {
         UserId: userId
@@ -66,22 +71,22 @@ exports.searchStudentsByUserId = async (req, res) => {
     });
 
     if (!students.length) {
-      return res.status(404).json({ 
-        success: false, 
-        message: 'No students found with this UserId.' 
+      return res.status(404).json({
+        success: false,
+        message: 'No students found with this UserId.'
       });
     }
 
-    return res.status(200).json({ 
-      success: true, 
-      data: students 
+    return res.status(200).json({
+      success: true,
+      data: students
     });
-    
+
   } catch (error) {
     console.error('Error in searchStudentsByUserId:', error);
-    return res.status(500).json({ 
-      success: false, 
-      message: 'Server error.' 
+    return res.status(500).json({
+      success: false,
+      message: 'Server error.'
     });
   }
 };
@@ -238,10 +243,10 @@ exports.getMarksByStudentId = async (req, res) => {
       attributes: ['Mark', 'MarkDate', 'MarkType'],
     });
 
-    if (!marks.length) {
-      console.log(`No marks found for student with ID: ${studentId}`);
-      return res.status(404).json({ message: 'No marks found for the student' });
-    }
+    // if (!marks.length) {
+    //   console.log(`No marks found for student with ID: ${studentId}`);
+    //   return res.status(404).json({ message: 'No marks found for the student' });
+    // }
 
     const grades = marks.map(mark => ({
       subject: mark.Course.Subject.SubjectName,
@@ -307,7 +312,7 @@ exports.getEventsByStudentId = async (req, res) => {
           ],
         },
       ],
-      attributes: ['LessonHeader', 'LessonDate', 'LessonTime', 'TimeZone'],
+      attributes: ['LessonHeader', 'LessonDate', 'StartLessonTime'],
     });
 
     if (!events.length) {
@@ -316,16 +321,17 @@ exports.getEventsByStudentId = async (req, res) => {
     }
 
     const formattedEvents = events.map(event => {
-      const lessonDate = moment(event.LessonDate).tz(event.Group.Course.TimeZone || event.TimeZone).format('YYYY-MM-DD');
-      const convertedTimeZone = convertStandardTimeZoneToUTC(event.TimeZone);
+      const lessonDate = moment(event.LessonDate).format('YYYY-MM-DD');
+
+      // timezone conversion
+      // const lessonDate = moment(event.LessonDate).tz(event.Group.Course.TimeZone || 'UTC').format('YYYY-MM-DD');
 
       return {
-        title: event.Group.Course.Subject.SubjectName, // Название предмета через группу и курс
-        date: lessonDate, // Дата в формате YYYY-MM-DD
-        time: event.LessonTime, // Время в формате 'HH:MM - HH:MM'
-        image: event.Group.Course.Teacher.User.ImageFilePath || '/assets/images/avatar.jpg', // Аватар преподавателя через курс
-        link: '/', // Ссылка (заглушка)
-        timeZone: convertedTimeZone, // Преобразованный часовой пояс
+        title: event.Group.Course.Subject.SubjectName,
+        date: lessonDate,
+        time: moment(event.StartLessonTime).format('HH:mm'),
+        image: event.Group.Course.Teacher.User.ImageFilePath || '/assets/images/avatar.jpg',
+        link: '/',
       };
     });
 
@@ -411,14 +417,79 @@ exports.getDaysByStudentId = async (req, res) => {
 
 exports.searchTeachersForStudent = async (req, res) => {
   try {
-    const { lessonType, meetingType, aboutTeacher } = req.query;
+    const { 
+      lessonType, 
+      meetingType, 
+      aboutTeacher, 
+      priceMin, 
+      priceMax, 
+      rating, 
+      format,
+      priceSort,
+      page = 1,
+      limit = 12 
+    } = req.query;
 
     let whereConditions = {};
-    if (lessonType) whereConditions.LessonType = lessonType;
-    if (meetingType) whereConditions.MeetingType = meetingType;
-    if (aboutTeacher)
-      whereConditions.AboutTeacher = { [Op.like]: `%${aboutTeacher}%` };
+    let orderConditions = [];
 
+    // Фильтрация по типу урока
+    if (lessonType) whereConditions.LessonType = lessonType;
+    
+    // Фильтрация по формату встречи (поддержка обоих параметров)
+    if (format) whereConditions.MeetingType = format;
+    if (meetingType) whereConditions.MeetingType = meetingType;
+    
+    // Поиск по имени и описанию
+    if (aboutTeacher) {
+      whereConditions = {
+        [Op.or]: [
+          { AboutTeacher: { [Op.like]: `%${aboutTeacher}%` } },
+          { '$User.FirstName$': { [Op.like]: `%${aboutTeacher}%` } },
+          { '$User.LastName$': { [Op.like]: `%${aboutTeacher}%` } }
+        ]
+      };
+    }
+
+    // Фильтрация по цене
+    if (priceMin || priceMax) {
+      whereConditions.LessonPrice = {};
+      
+      if (priceMin) {
+        whereConditions.LessonPrice[Op.gte] = priceMin;
+      }
+      
+      if (priceMax) {
+        whereConditions.LessonPrice = {
+          [Op.or]: [
+            { [Op.lte]: priceMax },
+            { [Op.eq]: 0 }
+          ]
+        };
+      }
+    }
+
+    // Сортировка по цене или рейтингу
+    if (priceSort) {
+      orderConditions.push(['LessonPrice', priceSort === 'desc' ? 'DESC' : 'ASC']);
+    } else if (rating) {
+      orderConditions.push([sequelize.literal('averageRating'), rating === 'desc' ? 'DESC' : 'ASC']);
+    }
+
+    // Получаем общее количество учителей для пагинации
+    const totalCount = await Teacher.count({
+      where: whereConditions,
+      include: [
+        {
+          model: User,
+          as: 'User',
+          attributes: ['FirstName', 'LastName', 'ImageFilePath'],
+          required: aboutTeacher ? true : false
+        }
+      ]
+    });
+
+    // Получаем учителей с пагинацией
     const teachers = await Teacher.findAll({
       where: whereConditions,
       include: [
@@ -426,6 +497,7 @@ exports.searchTeachersForStudent = async (req, res) => {
           model: User,
           as: 'User',
           attributes: ['FirstName', 'LastName', 'ImageFilePath'],
+          required: aboutTeacher ? true : false
         },
         {
           model: Course,
@@ -436,11 +508,30 @@ exports.searchTeachersForStudent = async (req, res) => {
               model: Subject,
               as: 'Subject',
               attributes: ['SubjectName'],
-            },
+            }
           ],
         },
       ],
-      attributes: ['TeacherId', 'AboutTeacher', 'LessonPrice'],
+      attributes: [
+        'TeacherId', 
+        'AboutTeacher', 
+        'LessonPrice',
+        [
+          sequelize.literal(`(
+            SELECT COALESCE(AVG(Rating), 5)
+            FROM StudentsCourseRating 
+            WHERE CourseId IN (
+              SELECT CourseId 
+              FROM Courses 
+              WHERE TeacherId = Teacher.TeacherId
+            )
+          )`),
+          'averageRating'
+        ]
+      ],
+      order: orderConditions.length > 0 ? orderConditions : [[sequelize.literal('averageRating'), 'DESC']],
+      limit: parseInt(limit),
+      offset: (parseInt(page) - 1) * parseInt(limit),
     });
 
     const formattedTeachers = teachers.map((teacher) => ({
@@ -448,17 +539,24 @@ exports.searchTeachersForStudent = async (req, res) => {
       FullName: `${teacher.User.FirstName} ${teacher.User.LastName}`,
       ImagePathUrl: teacher.User.ImageFilePath || null,
       SubjectName: teacher.Courses?.length > 0
-        ? teacher.Courses.slice(0, 2).map((course) => course.Subject?.SubjectName).filter(Boolean).join(', ')
+        ? teacher.Courses.slice(0, 2)
+            .map((course) => course.Subject?.SubjectName)
+            .filter(Boolean)
+            .join(', ')
         : 'Не вказано',
       AboutTeacher: teacher.AboutTeacher || 'Без опису',
       LessonPrice: teacher.LessonPrice || 0,
+      Rating: Number(teacher.getDataValue('averageRating')).toFixed(1),
     }));
 
-    if (!formattedTeachers.length) {
-      return res.status(404).json({ success: false, message: 'No teachers found.' });
-    }
-
-    return res.status(200).json({ success: true, data: formattedTeachers });
+    return res.status(200).json({ 
+      success: true, 
+      data: formattedTeachers,
+      total: totalCount,
+      currentPage: parseInt(page),
+      totalPages: Math.ceil(totalCount / parseInt(limit)),
+      hasMore: parseInt(page) * parseInt(limit) < totalCount
+    });
   } catch (error) {
     console.error('Error in searchTeachersForStudent:', error);
     return res.status(500).json({ success: false, message: 'Server error.' });
@@ -505,5 +603,53 @@ exports.searchUserByStudentId = async (req, res) => {
   } catch (error) {
     console.error('Error in searchUserByStudentId:', error);
     res.status(500).json({ error: 'Server error' });
+  }
+};
+
+exports.updateStudentTrophiesById = async (req, res) => {
+  try {
+    const studentId = req.params.id;
+    const trophies = await Trophies.findOne({ where: { StudentId: studentId } });
+    if (!trophies) {
+      return res.status(404).json({ message: 'Trophies not found for this student' });
+    }
+    await trophies.update({ Amount: req.body.Amount });
+    res.status(200).json(trophies);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
+exports.getStudentTrophiesById = async (req, res) => {
+  try {
+    const trophies = await Trophies.findOne({
+      where: { StudentId: req.params.id },
+    });
+    if (!trophies) return res.status(404).json({ message: 'Trophies not found for this student' });
+    res.status(200).json(trophies);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.getStudentByUserId = async (req, res) => {
+  try {
+    const userId = req.params.userId;
+    const students = await Student.findAll({
+      where: { UserId: userId },
+      include: [{
+        model: User,
+        as: 'User'
+      }]
+    });
+    
+    if (!students.length) {
+      return res.status(404).json({ success: false, message: 'Student not found' });
+    }
+    
+    res.status(200).json({ success: true, data: students });
+  } catch (error) {
+    console.error('Error in getStudentByUserId:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
   }
 };
