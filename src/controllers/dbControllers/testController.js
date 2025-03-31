@@ -70,6 +70,55 @@ exports.getTestById = async (req, res) => {
   }
 };
 
+exports.getTestInfoByDoneTestId = async (req, res) => {
+  try {
+    const doneTest = await DoneTest.findByPk(req.params.id);
+    if (!doneTest) {
+      return res.status(404).json({ error: "DoneTest not found" });
+    }
+
+    const test = await Test.findByPk(doneTest.TestId, {
+      include: [
+        {
+          model: TestQuestion,
+          as: 'TestQuestions',
+        },
+      ],
+    });
+
+    if (!test) {
+      return res.status(404).json({ error: "Test not found" });
+    }
+
+    const response = {
+      TestId: test.TestId,
+      TestName: test.TestName,
+      TestDescription: test.TestDescription,
+      CreatedDate: test.CreatedDate,
+      DeadlineDate: test.DeadlineDate,
+      AttemptsTotal: test.AttemptsTotal,
+      MaxMark: test.MaxMark,
+      ShowAnswers: test.ShowAnswers,
+      TimeLimit: test.TimeLimit,
+      ImageFilePath: test.ImageFilePath,
+      GroupId: test.GroupId,
+      TestQuestions: test.TestQuestions.map(tq => ({
+        TestQuestionId: tq.TestQuestionId,
+        TestQuestionHeader: tq.TestQuestionHeader,
+        TestQuestionDescription: tq.TestQuestionDescription,
+        ImagePath: tq.ImagePath,
+        AudioPath: tq.AudioPath,
+        TestId: tq.TestId,
+      })),
+    };
+
+    res.status(200).json(response);
+  } catch (error) {
+    console.error('Error in getTestInfoByDoneTestId:', error);
+    res.status(400).json({ error: error.message });
+  }
+};
+
 exports.searchTests = async (req, res) => {
   try {
     const { testName, testDescription, startDate, endDate } = req.query;
