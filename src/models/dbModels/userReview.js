@@ -27,10 +27,26 @@ module.exports = (sequelize, DataTypes) => {
       validate: {
         isDate: { msg: 'CreateDate must be a valid date' },
       },
-    }
+    },
+    UserIdFrom: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
+    UserIdFor: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
+    Stars: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      validate: {
+        min: 1,
+        max: 5,
+      },
+    },
   }, {
     timestamps: false,
   });
 
   return UserReview;
-};  
+};

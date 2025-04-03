@@ -189,6 +189,13 @@ module.exports = (models) => {
       onDelete: 'SET NULL',
       onUpdate: 'CASCADE',
     });
+
+    models.Teacher.hasMany(models.Material, {
+      foreignKey: 'TeacherId',
+      as: 'Materials',
+      onDelete: 'SET NULL',
+      onUpdate: 'CASCADE',
+    });
   }
 
   if (models.Material && models.Material) {
@@ -345,12 +352,24 @@ module.exports = (models) => {
       onDelete: 'CASCADE',
       onUpdate: 'CASCADE',
     });
-  }
-
-  if (models.UserReview && models.User) {
+  
     models.UserReview.belongsTo(models.User, {
       foreignKey: 'UserIdFor',
       as: 'Target',
+      onDelete: 'CASCADE',
+      onUpdate: 'CASCADE',
+    });
+  
+    models.User.hasMany(models.UserReview, {
+      foreignKey: 'UserIdFrom',
+      as: 'AuthoredReviews',
+      onDelete: 'CASCADE',
+      onUpdate: 'CASCADE',
+    });
+  
+    models.User.hasMany(models.UserReview, {
+      foreignKey: 'UserIdFor',
+      as: 'TargetedReviews',
       onDelete: 'CASCADE',
       onUpdate: 'CASCADE',
     });

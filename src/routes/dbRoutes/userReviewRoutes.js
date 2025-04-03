@@ -97,6 +97,9 @@ router.get('/search', userReviewController.searchUserReviews);
  */
 router.get('/:id', userReviewController.getUserReviewById);
 
+router.get('/getInfoByUserId/:id', userReviewController.getReviewsForUser);
+router.get('/canUserMakeRiview/:idUserFrom/:idUserFor', userReviewController.canUserMakeReview);
+
 /**
  * @swagger
  * /api/userReviews/{id}:

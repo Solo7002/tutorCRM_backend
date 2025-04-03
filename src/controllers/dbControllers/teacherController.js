@@ -1,5 +1,5 @@
 const { where } = require('../../config/database');
-const { Teacher, HomeTask, Group, User, Course, Student, UserReview, StudentCourseRating, GroupStudent, DoneHomeTask, Subject, PlannedLesson, MarkHistory, OctoCoins, sequelize } = require('../../models/dbModels');
+const { Teacher, HomeTask, Group, User, Course, Student, UserReview, StudentCourseRating, GroupStudent, DoneHomeTask, Subject, PlannedLesson, MarkHistory, OctoCoins, Material, sequelize } = require('../../models/dbModels');
 const { parseQueryParams } = require('../../utils/dbUtils/queryUtils');
 const { Op } = require('sequelize');
 const moment = require('moment');
@@ -66,31 +66,104 @@ exports.searchTeachers = async (req, res) => {
 
 exports.getAllAboutTeacher = async (req, res) => {
   try {
-    const { UserId } = req.query;
-    let whereConditions = {};
-    if (UserId) whereConditions.UserId = UserId;
+    const userId = req.params.id;
 
-    const teacher = (await Teacher.findAll({
-      where: whereConditions,
-    }))[0];
+    const user = await User.findByPk(req.params.id);
+
+    const teacher = await Teacher.findOne({
+      where: { UserId: userId },
+      include: [
+        {
+          model: Course,
+          as: 'Courses',
+          include: [
+            { model: Subject, as: 'Subject' },
+            {
+              model: Group,
+              as: 'Groups',
+              include: [{ model: Student, as: 'Students' }],
+            },
+          ],
+        },
+        {
+          model: Material,
+          as: 'Materials',
+        },
+      ],
+    });
 
     if (!teacher) {
-      return res.status(404).json({ success: false, message: 'No teachers found.' });
+      return res.status(404).json({ success: false, message: 'Teacher not found.' });
     }
-    const courses = await Course.findAll({
-      where: {
-        TeacherId: teacher.TeacherId
-      }
-    });
-    const reviews = await UserReview.findAll({
-      where: {
-        //UserIdFor: UserId
-      }
+
+    const courses = teacher.Courses || [];
+
+    const subjectNamesSet = new Set(courses.map(course => course.Subject?.SubjectName).filter(Boolean));
+    const subjectNames = Array.from(subjectNamesSet).slice(0, 2).join(', ');
+
+    let minPrice = 100000000000000;
+
+    courses.map(course => {
+      course.Groups.map(group => {
+        if (group.GroupPrice < minPrice) {
+          minPrice = group.GroupPrice;
+        }
+      });
     });
 
-    return res.status(200).json({ teacher, courses, reviews });
+    const studentsAmount = await GroupStudent.count({
+      distinct: true,
+      col: 'StudentId',
+      include: [
+        {
+          model: Group,
+          as: 'Group',
+          include: [
+            {
+              model: Course,
+              as: 'Course',
+              where: { TeacherId: teacher.TeacherId },
+            },
+          ],
+        },
+      ],
+    });
+
+    const reviews = await UserReview.findAll({
+      where: { UserIdFor: userId },
+    });
+    const totalStars = reviews.reduce((sum, review) => sum + review.Stars, 0);
+    const rating = reviews.length > 0 ? (totalStars / reviews.length).toFixed(1) : null;
+
+    const materialsCount = teacher.Materials?.length || 0;
+
+    const transformedCourses = courses.map(course => ({
+      CourseId: course.CourseId,
+      CourseName: course.CourseName,
+      SubjectName: course.Subject?.SubjectName || null,
+      Groups: course.Groups.map(group => ({
+        GroupId: group.GroupId,
+        GroupName: group.GroupName,
+        GroupPrice: group.GroupPrice,
+        GroupAmountOfStudents: group.Students.length,
+      })),
+    }));
+
+    const teacherData = {
+      ...teacher.toJSON(),
+      SubjectNames: subjectNames,
+      minPrice: minPrice || null,
+      StudentsAmount: studentsAmount || 0,
+      Rating: rating,
+      MaterialsAmount: materialsCount,
+    };
+
+    delete teacherData.Courses;
+    delete teacherData.Materials;
+
+    return res.status(200).json({ user: user, teacher: teacherData, courses: transformedCourses });
   } catch (error) {
-    console.error('Error in searchTeachers:', error);
+    console.error('Error in getAllAboutTeacher:', error);
     return res.status(500).json({ success: false, message: 'Server error.' });
   }
 };

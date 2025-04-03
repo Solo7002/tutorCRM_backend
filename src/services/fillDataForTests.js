@@ -1,4 +1,4 @@
-const {sequelize, Course, Subject, Group, GroupStudent, Test, TestQuestion, TestAnswer, SelectedAnswer, DoneTest, Location, Teacher, Student, HomeTask, HomeTaskFile, DoneHomeTask, DoneHomeTaskFile, User  } = require('../models/dbModels');
+const {sequelize, UserReview, Course, Subject, Group, GroupStudent, Test, TestQuestion, TestAnswer, SelectedAnswer, DoneTest, Location, Teacher, Student, HomeTask, HomeTaskFile, DoneHomeTask, DoneHomeTaskFile, User  } = require('../models/dbModels');
 const { Op } = require('sequelize');
 
 async function populateDatabase() {
@@ -382,4 +382,72 @@ async function populateWithHometasks() {
   }
 }
 
-module.exports = {populateDatabase, populateWithHometasks };
+async function populateWithReviews() {
+  const reviews = [
+    {
+      ReviewHeader: 'Хороший репетитор',
+      ReviewText: 'Репетитор добре пояснює матеріал і завжди готовий допомогти. Заняття були цікавими, але іноді бракувало практичних завдань.',
+      Stars: 4,
+      UserIdFrom: 44,
+      UserIdFor: 26,
+      CreateDate: new Date(),
+    },
+    {
+      ReviewHeader: 'Не рекомендую',
+      ReviewText: 'Репетитор часто спізнювався на заняття і не готувався до уроків. Матеріал пояснював незрозуміло, і я не відчув прогресу у навчанні.',
+      Stars: 1,
+      UserIdFrom: 22,
+      UserIdFor: 26,
+      CreateDate: new Date(),
+    },
+    {
+      ReviewHeader: 'Середній рівень',
+      ReviewText: 'Репетитор непоганий, але не вражає. Заняття проходили за планом, але бракувало індивідуального підходу.',
+      Stars: 3,
+      UserIdFrom: 43,
+      UserIdFor: 26,
+      CreateDate: new Date(),
+    },
+    {
+      ReviewHeader: 'Відмінний репетитор!',
+      ReviewText: 'Репетитор чудово знає предмет і вміє його доступно пояснити. Заняття завжди були цікавими і продуктивними. Рекомендую!',
+      Stars: 5,
+      UserIdFrom: 45,
+      UserIdFor: 26,
+      CreateDate: new Date(),
+    },
+    {
+        ReviewHeader: 'Задовільно, але є недоліки',
+        ReviewText: 'Репетитор знає предмет, але не вміє його доступно пояснити. Заняття були нудними, і я часто втрачав інтерес.',
+        Stars: 2,
+        UserIdFrom: 27,
+        UserIdFor: 26,
+        CreateDate: new Date(),
+      },
+    {
+      ReviewHeader: 'Нормально',
+      ReviewText: 'Репетитор виконував свою роботу, але не більше. Заняття були стандартними, без особливих інновацій.',
+      Stars: 3,
+      UserIdFrom: 46,
+      UserIdFor: 26,
+      CreateDate: new Date(),
+    },
+    {
+      ReviewHeader: 'Найкращий репетитор!',
+      ReviewText: 'Репетитор не тільки знає предмет, а й вміє зацікавити учня. Заняття були динамічними, з великою кількістю практичних завдань. Дуже задоволений!',
+      Stars: 5,
+      UserIdFrom: 47,
+      UserIdFor: 26,
+      CreateDate: new Date(),
+    },
+  ];
+
+  try {
+    await UserReview.bulkCreate(reviews);
+    console.log('Відгуки успішно додано до бази даних');
+  } catch (error) {
+    console.error('Помилка при додаванні відгуків:', error);
+  }
+}
+
+module.exports = {populateDatabase, populateWithHometasks, populateWithReviews };
