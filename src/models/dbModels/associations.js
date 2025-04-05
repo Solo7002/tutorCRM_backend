@@ -337,6 +337,13 @@ module.exports = (models) => {
   }
 
   if (models.UserPhone && models.User) {
+    models.User.hasMany(models.UserPhone, {
+      foreignKey: 'UserId',
+      as: 'UserPhones',
+      onDelete: 'CASCADE',
+      onUpdate: 'CASCADE',
+    });
+
     models.UserPhone.belongsTo(models.User, {
       foreignKey: 'UserId',
       as: 'User',
