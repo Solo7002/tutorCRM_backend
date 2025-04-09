@@ -1,4 +1,4 @@
-const { Student, GroupStudent, Test, DoneTest, Group, Course, Subject, Teacher, User, TestQuestion} = require('../../models/dbModels');
+const { Student, GroupStudent, Test, DoneTest, Group, Course, Subject, Teacher, User, TestQuestion, TestAnswer} = require('../../models/dbModels');
 const { parseQueryParams } = require('../../utils/dbUtils/queryUtils');
 const { Op } = require('sequelize');
 const testService=require('../../services/testCreatedAIService');
@@ -82,6 +82,13 @@ exports.getTestInfoByDoneTestId = async (req, res) => {
         {
           model: TestQuestion,
           as: 'TestQuestions',
+          include: [
+            {
+              model: TestAnswer,
+              as: 'TestAnswers',
+              attributes: ['TestAnswerId', 'AnswerText', 'IsRightAnswer'],
+            },
+          ],
         },
       ],
     });
@@ -100,7 +107,7 @@ exports.getTestInfoByDoneTestId = async (req, res) => {
       MaxMark: test.MaxMark,
       ShowAnswers: test.ShowAnswers,
       TimeLimit: test.TimeLimit,
-      ImageFilePath: test.ImageFilePath,
+      ImageFilePath: test.ImagePath,
       GroupId: test.GroupId,
       TestQuestions: test.TestQuestions.map(tq => ({
         TestQuestionId: tq.TestQuestionId,
@@ -109,6 +116,11 @@ exports.getTestInfoByDoneTestId = async (req, res) => {
         ImagePath: tq.ImagePath,
         AudioPath: tq.AudioPath,
         TestId: tq.TestId,
+        testAnswers: tq.TestAnswers.map(ta => ({
+          TestAnswerId: ta.TestAnswerId,
+          AnswerText: ta.AnswerText,
+          IsRightAnswer: ta.IsRightAnswer,
+        })),
       })),
     };
 
