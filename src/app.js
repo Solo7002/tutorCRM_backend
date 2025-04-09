@@ -13,7 +13,7 @@ const notificationRoutes = require('./routes/notificationRoutes');
 const { connectRedis } = require('./utils/cacheUtils');
 const { metricsMiddleware, register } = require('./utils/metrics');
 
-const { populateDatabase, populateWithHometasks, populateWithReviews } = require('./services/fillDataForTests');
+const { populateDatabase, populateWithHometasks, populateWithReviews, populateMaterials } = require('./services/fillDataForTests');
 
 require('./config/passportConfig');
 
@@ -66,7 +66,8 @@ app.get('/populate', async (req, res) => {
     try {
       //await populateDatabase();
     //   await populateWithHometasks();
-        await populateWithReviews();
+        //await populateWithReviews();
+        await populateMaterials();
       res.send('База даних успішно заповнена');
     } catch (error) {
       console.error(error);

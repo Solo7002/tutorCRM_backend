@@ -94,6 +94,10 @@ router.get('/search', materialController.searchMaterials);
  *               $ref: '#/components/schemas/Material'
  */
 router.get('/:id', materialController.getMaterialById);
+router.get('/getByUserId/:id', materialController.getMaterialByUserId);
+router.get('/getMaterialsByStudentUserId/:id', materialController.getMaterialsByStudentUserId);
+router.get('/studentsByMaterial/:id', materialController.getstudentsByMaterialId);
+router.put('/setAccessToMaterial/:id', materialController.setAccessToMaterial);
 
 /**
  * @swagger

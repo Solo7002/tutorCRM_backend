@@ -16,24 +16,49 @@ const blobServiceClient = new BlobServiceClient(
 );
 
 async function uploadFileToBlob(file) {
+  const rawName = file.originalname;
+  const decodedName = Buffer.from(rawName, 'binary').toString('utf8');
+
+  let fileName = decodedName;
   const containerClient = blobServiceClient.getContainerClient(containerName);
   await containerClient.createIfNotExists();
 
-  const blockBlobClient = containerClient.getBlockBlobClient(file.originalname);
-  await blockBlobClient.upload(file.buffer, file.buffer.length);
+  const blockBlobClient = containerClient.getBlockBlobClient(fileName);
 
-//   return `https://${accountName}.blob.core.windows.net/${containerName}/${file.originalname}`;
-    return file.originalname;
+  const exists = await blockBlobClient.exists();
+
+  if (exists) {
+    const timestamp = new Date().toISOString().replace(/[-:.]/g, '');
+    const fileExtension = decodedName.split('.').pop();
+    const baseName = decodedName.replace(`.${fileExtension}`, '');
+    fileName = `${baseName}_${timestamp}.${fileExtension}`;
+  }
+
+  const newBlockBlobClient = containerClient.getBlockBlobClient(fileName);
+  await newBlockBlobClient.upload(file.buffer, file.buffer.length);
+
+  return fileName;
 }
 
 async function uploadFileToBlobAndReturnLink(file) {
   const containerClient = blobServiceClient.getContainerClient(containerName);
   await containerClient.createIfNotExists();
 
-  const blockBlobClient = containerClient.getBlockBlobClient(file.originalname);
-  await blockBlobClient.upload(file.buffer, file.buffer.length);
+  let fileName = file.originalname;
+  const blockBlobClient = containerClient.getBlockBlobClient(fileName);
 
-  return `https://${accountName}.blob.core.windows.net/${containerName}/${file.originalname}`;
+  const exists = await blockBlobClient.exists();
+  if (exists) {
+    const timestamp = new Date().toISOString().replace(/[-:.]/g, '');
+    const fileExtension = file.originalname.split('.').pop();
+    const baseName = file.originalname.replace(`.${fileExtension}`, '');
+    fileName = `${baseName}${timestamp}.${fileExtension}`;
+  }
+
+  const newBlockBlobClient = containerClient.getBlockBlobClient(fileName);
+  await newBlockBlobClient.upload(file.buffer, file.buffer.length);
+
+  return `https://${accountName}.blob.core.windows.net/${containerName}/${fileName}`;
 }
 
 async function deleteFileFromBlob(fileName) {
@@ -42,7 +67,6 @@ async function deleteFileFromBlob(fileName) {
   await blockBlobClient.deleteIfExists();
 }
 
-// Генерация временной ссылки (SAS токена)
 function generateTemporaryUrl(fileName, expiryTimeInMinutes = 60) {
   const now = new Date();
   const expiryTime = new Date(now);
@@ -51,7 +75,7 @@ function generateTemporaryUrl(fileName, expiryTimeInMinutes = 60) {
   const sasToken = generateBlobSASQueryParameters({
     containerName,
     blobName: fileName,
-    permissions: BlobSASPermissions.parse("r"), // Только чтение
+    permissions: BlobSASPermissions.parse("r"),
     startsOn: now,
     expiresOn: expiryTime,
   }, sharedKeyCredential).toString();
