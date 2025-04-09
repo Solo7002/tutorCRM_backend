@@ -141,5 +141,6 @@ router.put('/:id', plannedLessonController.updatePlannedLesson);
  */
 router.delete('/:id', plannedLessonController.deletePlannedLesson);
 router.get('/getLessonByTecher/:teacherId',plannedLessonController.getPlannedLessonByTeacherId)
+router.get('/getLessonByStudent/:studentId',plannedLessonController.getPlannedLessonByStudentId)
 
 module.exports = router;

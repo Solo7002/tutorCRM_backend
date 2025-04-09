@@ -1,7 +1,6 @@
-const { PlannedLesson,Course,Group } = require('../../models/dbModels');
+const { PlannedLesson,Course,Group,Student,Subject,Teacher,User } = require('../../models/dbModels');
 const { parseQueryParams } = require('../../utils/dbUtils/queryUtils');
 const { Op } = require('sequelize');
-const { isValidTimeZone } = require('../../utils/dbUtils/timeUtils');
 
 exports.createPlannedLesson = async (req, res) => {
   try {
@@ -138,6 +137,69 @@ exports.getPlannedLessonByTeacherId = async (req, res) => {
     res.status(200).json(plannedLessons);
   } catch (error) {
     console.error('Error in getPlannedLessonByTeacherId:', error);
+    res.status(400).json({ error: error.message });
+  }
+};
+
+
+exports.getPlannedLessonByStudentId = async (req, res) => {
+  try {
+    const student = await Student.findOne({
+      where: { StudentId: req.params.studentId },
+      include: [
+        {
+          model: Group,
+          as: 'Groups',
+          through: { attributes: [] }, 
+          include: [
+            {
+              model: PlannedLesson,
+              as: 'PlannedLessons',
+            },
+            {
+              model: Course,
+              as: 'Course',
+              include: [
+                {
+                  model: Subject,
+                  as: 'Subject',
+                },
+                {
+                  model: Teacher,
+                  as: 'Teacher',
+                  include: [
+                    {
+                      model: User, 
+                      as: 'User', 
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+
+    if (!student) {
+      return res.status(404).json({ error: "Student not found" });
+    }
+
+    let plannedLessons = [];
+    student.Groups.forEach(group => {
+      const lessonsWithDetails = group.PlannedLessons.map(lesson => ({
+        ...lesson.toJSON(),
+        GroupName: group.GroupName,
+        SubjectName: group.Course?.Subject?.SubjectName || 'Unknown Subject',
+        TeacherFirstName: group.Course?.Teacher?.User?.FirstName || 'Unknown',
+        TeacherLastName: group.Course?.Teacher?.User?.LastName || 'Unknown',
+      }));
+      plannedLessons = plannedLessons.concat(lessonsWithDetails);
+    });
+
+    res.status(200).json(plannedLessons);
+  } catch (error) {
+    console.error('Error in getPlannedLessonsByStudentId:', error);
     res.status(400).json({ error: error.message });
   }
 };
