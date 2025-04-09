@@ -141,3 +141,30 @@ exports.getGroupsByTeacherId = async (req, res) => {
     res.status(400).json({ error: error.message });
   }
 };
+
+exports.getGroupsByCourseId=async(req,res)=>{
+  try{
+    const {id}=req.params;
+
+    const groups = await Group.findAll({
+      where: { 'CourseId': id },
+      raw:true
+    });
+    const groupsWithStudentCount = await Promise.all(
+      groups.map(async (group) => {
+        const studentCount = await GroupStudent.count({
+          where: { 'GroupId': group.GroupId },
+        });
+        return {
+          ...group,
+          studentCount,
+        };
+      })
+    );
+
+    res.status(200).json(groupsWithStudentCount);
+  }catch(error){
+    console.error('Error in getGroupsByCourseId:', error);
+    res.status(400).json({ error: error.message });
+  }
+}

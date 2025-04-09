@@ -27,6 +27,7 @@ module.exports = (sequelize, DataTypes) => {
         model: 'Locations',
         key: 'LocationId',
       },
+      defaultValue:1,
       onUpdate: 'CASCADE',
       onDelete: 'CASCADE',
     },

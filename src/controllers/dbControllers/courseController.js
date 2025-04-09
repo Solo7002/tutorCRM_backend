@@ -1,6 +1,6 @@
 const { Course, Teacher, Subject, Location  } = require('../../models/dbModels');
 const { parseQueryParams } = require('../../utils/dbUtils/queryUtils');
-const { Op } = require('sequelize');
+const { Op, where } = require('sequelize');
 
 exports.createCourse = async (req, res) => {
   try {
@@ -102,3 +102,4 @@ exports.getCoursesByTeacherId = async (req, res) => {
     res.status(400).json({ error: error.message });
   }
 };
+

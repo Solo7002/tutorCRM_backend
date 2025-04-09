@@ -136,5 +136,6 @@ router.put('/:id', groupController.updateGroup);
 router.delete('/:id', groupController.deleteGroup);
 
 router.get("/groups-by-teacher/:id", groupController.getGroupsByTeacherId)
+router.get("/groups-by-course/:id", groupController.getGroupsByCourseId)
 
 module.exports = router;
