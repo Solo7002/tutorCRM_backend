@@ -1,6 +1,6 @@
-const { GroupStudent, Group, Student } = require('../../models/dbModels');
+const { GroupStudent, Group, Student, User } = require('../../models/dbModels');
 const { parseQueryParams } = require('../../utils/dbUtils/queryUtils');
-const { Op } = require('sequelize');
+const { Op, where } = require('sequelize');
 
 exports.createGroupStudent = async (req, res) => {
   try {
@@ -87,13 +87,56 @@ exports.updateGroupStudent = async (req, res) => {
 
 exports.deleteGroupStudent = async (req, res) => {
   try {
-    const groupStudent = await GroupStudent.findByPk(req.params.id);
+    const groupStudent = await GroupStudent.findOne({where:{GroupId: req.params.groupid, StudentId: req.params.studentid}});
     if (!groupStudent) return res.status(404).json({ error: "GroupStudent not found" });
 
     await groupStudent.destroy();
-    res.status(204).send();
+    res.status(200).json({ message: 'GroupStudent deleted' });
   } catch (error) {
     console.error('Error in deleteGroupStudent:', error);
     res.status(400).json({ error: error.message });
+  }
+};
+
+exports.createGroupStudentFromNotification = async (data) => {
+  try {
+      const { StudentId, GroupId, JoinDate } = data;
+
+      // Check if the student exists
+      const student = await Student.findByPk(StudentId);
+      if (!student) {
+          throw new Error(`Student with ID ${StudentId} does not exist`);
+      }
+
+      // Check if the group exists
+      const group = await Group.findByPk(GroupId);
+      if (!group) {
+          throw new Error(`Group with ID ${GroupId} does not exist`);
+      }
+
+      // Create the GroupStudent record
+      const groupStudent = await GroupStudent.create({
+          StudentId,
+          GroupId,
+          JoinDate,
+      });
+
+      return groupStudent;
+  } catch (err) {
+      console.error('Error in createGroupStudentFromNotification:', err);
+      throw err;
+  }
+};
+
+exports.findStudentByUserId = async (userId) => {
+  try {
+      const student = await Student.findOne({ where: { UserId: userId } });
+      if (!student) {
+          throw new Error(`Student with UserId ${userId} not found`);
+      }
+      return student.StudentId;
+  } catch (err) {
+      console.error('Error in findStudentByUserId:', err);
+      throw err;
   }
 };

@@ -1,4 +1,4 @@
-const { Group, Student, Course, Subject, User, GroupStudent, MarkHistory, PlannedLesson, Teacher, HomeTask, Trophies, StudentCourseRating, sequelize } = require('../../models/dbModels');
+const { Group, Student, Course, Subject, User, GroupStudent, MarkHistory, PlannedLesson, Teacher, HomeTask, Trophies, StudentCourseRating, UserPhone, sequelize } = require('../../models/dbModels');
 const { parseQueryParams } = require('../../utils/dbUtils/queryUtils');
 const { Op } = require('sequelize');
 const moment = require('moment-timezone');
@@ -651,5 +651,209 @@ exports.getStudentByUserId = async (req, res) => {
   } catch (error) {
     console.error('Error in getStudentByUserId:', error);
     res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+exports.getAllAboutStudent = async (req, res) => {
+    try {
+        // Get the ID from the route parameter
+        const userId = req.params.id;
+        
+        if (!userId) {
+            return res.status(400).json({ message: 'User ID is required' });
+        }
+
+        // First find the student by UserId
+        const student = await Student.findOne({
+            where: { UserId: userId }
+        });
+
+        if (!student) {
+            return res.status(404).json({ message: 'Student profile not found' });
+        }
+
+        // Get user data and phone
+        const user = await User.findByPk(userId, {
+            attributes: ['UserId', 'FirstName', 'LastName', 'Email', 'ImageFilePath'],
+            include: [{
+                model: UserPhone,
+                as: 'UserPhones',
+                attributes: ['PhoneNumber'],
+                required: false
+            }]
+        });
+
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        // Get student's groups
+        const groups = await Group.findAll({
+            include: [
+                {
+                    model: Student,
+                    as: 'Students',
+                    where: { StudentId: student.StudentId },
+                    attributes: []
+                },
+                {
+                    model: Course,
+                    as: 'Course',
+                    attributes: ['CourseName'],
+                    include: [
+                        {
+                            model: Teacher,
+                            as: 'Teacher',
+                            attributes: ['TeacherId', 'LessonType', 'MeetingType'],
+                            include: [{
+                                model: User,
+                                as: 'User',
+                                attributes: ['FirstName', 'LastName']
+                            }]
+                        }
+                    ]
+                }
+            ],
+            attributes: ['GroupId', 'GroupName', 'GroupPrice']
+        });
+
+        // Get student's trophies
+        const trophies = await Trophies.findOne({
+            where: { StudentId: student.StudentId },
+            attributes: ['Amount']
+        });
+
+        // Get student's ranking based on trophies
+        const studentTrophies = trophies?.Amount || 0;
+        
+        // Count students with more trophies to determine ranking
+        const higherRankedStudents = await Student.count({
+            include: [{
+                model: Trophies,
+                as: 'Trophies',
+                where: {
+                    Amount: {
+                        [Op.gt]: studentTrophies
+                    }
+                }
+            }]
+        });
+        
+        // Student's rank is the number of students with more trophies + 1
+        const studentRank = higherRankedStudents + 1;
+        
+        // Get total number of students for percentage calculation
+        const totalStudents = await Student.count();
+        
+        // Calculate percentile (lower is better)
+        const percentile = totalStudents > 0 ? Math.round((studentRank / totalStudents) * 100) : 0;
+
+        // Format the response
+        const profile = {
+            user: {
+                UserId: user.UserId,
+                FirstName: user.FirstName,
+                LastName: user.LastName,
+                Email: user.Email,
+                ImageFilePath: user.ImageFilePath,
+                PhoneNumber: user.UserPhones && user.UserPhones.length > 0 ? user.UserPhones[0].PhoneNumber : null
+            },
+            student: {
+                StudentId: student.StudentId,
+                SchoolName: student.SchoolName,
+                Grade: student.Grade,
+                CourseCount: groups.length,
+                Rating: studentRank,
+                Balance: studentTrophies,
+                Percentile: percentile
+            },
+            groups: groups.map(group => ({
+                GroupId: group.GroupId,
+                GroupName: group.GroupName,
+                GroupPrice: group.GroupPrice,
+                GroupFormat: group.Course?.Teacher?.MeetingType || 'Не вказано',
+                GroupType: group.Course?.Teacher?.LessonType || 'Не вказано',
+                GroupTeacherName: group.Course?.Teacher?.User ? 
+                    `${group.Course.Teacher.User.FirstName} ${group.Course.Teacher.User.LastName}` : 
+                    'Не вказано',
+                CourseName: group.Course?.CourseName || 'Не вказано'
+            }))
+        };
+
+        res.json(profile);
+    } catch (error) {
+        console.error('Error fetching student profile:', error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+};
+
+exports.updateStudentProfileByUserId = async (req, res) => {
+  try {
+    const { user: userData, student: studentData, phone: phoneData } = req.body;
+    const userId = req.params.userId;
+
+    // Start transaction
+    const result = await sequelize.transaction(async (t) => {
+      // Update user data
+      if (userData) {
+        await User.update(userData, {
+          where: { UserId: userId },
+          transaction: t
+        });
+      }
+
+      // Update student data
+      if (studentData) {
+        await Student.update(studentData, {
+          where: { UserId: userId },
+          transaction: t
+        });
+      }
+
+      // Update or create phone
+      if (phoneData) {
+        const [userPhone] = await UserPhone.findOrCreate({
+          where: { UserId: userId },
+          defaults: {
+            ...phoneData,
+            UserId: userId
+          },
+          transaction: t
+        });
+
+        if (userPhone) {
+          await userPhone.update(phoneData, { transaction: t });
+        }
+      }
+
+      // Get updated data
+      const updatedStudent = await Student.findOne({
+        where: { UserId: userId },
+        include: [
+          {
+            model: User,
+            as: 'User',
+            attributes: ['FirstName', 'LastName', 'Email', 'ImageFilePath'],
+            include: [{
+              model: UserPhone,
+              as: 'UserPhones',
+              attributes: ['PhoneNumber']
+            }]
+          }
+        ],
+        transaction: t
+      });
+
+      if (!updatedStudent) {
+        throw new Error('Student not found');
+      }
+
+      return updatedStudent;
+    });
+
+    res.status(200).json(result);
+  } catch (error) {
+    console.error('Error in updateStudentProfileByUserId:', error);
+    return res.status(400).json({ error: error.message });
   }
 };

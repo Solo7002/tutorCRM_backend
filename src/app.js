@@ -9,6 +9,7 @@ const cors = require('cors');
 const authRoutes = require('./routes/authRoutes');
 const routes = require('./routes/dbRoutes/routes');
 const fileRoutes = require('./routes/fileRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
 const { connectRedis } = require('./utils/cacheUtils');
 const { metricsMiddleware, register } = require('./utils/metrics');
 
@@ -27,6 +28,7 @@ app.use(bodyParser.json());
 app.use(metricsMiddleware);
 app.use('/api/files', fileRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/notifications', notificationRoutes);
 app.use(routes);
 
 const path = require("path");
@@ -158,6 +160,8 @@ app.get('/memory-load', (req, res) => {
     }
     res.send(`Memory load completed with ${iterations} iterations.`);
 });
+
+
 
 /**
  * @swagger
