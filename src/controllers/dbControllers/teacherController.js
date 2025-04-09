@@ -325,7 +325,7 @@ exports.getLeadersByTeacherId = async (req, res) => {
           leaders.push({
             name: `${student.User.FirstName} ${student.User.LastName}`,
             group: group.GroupName,
-            image: student.User.ImageFilePath || '/assets/images/avatar.jpg',
+            image: student.User.ImageFilePath,
             email: student.User.Email,
           });
         }
@@ -402,7 +402,7 @@ exports.getLatestActivitiesByTeacherId = async (req, res) => {
       return {
         date: moment(activity.DoneDate).format('DD.MM.YYYY'),
         name: `${student.FirstName} ${student.LastName}`,
-        image: student.ImageFilePath || '/assets/images/avatar.jpg',
+        image: student.ImageFilePath,
         subject: groupName,
         type: 'Домашня робота',
       };
