@@ -194,7 +194,7 @@ exports.getLeadersInGroupsByStudentId = async (req, res) => {
         leaders.push({
           name: `${student.User.FirstName} ${student.User.LastName}`,
           subject,
-          image: student.User.ImageFilePath || '/assets/images/avatar.jpg',
+          image: student.User.ImageFilePath,
           email: student.User.Email,
         });
       });
@@ -330,7 +330,7 @@ exports.getEventsByStudentId = async (req, res) => {
         title: event.Group.Course.Subject.SubjectName,
         date: lessonDate,
         time: moment(event.StartLessonTime).format('HH:mm'),
-        image: event.Group.Course.Teacher.User.ImageFilePath || '/assets/images/avatar.jpg',
+        image: event.Group.Course.Teacher.User.ImageFilePath,
         link: '/',
       };
     });
@@ -596,7 +596,7 @@ exports.searchUserByStudentId = async (req, res) => {
       firstName: student.User.FirstName,
       lastName: student.User.LastName,
       email: student.User.Email,
-      image: student.User.ImageFilePath || '/assets/images/avatar.jpg'
+      image: student.User.ImageFilePath
     };
 
     res.status(200).json(userData);

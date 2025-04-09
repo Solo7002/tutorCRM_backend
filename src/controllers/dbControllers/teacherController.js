@@ -262,7 +262,7 @@ exports.searchUserByTeacherId = async (req, res) => {
       firstName: teacher.User.FirstName,
       lastName: teacher.User.LastName,
       email: teacher.User.Email,
-      image: teacher.User.ImageFilePath || '/assets/images/avatar.jpg'
+      image: teacher.User.ImageFilePath 
     };
 
     res.status(200).json(userData);
@@ -557,7 +557,7 @@ exports.getEventsByTeacherId = async (req, res) => {
         title: event.LessonHeader,
         date: lessonDate,
         time: moment(event.StartLessonTime).format('HH:mm'),
-        image: event.Group.Course.Teacher.User.ImageFilePath || '/assets/images/avatar.jpg',
+        image: event.Group.Course.Teacher.User.ImageFilePath ,
         link: '/',
       };
     });
