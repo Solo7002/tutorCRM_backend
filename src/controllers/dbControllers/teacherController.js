@@ -672,7 +672,6 @@ exports.getProductivityByTeacherId = async (req, res) => {
       },
     };
 
-    // Calculate rating once for all periods
     const ratings = await StudentCourseRating.findAll({
       include: [
         {
