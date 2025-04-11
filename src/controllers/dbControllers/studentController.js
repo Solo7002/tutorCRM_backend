@@ -1,4 +1,4 @@
-const { Group, Student, Course, Subject, User, GroupStudent, MarkHistory, PlannedLesson, Teacher, HomeTask, Trophies, StudentCourseRating, UserPhone, sequelize } = require('../../models/dbModels');
+const { Group, Student, Course, Subject, User, GroupStudent, MarkHistory, PlannedLesson, Teacher, HomeTask, Trophies, StudentCourseRating, UserPhone, UserReview, sequelize } = require('../../models/dbModels');
 const { parseQueryParams } = require('../../utils/dbUtils/queryUtils');
 const { Op } = require('sequelize');
 const moment = require('moment-timezone');
@@ -176,6 +176,12 @@ exports.getLeadersInGroupsByStudentId = async (req, res) => {
                 attributes: ['FirstName', 'LastName', 'ImageFilePath', 'Email'],
                 required: true,
               },
+              {
+                model: Trophies,
+                as: 'Trophies', // Include the Trophies model
+                attributes: ['Amount'],
+                required: false, // Trophies might not exist for a student
+              },
             ],
           },
         ],
@@ -196,6 +202,7 @@ exports.getLeadersInGroupsByStudentId = async (req, res) => {
           subject,
           image: student.User.ImageFilePath,
           email: student.User.Email,
+          trophies: student.Trophies ? student.Trophies.Amount : 0, // Add trophies amount, default to 0 if not found
         });
       });
     }
@@ -496,8 +503,16 @@ exports.searchTeachersForStudent = async (req, res) => {
         {
           model: User,
           as: 'User',
-          attributes: ['FirstName', 'LastName', 'ImageFilePath'],
-          required: aboutTeacher ? true : false
+          attributes: ['UserId', 'FirstName', 'LastName', 'ImageFilePath'],
+          required: aboutTeacher ? true : false,
+          include: [
+            {
+              model: UserReview,
+              as: 'TargetedReviews',
+              attributes: [],
+              required: false
+            }
+          ]
         },
         {
           model: Course,
@@ -507,31 +522,28 @@ exports.searchTeachersForStudent = async (req, res) => {
             {
               model: Subject,
               as: 'Subject',
-              attributes: ['SubjectName'],
+              attributes: ['SubjectName']
             }
-          ],
-        },
+          ]
+        }
       ],
       attributes: [
         'TeacherId',
         'AboutTeacher',
         'LessonPrice',
         [
-          sequelize.literal(`(
-            SELECT COALESCE(AVG(Rating), 5)
-            FROM StudentsCourseRating 
-            WHERE CourseId IN (
-              SELECT CourseId 
-              FROM Courses 
-              WHERE TeacherId = Teacher.TeacherId
-            )
-          )`),
+          sequelize.literal(`
+            (SELECT COALESCE(AVG(COALESCE(Stars, 0)), 5)
+             FROM UserReviews AS ur
+             WHERE ur.UserIdFor = Teacher.UserId)
+          `),
           'averageRating'
         ]
       ],
+      group: ['Teacher.TeacherId'],
       order: orderConditions.length > 0 ? orderConditions : [[sequelize.literal('averageRating'), 'DESC']],
       limit: parseInt(limit),
-      offset: (parseInt(page) - 1) * parseInt(limit),
+      offset: (parseInt(page) - 1) * parseInt(limit)
     });
 
     const formattedTeachers = teachers.map((teacher) => ({
@@ -546,7 +558,7 @@ exports.searchTeachersForStudent = async (req, res) => {
         : 'Не вказано',
       AboutTeacher: teacher.AboutTeacher || 'Без опису',
       LessonPrice: teacher.LessonPrice || 0,
-      Rating: Number(teacher.getDataValue('averageRating')).toFixed(1),
+      Rating: Number(teacher.getDataValue('averageRating')).toFixed(1)
     }));
 
     return res.status(200).json({
@@ -860,37 +872,37 @@ exports.updateStudentProfileByUserId = async (req, res) => {
 
 exports.getStudentGroups = async (req, res) => {
   try {
-      const studentId = req.params.id;
-      if (!studentId) {
-          return res.status(400).json({ error: 'StudentId is required' });
-      }
+    const studentId = req.params.id;
+    if (!studentId) {
+      return res.status(400).json({ error: 'StudentId is required' });
+    }
 
-      const groupStudents = await GroupStudent.findAll({
-          where: { StudentId: studentId },
+    const groupStudents = await GroupStudent.findAll({
+      where: { StudentId: studentId },
+      include: [
+        {
+          model: Group,
+          as: 'Group',
           include: [
-              {
-                  model: Group,
-                  as: 'Group',
-                  include: [
-                      {
-                          model: Course,
-                          as: 'Course',
-                      },
-                  ],
-              },
+            {
+              model: Course,
+              as: 'Course',
+            },
           ],
-      });
+        },
+      ],
+    });
 
-      const groups = groupStudents.map(gs => ({
-          GroupId: gs.Group.GroupId,
-          GroupName: gs.Group.GroupName,
-          CourseId: gs.Group.CourseId,
-          CourseName: gs.Group.Course.CourseName,
-      }));
+    const groups = groupStudents.map(gs => ({
+      GroupId: gs.Group.GroupId,
+      GroupName: gs.Group.GroupName,
+      CourseId: gs.Group.CourseId,
+      CourseName: gs.Group.Course.CourseName,
+    }));
 
-      res.status(200).json({ groups });
+    res.status(200).json({ groups });
   } catch (err) {
-      console.error('Error fetching student groups:', err);
-      res.status(500).json({ error: 'Server error while fetching student groups' });
+    console.error('Error fetching student groups:', err);
+    res.status(500).json({ error: 'Server error while fetching student groups' });
   }
 };
