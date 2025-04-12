@@ -1,5 +1,5 @@
 const { where } = require('../../config/database');
-const { Teacher, HomeTask, Group, User, Course, Student, UserReview, StudentCourseRating, GroupStudent, DoneHomeTask, Subject, PlannedLesson, MarkHistory, OctoCoins, Material, sequelize } = require('../../models/dbModels');
+const { Teacher, HomeTask, Group, User, Course, Student, UserReview, StudentCourseRating, GroupStudent, DoneHomeTask, Subject, PlannedLesson, MarkHistory, OctoCoins, Material, Trophies, sequelize } = require('../../models/dbModels');
 const { parseQueryParams } = require('../../utils/dbUtils/queryUtils');
 const { Op } = require('sequelize');
 const moment = require('moment');
@@ -133,7 +133,7 @@ exports.getAllAboutTeacher = async (req, res) => {
       where: { UserIdFor: userId },
     });
     const totalStars = reviews.reduce((sum, review) => sum + review.Stars, 0);
-    const rating = reviews.length > 0 ? (totalStars / reviews.length).toFixed(1) : null;
+    const rating = reviews.length > 0 ? (totalStars / reviews.length).toFixed(1) : 5;
 
     const materialsCount = teacher.Materials?.length || 0;
 
@@ -262,7 +262,7 @@ exports.searchUserByTeacherId = async (req, res) => {
       firstName: teacher.User.FirstName,
       lastName: teacher.User.LastName,
       email: teacher.User.Email,
-      image: teacher.User.ImageFilePath 
+      image: teacher.User.ImageFilePath
     };
 
     res.status(200).json(userData);
@@ -279,6 +279,7 @@ exports.getLeadersByTeacherId = async (req, res) => {
     if (isNaN(teacherId) || teacherId <= 0) {
       return res.status(400).json({ error: 'Invalid teacher ID' });
     }
+
     const courses = await Course.findAll({
       where: { TeacherId: teacherId },
       include: [
@@ -299,17 +300,18 @@ exports.getLeadersByTeacherId = async (req, res) => {
                   attributes: ['FirstName', 'LastName', 'ImageFilePath', 'Email'],
                   required: true,
                 },
+                {
+                  model: Trophies,
+                  as: 'Trophies',
+                  attributes: ['Amount'],
+                  required: false,
+                },
               ],
             },
           ],
         },
       ],
     });
-
-    // if (!courses.length) {
-    //   console.log(`No courses found for teacher with ID: ${teacherId}`);
-    //   return res.status(404).json({ message: 'No courses found for the teacher' });
-    // }
 
     const leaders = [];
     for (const course of courses) {
@@ -327,14 +329,15 @@ exports.getLeadersByTeacherId = async (req, res) => {
             group: group.GroupName,
             image: student.User.ImageFilePath,
             email: student.User.Email,
+            trophies: student.Trophies ? student.Trophies.Amount : 0, // Add trophies amount
           });
         }
       }
     }
 
-    const uniqueLeaders = Array.from(new Map(leaders.map(leader => [leader.email, leader])).values());
+    //const uniqueLeaders = Array.from(new Map(leaders.map(leader => [leader.email, leader])).values());
 
-    res.status(200).json(uniqueLeaders);
+    res.status(200).json(leaders);
   } catch (error) {
     console.error('Error in getLeadersByTeacherId:', error);
     res.status(500).json({ error: 'Server error' });
@@ -557,7 +560,7 @@ exports.getEventsByTeacherId = async (req, res) => {
         title: event.LessonHeader,
         date: lessonDate,
         time: moment(event.StartLessonTime).format('HH:mm'),
-        image: event.Group.Course.Teacher.User.ImageFilePath ,
+        image: event.Group.Course.Teacher.User.ImageFilePath,
         link: '/',
       };
     });
@@ -672,22 +675,27 @@ exports.getProductivityByTeacherId = async (req, res) => {
       },
     };
 
-    // Calculate rating once for all periods
-    const ratings = await StudentCourseRating.findAll({
-      include: [
-        {
-          model: Course,
-          as: 'Course',
-          required: true,
-          where: { TeacherId: teacherId },
-        },
-      ],
-      attributes: ['Rating'],
+    
+    const teacher = await Teacher.findByPk(teacherId);
+
+    const reviews = await UserReview.findAll({
+      where: { UserIdFor: teacher.UserId },
     });
 
-    const rating = ratings.length
-      ? ratings.reduce((sum, r) => sum + parseFloat(r.Rating), 0) / ratings.length
-      : 5;
+    const totalStars = reviews.reduce((sum, review) => sum + review.Stars, 0);
+    const rating = reviews.length > 0 ? (totalStars / reviews.length).toFixed(1) : 5;
+
+    // const ratings = await StudentCourseRating.findAll({
+    //   include: [
+    //     {
+    //       model: Course,
+    //       as: 'Course',
+    //       required: true,
+    //       where: { TeacherId: teacherId },
+    //     },
+    //   ],
+    //   attributes: ['Rating'],
+    // });
 
     const productivityData = {};
 
@@ -859,7 +867,7 @@ exports.getProductivityByTeacherId = async (req, res) => {
         prevNewClients,
         reviewsReceived,
         prevReviewsReceived,
-        rating: parseFloat(rating.toFixed(1)),
+        rating: parseFloat(rating),
       };
     }
 
@@ -907,11 +915,11 @@ exports.getTeacherByUserId = async (req, res) => {
         attributes: ['UserId', 'FirstName', 'LastName', 'Email', 'ImageFilePath', 'Username']
       }]
     });
-    
+
     if (!teachers.length) {
       return res.status(404).json({ success: false, message: 'Teacher not found' });
     }
-    
+
     res.status(200).json({ success: true, data: teachers });
   } catch (error) {
     console.error('Error in getTeacherByUserId:', error);

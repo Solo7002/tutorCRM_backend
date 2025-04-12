@@ -1,13 +1,13 @@
 const express = require('express');
 const router = express.Router();
-const { setCache, getCache, deleteCache, redisClient } = require('../utils/cacheUtils'); // Import Redis utilities
-const { createGroupStudentFromNotification, findStudentByUserId } = require('../controllers/dbControllers/groupStudentController'); // Import createGroupStudent controller
-const {User, Group, Course} = require('../models/dbModels');
+const { setCache, getCache, deleteCache, redisClient } = require('../utils/cacheUtils');
+const { createGroupStudentFromNotification, findStudentByUserId } = require('../controllers/dbControllers/groupStudentController');
+const { User, Group, Course, GroupStudent } = require('../models/dbModels');
 
 // Endpoint to handle course join requests
 router.post('/join', async (req, res) => {
     try {
-        const requestData = req.body; // Get data from request body
+        const requestData = req.body;
         // Validate required fields
         if (
             !requestData.studentId ||
@@ -23,6 +23,43 @@ router.post('/join', async (req, res) => {
             });
         }
 
+        // Find the StudentId by UserId (studentId is actually UserId)
+        const actualStudentId = await findStudentByUserId(requestData.studentId);
+        if (!actualStudentId) {
+            return res.status(404).json({ error: 'Student not found for the given user ID' });
+        }
+
+        // Fetch the group and its associated course
+        const group = await Group.findByPk(requestData.groupId);
+        if (!group) {
+            return res.status(404).json({ error: 'Group not found' });
+        }
+        const course = await Course.findOne({ where: { CourseId: group.CourseId } });
+        if (!course) {
+            return res.status(404).json({ error: 'Course not found for the given group' });
+        }
+
+        // Check if the student is already in this group
+        const existingGroupStudent = await GroupStudent.findOne({
+            where: {
+                StudentId: actualStudentId,
+                GroupId: requestData.groupId,
+            },
+        });
+        if (existingGroupStudent) {
+            return res.status(400).json({ error: 'Student is already enrolled in this group' });
+        }
+
+        // Check if the student is already in another group for the same course
+        const studentGroups = await GroupStudent.findAll({
+            where: { StudentId: actualStudentId },
+            include: [{ model: Group, as: 'Group' }], // Add the 'as' keyword to match the alias
+        });
+        const isEnrolledInCourse = studentGroups.some(gs => gs.Group.CourseId === course.CourseId);
+        if (isEnrolledInCourse) {
+            return res.status(400).json({ error: 'Student is already enrolled in another group for this course' });
+        }
+
         // Add a timestamp to the Redis key to ensure uniqueness
         const timestamp = new Date().getTime();
         const redisKey = `notifications:join:${requestData.studentId}:${requestData.groupId}:${timestamp}`;
@@ -33,7 +70,7 @@ router.post('/join', async (req, res) => {
 
         // Add the notification key to the teacher's notification list
         const teacherNotificationList = `notifications:join:teacher:${requestData.teacherId}`;
-        await redisClient.lPush(teacherNotificationList, redisKey); // Changed lpush to lPush
+        await redisClient.lPush(teacherNotificationList, redisKey);
 
         // Send success response to the client
         res.status(200).json({ message: 'Notification successfully saved in Redis', key: redisKey });
@@ -49,21 +86,18 @@ router.get('/teacher/:teacherId', async (req, res) => {
         const { teacherId } = req.params;
         const teacherNotificationList = `notifications:join:teacher:${teacherId}`;
 
-        // Get all notification keys for the teacher
-        const notificationKeys = await redisClient.lRange(teacherNotificationList, 0, -1); // Changed lrange to lRange
+        const notificationKeys = await redisClient.lRange(teacherNotificationList, 0, -1);
         if (!notificationKeys || notificationKeys.length === 0) {
             return res.status(200).json({ message: 'No notifications found for this teacher', notifications: [] });
         }
 
-        // Retrieve all notifications
         const notifications = [];
         for (const key of notificationKeys) {
             const notification = await getCache(key);
             if (notification) {
                 notifications.push({ key, ...notification });
             } else {
-                // If the notification has expired or was deleted, remove the key from the list
-                await redisClient.lRem(teacherNotificationList, 0, key); // Changed lrem to lRem
+                await redisClient.lRem(teacherNotificationList, 0, key);
             }
         }
 
@@ -81,13 +115,11 @@ router.delete('/join/:studentId/:groupId/:timestamp', async (req, res) => {
         const redisKey = `notifications:join:${studentId}:${groupId}:${timestamp}`;
         const ttl = 60 * 60 * 24 * 7; // 7 days
 
-        // Retrieve the notification to ensure it exists
         const notification = await getCache(redisKey);
         if (!notification) {
             return res.status(404).json({ error: 'Notification not found' });
         }
 
-        // Fetch teacher and group details for the rejection notification
         const teacher = await User.findByPk(teacherId);
         const group = await Group.findByPk(groupId);
         const course = await Course.findOne({ where: { CourseId: group.CourseId } });
@@ -96,10 +128,8 @@ router.delete('/join/:studentId/:groupId/:timestamp', async (req, res) => {
             throw new Error('Teacher, group, or course not found');
         }
 
-        // Delete the notification from Redis
         await deleteCache(redisKey);
 
-        // Remove the key from the teacher's notification list
         if (teacherId) {
             if (!redisClient || !redisClient.isOpen) {
                 throw new Error('Redis client is not connected');
@@ -108,7 +138,6 @@ router.delete('/join/:studentId/:groupId/:timestamp', async (req, res) => {
             await redisClient.lRem(teacherNotificationList, 0, redisKey);
         }
 
-        // Send rejection notification to the student
         const studentNotificationList = `notifications:student:${studentId}`;
         const rejectionMessage = `Ваш запит на приєднання до курсу "${course.CourseName}" (група: ${group.GroupName}) було відхилено викладачем ${teacher.FirstName} ${teacher.LastName}.`;
         const studentNotificationKey = `notifications:rejection:${studentId}:${groupId}:${timestamp}`;
@@ -129,19 +158,16 @@ router.post('/accept/:studentId/:groupId/:timestamp', async (req, res) => {
         const { teacherId } = req.body;
         const redisKey = `notifications:join:${studentId}:${groupId}:${timestamp}`;
 
-        // Retrieve the notification to ensure it exists
         const notification = await getCache(redisKey);
         if (!notification) {
             return res.status(404).json({ error: 'Notification not found' });
         }
 
-        // Find the StudentId by UserId (studentId is actually UserId)
         const actualStudentId = await findStudentByUserId(studentId);
         if (!actualStudentId) {
             return res.status(404).json({ error: 'Student not found for the given user ID' });
         }
 
-        // Fetch teacher and group details for the acceptance notification
         const teacher = await User.findByPk(teacherId);
         const group = await Group.findByPk(groupId);
         const course = await Course.findOne({ where: { CourseId: group.CourseId } });
@@ -150,7 +176,6 @@ router.post('/accept/:studentId/:groupId/:timestamp', async (req, res) => {
             throw new Error('Teacher, group, or course not found');
         }
 
-        // Add the student to the group
         const groupStudentData = {
             StudentId: actualStudentId,
             GroupId: groupId,
@@ -159,10 +184,8 @@ router.post('/accept/:studentId/:groupId/:timestamp', async (req, res) => {
 
         await createGroupStudentFromNotification(groupStudentData);
 
-        // Delete the notification from Redis
         await deleteCache(redisKey);
 
-        // Remove the key from the teacher's notification list
         if (teacherId) {
             if (!redisClient || !redisClient.isOpen) {
                 throw new Error('Redis client is not connected');
@@ -171,7 +194,6 @@ router.post('/accept/:studentId/:groupId/:timestamp', async (req, res) => {
             await redisClient.lRem(teacherNotificationList, 0, redisKey);
         }
 
-        // Send acceptance notification to the student
         const studentNotificationList = `notifications:student:${studentId}`;
         const acceptanceMessage = `Ваш запит на приєднання до курсу "${course.CourseName}" (група: ${group.GroupName}) було прийнято викладачем ${teacher.FirstName} ${teacher.LastName}.`;
         const studentNotificationKey = `notifications:acceptance:${studentId}:${groupId}:${timestamp}`;
@@ -232,10 +254,7 @@ router.delete('/student/:studentId/:notificationKey', async (req, res) => {
             throw new Error('Redis client is not connected');
         }
 
-        // Удаляем уведомление из Redis
         await deleteCache(notificationKey);
-
-        // Удаляем ключ уведомления из списка студента
         await redisClient.lRem(studentNotificationList, 0, notificationKey);
 
         res.status(200).json({ message: 'Notification deleted successfully' });

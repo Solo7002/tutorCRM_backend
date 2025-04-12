@@ -1,4 +1,4 @@
-const { Group, Student, Course, Subject, User, GroupStudent, MarkHistory, PlannedLesson, Teacher, HomeTask, Trophies, StudentCourseRating, UserPhone, sequelize } = require('../../models/dbModels');
+const { Group, Student, Course, Subject, User, GroupStudent, MarkHistory, PlannedLesson, Teacher, HomeTask, Trophies, StudentCourseRating, UserPhone, UserReview, sequelize } = require('../../models/dbModels');
 const { parseQueryParams } = require('../../utils/dbUtils/queryUtils');
 const { Op } = require('sequelize');
 const moment = require('moment-timezone');
@@ -176,6 +176,12 @@ exports.getLeadersInGroupsByStudentId = async (req, res) => {
                 attributes: ['FirstName', 'LastName', 'ImageFilePath', 'Email'],
                 required: true,
               },
+              {
+                model: Trophies,
+                as: 'Trophies', // Include the Trophies model
+                attributes: ['Amount'],
+                required: false, // Trophies might not exist for a student
+              },
             ],
           },
         ],
@@ -196,6 +202,7 @@ exports.getLeadersInGroupsByStudentId = async (req, res) => {
           subject,
           image: student.User.ImageFilePath,
           email: student.User.Email,
+          trophies: student.Trophies ? student.Trophies.Amount : 0, // Add trophies amount, default to 0 if not found
         });
       });
     }
@@ -417,17 +424,17 @@ exports.getDaysByStudentId = async (req, res) => {
 
 exports.searchTeachersForStudent = async (req, res) => {
   try {
-    const { 
-      lessonType, 
-      meetingType, 
-      aboutTeacher, 
-      priceMin, 
-      priceMax, 
-      rating, 
+    const {
+      lessonType,
+      meetingType,
+      aboutTeacher,
+      priceMin,
+      priceMax,
+      rating,
       format,
       priceSort,
       page = 1,
-      limit = 12 
+      limit = 12
     } = req.query;
 
     let whereConditions = {};
@@ -435,11 +442,11 @@ exports.searchTeachersForStudent = async (req, res) => {
 
     // Фильтрация по типу урока
     if (lessonType) whereConditions.LessonType = lessonType;
-    
+
     // Фильтрация по формату встречи (поддержка обоих параметров)
     if (format) whereConditions.MeetingType = format;
     if (meetingType) whereConditions.MeetingType = meetingType;
-    
+
     // Поиск по имени и описанию
     if (aboutTeacher) {
       whereConditions = {
@@ -454,11 +461,11 @@ exports.searchTeachersForStudent = async (req, res) => {
     // Фильтрация по цене
     if (priceMin || priceMax) {
       whereConditions.LessonPrice = {};
-      
+
       if (priceMin) {
         whereConditions.LessonPrice[Op.gte] = priceMin;
       }
-      
+
       if (priceMax) {
         whereConditions.LessonPrice = {
           [Op.or]: [
@@ -496,8 +503,16 @@ exports.searchTeachersForStudent = async (req, res) => {
         {
           model: User,
           as: 'User',
-          attributes: ['FirstName', 'LastName', 'ImageFilePath'],
-          required: aboutTeacher ? true : false
+          attributes: ['UserId', 'FirstName', 'LastName', 'ImageFilePath'],
+          required: aboutTeacher ? true : false,
+          include: [
+            {
+              model: UserReview,
+              as: 'TargetedReviews',
+              attributes: [],
+              required: false
+            }
+          ]
         },
         {
           model: Course,
@@ -507,31 +522,28 @@ exports.searchTeachersForStudent = async (req, res) => {
             {
               model: Subject,
               as: 'Subject',
-              attributes: ['SubjectName'],
+              attributes: ['SubjectName']
             }
-          ],
-        },
+          ]
+        }
       ],
       attributes: [
-        'TeacherId', 
-        'AboutTeacher', 
+        'TeacherId',
+        'AboutTeacher',
         'LessonPrice',
         [
-          sequelize.literal(`(
-            SELECT COALESCE(AVG(Rating), 5)
-            FROM StudentsCourseRating 
-            WHERE CourseId IN (
-              SELECT CourseId 
-              FROM Courses 
-              WHERE TeacherId = Teacher.TeacherId
-            )
-          )`),
+          sequelize.literal(`
+            (SELECT COALESCE(AVG(COALESCE(Stars, 0)), 5)
+             FROM UserReviews AS ur
+             WHERE ur.UserIdFor = Teacher.UserId)
+          `),
           'averageRating'
         ]
       ],
+      group: ['Teacher.TeacherId'],
       order: orderConditions.length > 0 ? orderConditions : [[sequelize.literal('averageRating'), 'DESC']],
       limit: parseInt(limit),
-      offset: (parseInt(page) - 1) * parseInt(limit),
+      offset: (parseInt(page) - 1) * parseInt(limit)
     });
 
     const formattedTeachers = teachers.map((teacher) => ({
@@ -540,17 +552,17 @@ exports.searchTeachersForStudent = async (req, res) => {
       ImagePathUrl: teacher.User.ImageFilePath || null,
       SubjectName: teacher.Courses?.length > 0
         ? teacher.Courses.slice(0, 2)
-            .map((course) => course.Subject?.SubjectName)
-            .filter(Boolean)
-            .join(', ')
+          .map((course) => course.Subject?.SubjectName)
+          .filter(Boolean)
+          .join(', ')
         : 'Не вказано',
       AboutTeacher: teacher.AboutTeacher || 'Без опису',
       LessonPrice: teacher.LessonPrice || 0,
-      Rating: Number(teacher.getDataValue('averageRating')).toFixed(1),
+      Rating: Number(teacher.getDataValue('averageRating')).toFixed(1)
     }));
 
-    return res.status(200).json({ 
-      success: true, 
+    return res.status(200).json({
+      success: true,
       data: formattedTeachers,
       total: totalCount,
       currentPage: parseInt(page),
@@ -642,11 +654,11 @@ exports.getStudentByUserId = async (req, res) => {
         as: 'User'
       }]
     });
-    
+
     if (!students.length) {
       return res.status(404).json({ success: false, message: 'Student not found' });
     }
-    
+
     res.status(200).json({ success: true, data: students });
   } catch (error) {
     console.error('Error in getStudentByUserId:', error);
@@ -655,136 +667,136 @@ exports.getStudentByUserId = async (req, res) => {
 };
 
 exports.getAllAboutStudent = async (req, res) => {
-    try {
-        // Get the ID from the route parameter
-        const userId = req.params.id;
-        
-        if (!userId) {
-            return res.status(400).json({ message: 'User ID is required' });
-        }
+  try {
+    // Get the ID from the route parameter
+    const userId = req.params.id;
 
-        // First find the student by UserId
-        const student = await Student.findOne({
-            where: { UserId: userId }
-        });
-
-        if (!student) {
-            return res.status(404).json({ message: 'Student profile not found' });
-        }
-
-        // Get user data and phone
-        const user = await User.findByPk(userId, {
-            attributes: ['UserId', 'FirstName', 'LastName', 'Email', 'ImageFilePath'],
-            include: [{
-                model: UserPhone,
-                as: 'UserPhones',
-                attributes: ['PhoneNumber'],
-                required: false
-            }]
-        });
-
-        if (!user) {
-            return res.status(404).json({ message: 'User not found' });
-        }
-
-        // Get student's groups
-        const groups = await Group.findAll({
-            include: [
-                {
-                    model: Student,
-                    as: 'Students',
-                    where: { StudentId: student.StudentId },
-                    attributes: []
-                },
-                {
-                    model: Course,
-                    as: 'Course',
-                    attributes: ['CourseName'],
-                    include: [
-                        {
-                            model: Teacher,
-                            as: 'Teacher',
-                            attributes: ['TeacherId', 'LessonType', 'MeetingType'],
-                            include: [{
-                                model: User,
-                                as: 'User',
-                                attributes: ['FirstName', 'LastName']
-                            }]
-                        }
-                    ]
-                }
-            ],
-            attributes: ['GroupId', 'GroupName', 'GroupPrice']
-        });
-
-        // Get student's trophies
-        const trophies = await Trophies.findOne({
-            where: { StudentId: student.StudentId },
-            attributes: ['Amount']
-        });
-
-        // Get student's ranking based on trophies
-        const studentTrophies = trophies?.Amount || 0;
-        
-        // Count students with more trophies to determine ranking
-        const higherRankedStudents = await Student.count({
-            include: [{
-                model: Trophies,
-                as: 'Trophies',
-                where: {
-                    Amount: {
-                        [Op.gt]: studentTrophies
-                    }
-                }
-            }]
-        });
-        
-        // Student's rank is the number of students with more trophies + 1
-        const studentRank = higherRankedStudents + 1;
-        
-        // Get total number of students for percentage calculation
-        const totalStudents = await Student.count();
-        
-        // Calculate percentile (lower is better)
-        const percentile = totalStudents > 0 ? Math.round((studentRank / totalStudents) * 100) : 0;
-
-        // Format the response
-        const profile = {
-            user: {
-                UserId: user.UserId,
-                FirstName: user.FirstName,
-                LastName: user.LastName,
-                Email: user.Email,
-                ImageFilePath: user.ImageFilePath,
-                PhoneNumber: user.UserPhones && user.UserPhones.length > 0 ? user.UserPhones[0].PhoneNumber : null
-            },
-            student: {
-                StudentId: student.StudentId,
-                SchoolName: student.SchoolName,
-                Grade: student.Grade,
-                CourseCount: groups.length,
-                Rating: studentRank,
-                Balance: studentTrophies,
-                Percentile: percentile
-            },
-            groups: groups.map(group => ({
-                GroupId: group.GroupId,
-                GroupName: group.GroupName,
-                GroupPrice: group.GroupPrice,
-                GroupFormat: group.Course?.Teacher?.MeetingType || 'Не вказано',
-                GroupType: group.Course?.Teacher?.LessonType || 'Не вказано',
-                GroupTeacherName: group.Course?.Teacher?.User ? 
-                    `${group.Course.Teacher.User.FirstName} ${group.Course.Teacher.User.LastName}` : 
-                    'Не вказано',
-                CourseName: group.Course?.CourseName || 'Не вказано'
-            }))
-        };
-
-        res.json(profile);
-    } catch (error) {
-        console.error('Error fetching student profile:', error);
-        res.status(500).json({ message: 'Internal server error' });
+    if (!userId) {
+      return res.status(400).json({ message: 'User ID is required' });
     }
+
+    // First find the student by UserId
+    const student = await Student.findOne({
+      where: { UserId: userId }
+    });
+
+    if (!student) {
+      return res.status(404).json({ message: 'Student profile not found' });
+    }
+
+    // Get user data and phone
+    const user = await User.findByPk(userId, {
+      attributes: ['UserId', 'FirstName', 'LastName', 'Email', 'ImageFilePath'],
+      include: [{
+        model: UserPhone,
+        as: 'UserPhones',
+        attributes: ['PhoneNumber'],
+        required: false
+      }]
+    });
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Get student's groups
+    const groups = await Group.findAll({
+      include: [
+        {
+          model: Student,
+          as: 'Students',
+          where: { StudentId: student.StudentId },
+          attributes: []
+        },
+        {
+          model: Course,
+          as: 'Course',
+          attributes: ['CourseName'],
+          include: [
+            {
+              model: Teacher,
+              as: 'Teacher',
+              attributes: ['TeacherId', 'LessonType', 'MeetingType'],
+              include: [{
+                model: User,
+                as: 'User',
+                attributes: ['FirstName', 'LastName']
+              }]
+            }
+          ]
+        }
+      ],
+      attributes: ['GroupId', 'GroupName', 'GroupPrice']
+    });
+
+    // Get student's trophies
+    const trophies = await Trophies.findOne({
+      where: { StudentId: student.StudentId },
+      attributes: ['Amount']
+    });
+
+    // Get student's ranking based on trophies
+    const studentTrophies = trophies?.Amount || 0;
+
+    // Count students with more trophies to determine ranking
+    const higherRankedStudents = await Student.count({
+      include: [{
+        model: Trophies,
+        as: 'Trophies',
+        where: {
+          Amount: {
+            [Op.gt]: studentTrophies
+          }
+        }
+      }]
+    });
+
+    // Student's rank is the number of students with more trophies + 1
+    const studentRank = higherRankedStudents + 1;
+
+    // Get total number of students for percentage calculation
+    const totalStudents = await Student.count();
+
+    // Calculate percentile (lower is better)
+    const percentile = totalStudents > 0 ? Math.round((studentRank / totalStudents) * 100) : 0;
+
+    // Format the response
+    const profile = {
+      user: {
+        UserId: user.UserId,
+        FirstName: user.FirstName,
+        LastName: user.LastName,
+        Email: user.Email,
+        ImageFilePath: user.ImageFilePath,
+        PhoneNumber: user.UserPhones && user.UserPhones.length > 0 ? user.UserPhones[0].PhoneNumber : null
+      },
+      student: {
+        StudentId: student.StudentId,
+        SchoolName: student.SchoolName,
+        Grade: student.Grade,
+        CourseCount: groups.length,
+        Rating: studentRank,
+        Balance: studentTrophies,
+        Percentile: percentile
+      },
+      groups: groups.map(group => ({
+        GroupId: group.GroupId,
+        GroupName: group.GroupName,
+        GroupPrice: group.GroupPrice,
+        GroupFormat: group.Course?.Teacher?.MeetingType || 'Не вказано',
+        GroupType: group.Course?.Teacher?.LessonType || 'Не вказано',
+        GroupTeacherName: group.Course?.Teacher?.User ?
+          `${group.Course.Teacher.User.FirstName} ${group.Course.Teacher.User.LastName}` :
+          'Не вказано',
+        CourseName: group.Course?.CourseName || 'Не вказано'
+      }))
+    };
+
+    res.json(profile);
+  } catch (error) {
+    console.error('Error fetching student profile:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
 };
 
 exports.updateStudentProfileByUserId = async (req, res) => {
@@ -855,5 +867,42 @@ exports.updateStudentProfileByUserId = async (req, res) => {
   } catch (error) {
     console.error('Error in updateStudentProfileByUserId:', error);
     return res.status(400).json({ error: error.message });
+  }
+};
+
+exports.getStudentGroups = async (req, res) => {
+  try {
+    const studentId = req.params.id;
+    if (!studentId) {
+      return res.status(400).json({ error: 'StudentId is required' });
+    }
+
+    const groupStudents = await GroupStudent.findAll({
+      where: { StudentId: studentId },
+      include: [
+        {
+          model: Group,
+          as: 'Group',
+          include: [
+            {
+              model: Course,
+              as: 'Course',
+            },
+          ],
+        },
+      ],
+    });
+
+    const groups = groupStudents.map(gs => ({
+      GroupId: gs.Group.GroupId,
+      GroupName: gs.Group.GroupName,
+      CourseId: gs.Group.CourseId,
+      CourseName: gs.Group.Course.CourseName,
+    }));
+
+    res.status(200).json({ groups });
+  } catch (err) {
+    console.error('Error fetching student groups:', err);
+    res.status(500).json({ error: 'Server error while fetching student groups' });
   }
 };

@@ -75,6 +75,8 @@ router.get('/:id/user', studentController.searchUserByStudentId);
 router.get('/searchTeachers', studentController.searchTeachersForStudent);
 router.get('/search/user/:userId', studentController.getStudentByUserId);
 router.get('/:id/info', studentController.getAllAboutStudent);
+router.get('/:id/groups', studentController.getStudentGroups);
+
 /**
  * @swagger
  * /api/students/{id}:

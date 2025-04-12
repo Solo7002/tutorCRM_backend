@@ -33,13 +33,11 @@ module.exports = (models) => {
       onDelete: 'SET NULL',
       onUpdate: 'CASCADE',
     });
-  }
 
-  if (models.Course && models.Teacher) {
     models.Teacher.hasMany(models.Course, {
       foreignKey: 'TeacherId',
       as: 'Courses',
-      onDelete: 'CASCADE',
+      onDelete: 'SET NULL',
       onUpdate: 'CASCADE',
     });
   }
