@@ -6,11 +6,10 @@ module.exports = (sequelize, DataTypes) => {
       primaryKey: true,
     },
     TestQuestionHeader: {
-      type: DataTypes.STRING,
+      type: DataTypes.STRING(1500),
       allowNull: false,
       validate: {
         notEmpty: { msg: 'TestQuestionHeader cannot be empty' },
-        len: { args: [1, 255], msg: 'TestQuestionHeader must be between 1 and 255 characters' },
       },
     },
     TestQuestionDescription: {

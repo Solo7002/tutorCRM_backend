@@ -918,3 +918,16 @@ exports.getTeacherByUserId = async (req, res) => {
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };
+
+
+exports.checkIfTeacher =  (UserId) => {
+  try {
+    const teacher = Teacher.findOne({
+      where: { UserId },
+    });
+    return !!teacher;
+  } catch (error) {
+    console.error('Error checking teacher status:', error);
+    return false;
+  }
+};

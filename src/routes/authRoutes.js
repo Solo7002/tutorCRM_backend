@@ -340,7 +340,7 @@ router.get('/google-callback', passport.authenticate('google', { session: false 
  *         description: Redirect to Facebook for authentication
  */
 //Вход через Facebook(Oauth2)
-router.get('/facebook', passport.authenticate('facebook', { scope: ['email'] }));
+router.get('/facebook', passport.authenticate('facebook', { scope: ['email'] }),authController.oauthCallback);
 
 /**
  * @swagger
