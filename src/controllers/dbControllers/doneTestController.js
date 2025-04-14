@@ -113,6 +113,16 @@ exports.getDoneTestInfoById = async (req, res) => {
                       model: Subject,
                       as: 'Subject',
                     },
+                    {
+                      model: Teacher,
+                      as: 'Teacher',
+                      include: [
+                        {
+                          model: User,
+                          as: 'User'
+                        }
+                      ]
+                    }
                   ],
                 },
               ],
@@ -139,6 +149,10 @@ exports.getDoneTestInfoById = async (req, res) => {
             },
           ],
         },
+        {
+          model: Student,
+          as: 'Student',
+        }
       ],
     });
 
@@ -180,7 +194,11 @@ exports.getDoneTestInfoById = async (req, res) => {
     }));
 
     const response = {
+      UserLastName: doneTest.Test.Group.Course.Teacher.User.LastName,
+      UserFirstName: doneTest.Test.Group.Course.Teacher.User.FirstName,
       SubjectName: subjectName,
+      TestId: doneTest.Test.TestId,
+      StudentId: doneTest.Student.StudentId,
       TestName: testName,
       Mark: mark,
       MaxMark: maxMark,
