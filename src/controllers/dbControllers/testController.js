@@ -357,52 +357,57 @@ exports.getTestCreatedByAI = async (req, res) => {
 
 exports.getTestsByTeacherId = async (req, res) => {
   try {
-    const { id } = req.params; 
+    const { id } = req.params;
 
-   
     if (!id) {
       return res.status(400).json({ error: 'TeacherId is required' });
     }
 
-    
-    const tests = await Test.findAll({
+    const teacher = await Teacher.findByPk(id, {
       include: [
         {
-          model: Group,
-          as: 'Groups', 
-          include: [
-            {
-              model: Course,
-              as: 'Course',
-              include: [
-                {
-                  model: Teacher,
-                  as: 'Teacher', 
-                  where: { TeacherId: id },
-                },
-              ],
+          model: Course,
+          as: 'Courses',
+          include: {
+            model: Group,
+            as: 'Groups',
+            include: {
+              model: Test,
+              as: 'Tests',
             },
-          ],
+          },
         },
-      ],
+        {
+          model: User,
+          as: 'User'
+        }
+      ]
     });
 
     
      
 
-   
-    const testInfo = tests.map(test => ({
-      TestId: test.TestId,
-      TestName: test.TestName,
-      TestDescription: test.TestDescription,
-      CreatedDate: test.CreatedDate,
-      DeadlineDate: test.DeadlineDate,
-      MaxMark: test.MaxMark,
-      TimeLimit: test.TimeLimit,
-      GroupName: test.Groups.GroupName, 
-      CourseName: test.Groups.Course.CourseName,
-    }));
+    const testInfo = [];
 
+    teacher.Courses.forEach(course => {
+      course.Groups.forEach(group => {
+        group.Tests.forEach(test => {
+          testInfo.push({
+            UserLastName: teacher.User.LastName,
+            UserFirstName: teacher.User.FirstName,
+            TestId: test.TestId,
+            TestName: test.TestName,
+            TestDescription: test.TestDescription,
+            CreatedDate: test.CreatedDate,
+            DeadlineDate: test.DeadlineDate,
+            MaxMark: test.MaxMark,
+            TimeLimit: test.TimeLimit,
+            GroupName: group.GroupName,
+            CourseName: course.CourseName,
+          });
+        });
+      });
+    });
 
     res.status(200).json(testInfo);
   } catch (error) {
@@ -410,7 +415,6 @@ exports.getTestsByTeacherId = async (req, res) => {
     res.status(400).json({ error: error.message });
   }
 };
-
 
 exports.getStudentsNotDoneTest = async (req, res) => {
   try {

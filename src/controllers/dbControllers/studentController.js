@@ -690,7 +690,7 @@ exports.getAllAboutStudent = async (req, res) => {
 
     // Get user data and phone
     const user = await User.findByPk(userId, {
-      attributes: ['UserId', 'FirstName', 'LastName', 'Email', 'ImageFilePath'],
+      attributes: ['UserId', 'FirstName', 'LastName', 'Email', 'CreateDate', 'ImageFilePath'],
       include: [{
         model: UserPhone,
         as: 'UserPhones',
@@ -770,6 +770,7 @@ exports.getAllAboutStudent = async (req, res) => {
         UserId: user.UserId,
         FirstName: user.FirstName,
         LastName: user.LastName,
+        CreateDate: user.CreateDate,
         Email: user.Email,
         ImageFilePath: user.ImageFilePath,
         PhoneNumber: user.UserPhones && user.UserPhones.length > 0 ? user.UserPhones[0].PhoneNumber : null
@@ -787,8 +788,7 @@ exports.getAllAboutStudent = async (req, res) => {
         GroupId: group.GroupId,
         GroupName: group.GroupName,
         GroupPrice: group.GroupPrice,
-        GroupFormat: group.Course?.Teacher?.MeetingType || 'Не вказано',
-        GroupType: group.Course?.Teacher?.LessonType || 'Не вказано',
+        CourseName: group.Course.CourseName,
         GroupTeacherName: group.Course?.Teacher?.User ?
           `${group.Course.Teacher.User.FirstName} ${group.Course.Teacher.User.LastName}` :
           'Не вказано',

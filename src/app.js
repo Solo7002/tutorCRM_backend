@@ -14,6 +14,7 @@ const { connectRedis } = require('./utils/cacheUtils');
 const { metricsMiddleware, register } = require('./utils/metrics');
 
 const { populateDatabase, populateWithHometasks, populateWithReviews, populateMaterials } = require('./services/fillDataForTests');
+const populateDbForTeacher = require('./services/populateFullDb');
 
 require('./config/passportConfig');
 
@@ -42,7 +43,7 @@ const options = {
         path.join(__dirname, "./app.js"),
         path.join(__dirname, "./routes/**/*.js"),
         path.join(__dirname, "./routes/fileRoutes.js"),
-        path.join(__dirname, "./routes/authRoutes.js") 
+        path.join(__dirname, "./routes/authRoutes.js")
     ]
 };
 
@@ -64,16 +65,26 @@ exec('npx sequelize-cli db:migrate', (err, stdout, stderr) => {
 
 app.get('/populate', async (req, res) => {
     try {
-      //await populateDatabase();
-    //   await populateWithHometasks();
+        //await populateDatabase();
+        //   await populateWithHometasks();
         //await populateWithReviews();
         await populateMaterials();
-      res.send('База даних успішно заповнена');
+        res.send('База даних успішно заповнена');
     } catch (error) {
-      console.error(error);
-      res.status(500).send('Помилка при заповненні бази даних');
+        console.error(error);
+        res.status(500).send('Помилка при заповненні бази даних');
     }
-  });
+});
+
+app.get('/populateFullDbForTeacher/:id', async (req, res) => {
+    try {
+        await populateDbForTeacher(req.params.id);
+        res.send('База даних успішно заповнена');
+    } catch (error) {
+        console.error(error);
+        res.status(500).send('Помилка при заповненні бази даних');
+    }
+});
 
 /**
  * @swagger
