@@ -1,6 +1,6 @@
 const authService = require('../services/authService');
 const logger = require('../utils/logger');
-
+const teacherContoller=require('./dbControllers/teacherController');
 //регистрация
 const register = async (req, res) => {
     try {
@@ -136,9 +136,18 @@ const oauthCallback = async (req, res) => {
         const user = req.user;
         const token = authService.loginToOuth2(user);
         logger.info(`OAuth login successful for user: ${user}`);
+         console.log(user);
+          
+        if (user.UserId) {
+            const isTeacher=teacherContoller.checkIfTeacher(user.UserId)
+ 
+            if(isTeacher)
+                 res.redirect(`http://localhost:3000/teacher/home?token=${token}`);
 
-        if (user.isRegistered) {
-            res.redirect(`http://localhost:3000/student/home?token=${token}`);
+            else
+                res.redirect(`http://localhost:3000/student/home?token=${token}`);
+             
+            
         } else {
             const firstName = user.Firstname || '';
             const lastName = user.Lastname || '';

@@ -388,9 +388,7 @@ exports.getTestsByTeacherId = async (req, res) => {
     });
 
     
-    if (!tests || tests.length === 0) {
-      return res.status(404).json({ error: 'No tests found for this teacher' });
-    }
+     
 
    
     const testInfo = tests.map(test => ({
