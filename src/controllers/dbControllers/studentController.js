@@ -277,7 +277,14 @@ exports.getEventsByStudentId = async (req, res) => {
       return res.status(400).json({ error: 'Invalid student ID' });
     }
 
+    const currentDate = moment().startOf('day').toDate();
+
     const events = await PlannedLesson.findAll({
+      where: {
+        LessonDate: {
+          [Op.gte]: currentDate,
+        },
+      },
       include: [
         {
           model: Group,
@@ -322,16 +329,13 @@ exports.getEventsByStudentId = async (req, res) => {
       attributes: ['LessonHeader', 'LessonDate', 'StartLessonTime'],
     });
 
-    if (!events.length) {
-      console.log(`No events found for student with ID: ${studentId}`);
-      return res.status(404).json({ message: 'No events found for the student' });
-    }
+    // if (!events.length) {
+    //   console.log(`No future events found for student with ID: ${studentId}`);
+    //   return res.status(404).json({ message: 'No future events found for the student' });
+    // }
 
     const formattedEvents = events.map(event => {
       const lessonDate = moment(event.LessonDate).format('YYYY-MM-DD');
-
-      // timezone conversion
-      // const lessonDate = moment(event.LessonDate).tz(event.Group.Course.TimeZone || 'UTC').format('YYYY-MM-DD');
 
       return {
         title: event.Group.Course.Subject.SubjectName,
