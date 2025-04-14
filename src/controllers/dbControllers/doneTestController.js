@@ -1,4 +1,4 @@
-const { DoneTest, Student, Test, Group, Course, Subject, TestQuestion, TestAnswer, SelectedAnswer, sequelize, Trophies } = require('../../models/dbModels');
+const { DoneTest, User, Student, Teacher,  Test, Group, Course, Subject, TestQuestion, TestAnswer, SelectedAnswer, sequelize, Trophies } = require('../../models/dbModels');
 const { parseQueryParams } = require('../../utils/dbUtils/queryUtils');
 const { Op } = require('sequelize');
 
@@ -194,8 +194,6 @@ exports.getDoneTestInfoById = async (req, res) => {
     }));
 
     const response = {
-      UserLastName: doneTest.Test.Group.Course.Teacher.User.LastName,
-      UserFirstName: doneTest.Test.Group.Course.Teacher.User.FirstName,
       SubjectName: subjectName,
       TestId: doneTest.Test.TestId,
       StudentId: doneTest.Student.StudentId,
