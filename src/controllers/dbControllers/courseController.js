@@ -1,10 +1,23 @@
-const { Course, Teacher, Subject, Location  } = require('../../models/dbModels');
+const { sequelize, Course, Teacher, Subject, Location  } = require('../../models/dbModels');
 const { parseQueryParams } = require('../../utils/dbUtils/queryUtils');
 const { Op, where } = require('sequelize');
 
 exports.createCourse = async (req, res) => {
   try {
-    const course = await Course.create(req.body);
+    const { SubjectName, CourseName, TeacherId } = req.body;
+    
+    const [subject, created] = await sequelize.models.Subject.findOrCreate({
+      where: { SubjectName },
+      defaults: { SubjectName }
+    });
+    
+    const course = await sequelize.models.Course.create({
+      CourseName,
+      SubjectId: subject.SubjectId,
+      TeacherId,
+      LocationId: 1
+    });
+    
     res.status(201).json(course);
   } catch (error) {
     res.status(400).json({ error: error.message });
