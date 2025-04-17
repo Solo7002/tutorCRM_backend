@@ -92,10 +92,6 @@ exports.getCoursesByTeacherId = async (req, res) => {
       attributes: ["CourseId", "CourseName"],
     });
 
-    if (!courses || courses.length === 0) {
-      return res.status(404).json({ error: "No courses found for this teacher" });
-    }
-
     res.status(200).json(courses);
   } catch (error) {
     console.error("Error in getCoursesByTeacher:", error);

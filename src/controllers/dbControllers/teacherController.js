@@ -112,22 +112,24 @@ exports.getAllAboutTeacher = async (req, res) => {
     });
 
     const studentsAmount = await GroupStudent.count({
-      distinct: true,
-      col: 'StudentId',
-      include: [
-        {
-          model: Group,
-          as: 'Group',
-          include: [
-            {
-              model: Course,
-              as: 'Course',
-              where: { TeacherId: teacher.TeacherId },
-            },
-          ],
-        },
-      ],
-    });
+        distinct: true,
+        col: 'StudentId',
+        include: [
+          {
+            model: Group,
+            as: 'Group',
+            required: true,
+            include: [
+              {
+                model: Course,
+                as: 'Course',
+                required: true,
+                where: { TeacherId: teacher.TeacherId },
+              },
+            ],
+          },
+        ],
+      });
 
     const reviews = await UserReview.findAll({
       where: { UserIdFor: userId },
