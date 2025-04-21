@@ -5,6 +5,9 @@ const { exec } = require('child_process');
 const swaggerJSDoc = require("swagger-jsdoc");
 const swaggerUi = require("swagger-ui-express");
 const cors = require('cors');
+const cron = require('node-cron')
+const{deleteOldFiles}=require('./services/cleanupService');
+
 
 const authRoutes = require('./routes/authRoutes');
 const routes = require('./routes/dbRoutes/routes');
@@ -33,6 +36,7 @@ app.use('/api/notifications', notificationRoutes);
 app.use(routes);
 
 const path = require("path");
+const { logger } = require('@azure/storage-blob');
 const options = {
     definition: {
         openapi: '3.0.0',
@@ -191,6 +195,19 @@ app.get('/memory-load', (req, res) => {
 app.get('/', (req, res) => {
     const randomStatusCode = Math.floor(Math.random() * 100) + 200;
     res.status(randomStatusCode).send(`Response with status code: ${randomStatusCode}`);
+});
+
+
+cron.schedule('0 3 * * *', async () => {
+    console.log('[CRON] Запуск задачи по удалению старых записей');
+    try {
+        await deleteOldFiles();
+        console.log('[CRON] Удаление выполнено успешно');
+    } catch (error) {
+        console.error('[CRON] Ошибка при выполнении удаления:', error);
+    }
+}, {
+    timezone: 'Europe/Kyiv'
 });
 
 module.exports = app;

@@ -1,6 +1,6 @@
 const { BlobServiceClient, StorageSharedKeyCredential, generateBlobSASQueryParameters, BlobSASPermissions } = require('@azure/storage-blob');
 require('dotenv').config();
-
+require('url');
 const accountName = process.env.AZURE_STORAGE_ACCOUNT_NAME;
 const accountKey = process.env.AZURE_STORAGE_ACCOUNT_KEY;
 const containerName = process.env.AZURE_STORAGE_CONTAINER;
@@ -83,4 +83,15 @@ function generateTemporaryUrl(fileName, expiryTimeInMinutes = 60) {
   return `https://${accountName}.blob.core.windows.net/${containerName}/${fileName}?${sasToken}`;
 }
 
-module.exports = { uploadFileToBlob, uploadFileToBlobAndReturnLink, deleteFileFromBlob, generateTemporaryUrl };
+async function deleteFileFromBlobByUrl(fileUrl) {
+  const url = new URL(fileUrl);
+  const pathParts = url.pathname.split('/');
+  const fileName = pathParts[pathParts.length - 1];
+
+  const containerClient = blobServiceClient.getContainerClient(containerName);
+  const blockBlobClient = containerClient.getBlockBlobClient(fileName);
+  await blockBlobClient.deleteIfExists();
+}
+
+
+module.exports = { uploadFileToBlob, uploadFileToBlobAndReturnLink, deleteFileFromBlob, generateTemporaryUrl,deleteFileFromBlobByUrl };

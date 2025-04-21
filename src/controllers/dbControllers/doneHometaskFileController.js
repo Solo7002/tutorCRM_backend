@@ -96,20 +96,36 @@ exports.getDoneHometaskFilesByDoneHomeTaskId = async (req, res) => {
   try {
     const { DoneHomeTaskId } = req.params;
     
-    // Валидация параметра
+ 
     if (!DoneHomeTaskId || isNaN(DoneHomeTaskId)) {
       return res.status(400).json({ message: 'DoneHomeTaskId is required and must be a number' });
     }
 
-    // Ищем файлы по DoneHomeTaskId
+ 
     const doneHometaskFiles = await DoneHomeTaskFile.findAll({
       where: { DoneHomeTaskId },
     });
-
-    // Возвращаем массив файлов
+ 
     res.status(200).json(doneHometaskFiles);
   } catch (error) {
     console.error('Error in getDoneHometaskFiles:', error);
     res.status(500).json({ error: error.message });
   }
 };
+
+
+exports.getOldDoneHometaskFilePaths= async()=>{
+  const ninetyDaysAgo = new Date();
+  ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() -90);
+
+  const oldFiles = await DoneHomeTaskFile.findAll({
+      where: {
+          createdAt: {
+              [Op.lt]: ninetyDaysAgo
+          }
+      },
+      attributes: ['FilePath']
+  });
+
+  return oldFiles.map(file => file.FilePath);
+}
