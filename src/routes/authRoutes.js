@@ -340,7 +340,7 @@ router.get('/google-callback', passport.authenticate('google', { session: false 
  *         description: Redirect to Facebook for authentication
  */
 //Вход через Facebook(Oauth2)
-router.get('/facebook', passport.authenticate('facebook', { scope: ['email'] }));
+router.get('/facebook', passport.authenticate('facebook', { scope: ['email'] }),authController.oauthCallback);
 
 /**
  * @swagger
@@ -354,5 +354,31 @@ router.get('/facebook', passport.authenticate('facebook', { scope: ['email'] }))
  */
 router.get('/facebook-callback', passport.authenticate('facebook', { session: false }), authController.oauthCallback);
 
+/**
+ * @swagger
+ * /api/auth/change-password:
+ *   post:
+ *     summary: Change user password from profile
+ *     tags: [Authentication]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               oldPassword:
+ *                 type: string
+ *                 description: Current password
+ *               newPassword:
+ *                 type: string
+ *                 description: New password
+ *     responses:
+ *       200:
+ *         description: Password updated successfully
+ */
+router.post('/change-password', authenticateToken, authController.changeProfilePassword);
 
 module.exports=router;

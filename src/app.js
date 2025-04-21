@@ -9,10 +9,12 @@ const cors = require('cors');
 const authRoutes = require('./routes/authRoutes');
 const routes = require('./routes/dbRoutes/routes');
 const fileRoutes = require('./routes/fileRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
 const { connectRedis } = require('./utils/cacheUtils');
 const { metricsMiddleware, register } = require('./utils/metrics');
 
-const { populateDatabase, populateWithHometasks, populateWithReviews } = require('./services/fillDataForTests');
+const { populateDatabase, populateWithHometasks, populateWithReviews, populateMaterials } = require('./services/fillDataForTests');
+const populateDbForTeacher = require('./services/populateFullDb');
 
 require('./config/passportConfig');
 
@@ -27,6 +29,7 @@ app.use(bodyParser.json());
 app.use(metricsMiddleware);
 app.use('/api/files', fileRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/notifications', notificationRoutes);
 app.use(routes);
 
 const path = require("path");
@@ -40,7 +43,7 @@ const options = {
         path.join(__dirname, "./app.js"),
         path.join(__dirname, "./routes/**/*.js"),
         path.join(__dirname, "./routes/fileRoutes.js"),
-        path.join(__dirname, "./routes/authRoutes.js") 
+        path.join(__dirname, "./routes/authRoutes.js")
     ]
 };
 
@@ -62,15 +65,26 @@ exec('npx sequelize-cli db:migrate', (err, stdout, stderr) => {
 
 app.get('/populate', async (req, res) => {
     try {
-      //await populateDatabase();
-    //   await populateWithHometasks();
-        await populateWithReviews();
-      res.send('База даних успішно заповнена');
+        //await populateDatabase();
+        //   await populateWithHometasks();
+        //await populateWithReviews();
+        await populateMaterials();
+        res.send('База даних успішно заповнена');
     } catch (error) {
-      console.error(error);
-      res.status(500).send('Помилка при заповненні бази даних');
+        console.error(error);
+        res.status(500).send('Помилка при заповненні бази даних');
     }
-  });
+});
+
+app.get('/populateFullDbForTeacher/:id', async (req, res) => {
+    try {
+        await populateDbForTeacher(req.params.id);
+        res.send('База даних успішно заповнена');
+    } catch (error) {
+        console.error(error);
+        res.status(500).send('Помилка при заповненні бази даних');
+    }
+});
 
 /**
  * @swagger
@@ -158,6 +172,8 @@ app.get('/memory-load', (req, res) => {
     }
     res.send(`Memory load completed with ${iterations} iterations.`);
 });
+
+
 
 /**
  * @swagger

@@ -74,6 +74,8 @@ router.get('/:id/days', studentController.getDaysByStudentId);
 router.get('/:id/user', studentController.searchUserByStudentId);
 router.get('/searchTeachers', studentController.searchTeachersForStudent);
 router.get('/search/user/:userId', studentController.getStudentByUserId);
+router.get('/:id/info', studentController.getAllAboutStudent);
+router.get('/:id/groups', studentController.getStudentGroups);
 
 /**
  * @swagger
@@ -143,5 +145,54 @@ router.put('/:id/trophies', studentController.updateStudentTrophiesById);
  *         description: The student was successfully deleted
  */
 router.delete('/:id', studentController.deleteStudent);
+
+/**
+ * @swagger
+ * /api/students/user/{userId}:
+ *   put:
+ *     summary: Update a student profile by user ID
+ *     tags: [Students]
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: The user ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               user:
+ *                 type: object
+ *                 properties:
+ *                   FirstName:
+ *                     type: string
+ *                   LastName:
+ *                     type: string
+ *                   Email:
+ *                     type: string
+ *                   ImageFilePath:
+ *                     type: string
+ *               student:
+ *                 type: object
+ *                 properties:
+ *                   SchoolName:
+ *                     type: string
+ *                   Grade:
+ *                     type: string
+ *               phone:
+ *                 type: object
+ *                 properties:
+ *                   PhoneNumber:
+ *                     type: string
+ *     responses:
+ *       200:
+ *         description: The student profile was successfully updated
+ */
+router.put('/profile/:userId', studentController.updateStudentProfileByUserId);
 
 module.exports = router;

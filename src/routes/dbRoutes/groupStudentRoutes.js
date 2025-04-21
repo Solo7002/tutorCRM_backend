@@ -126,6 +126,6 @@ router.put('/:id', groupStudentController.updateGroupStudent);
  *       200:
  *         description: The student was successfully removed from the group
  */
-router.delete('/:id', groupStudentController.deleteGroupStudent);
+router.delete('/:groupid/:studentid', groupStudentController.deleteGroupStudent);
 
 module.exports = router;

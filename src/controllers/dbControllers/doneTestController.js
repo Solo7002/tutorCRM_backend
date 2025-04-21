@@ -1,4 +1,4 @@
-const { DoneTest, Student, Test, Group, Course, Subject, TestQuestion, TestAnswer, SelectedAnswer, sequelize, Trophies } = require('../../models/dbModels');
+const { DoneTest, User, Student, Teacher,  Test, Group, Course, Subject, TestQuestion, TestAnswer, SelectedAnswer, sequelize, Trophies } = require('../../models/dbModels');
 const { parseQueryParams } = require('../../utils/dbUtils/queryUtils');
 const { Op } = require('sequelize');
 
@@ -113,6 +113,16 @@ exports.getDoneTestInfoById = async (req, res) => {
                       model: Subject,
                       as: 'Subject',
                     },
+                    {
+                      model: Teacher,
+                      as: 'Teacher',
+                      include: [
+                        {
+                          model: User,
+                          as: 'User'
+                        }
+                      ]
+                    }
                   ],
                 },
               ],
@@ -139,6 +149,10 @@ exports.getDoneTestInfoById = async (req, res) => {
             },
           ],
         },
+        {
+          model: Student,
+          as: 'Student',
+        }
       ],
     });
 
@@ -181,6 +195,8 @@ exports.getDoneTestInfoById = async (req, res) => {
 
     const response = {
       SubjectName: subjectName,
+      TestId: doneTest.Test.TestId,
+      StudentId: doneTest.Student.StudentId,
       TestName: testName,
       Mark: mark,
       MaxMark: maxMark,
@@ -294,47 +310,43 @@ exports.deleteDoneTest = async (req, res) => {
 };
 
 exports.setMarkForDoneTest = async (req, res) => {
-  const t = await sequelize.transaction();
   try {
-    const { mark } = req.body;
-    const doneTestId = req.params.id;
-
-    if (mark === undefined || typeof mark !== 'number') {
-      await t.rollback();
-      return res.status(400).json({ error: 'Mark is required and must be a number' });
-    }
-    if (mark < -1 || mark > 12) {
-      await t.rollback();
-      return res.status(400).json({ error: 'Mark must be between -1 and 12' });
-    }
-
-    const doneTest = await DoneTest.findByPk(doneTestId, { transaction: t });
+    const doneTest = await DoneTest.findByPk(req.params.id);
     if (!doneTest) {
-      await t.rollback();
-      return res.status(404).json({ error: 'DoneTest not found' });
+      return res.status(404).json({ message: 'DoneTest not found' });
     }
 
-    const previousMark = doneTest.Mark || 0;
-    await doneTest.update({ Mark: mark }, { transaction: t });
-
-    if (mark !== previousMark && (mark >= 8 || previousMark >= 8)) {
-      const studentId = doneTest.StudentId;
-      const newTrophyAmount = await adjustTrophiesBasedOnMark(studentId, previousMark, mark, t);
-      if (newTrophyAmount !== null) {
-        await t.commit();
-        return res.status(200).json({
-          doneTest,
-          trophiesUpdated: true,
-          newTrophyAmount,
-        });
-      }
+    const test = await Test.findByPk(doneTest.TestId);
+    if (!test) {
+      return res.status(404).json({ message: 'Test not found' });
+    }
+    const questionsAmount = await TestQuestion.count({ where: { TestId: test.TestId } });
+    if (questionsAmount === 0) {
+      return res.status(400).json({ message: 'No questions found for this test' });
     }
 
-    await t.commit();
-    res.status(200).json(doneTest);
+    const selectedAnswersData = req.body.answers.map(answer => ({
+      TestQuestionId: answer.testQuestionId,
+      TestAnswerId: answer.testAnswerId,
+      DoneTestId: doneTest.DoneTestId
+    }));
+    await SelectedAnswer.bulkCreate(selectedAnswersData);
+    const selectedAnswers = await SelectedAnswer.findAll({
+      where: { DoneTestId: doneTest.DoneTestId },
+      include: [{ model: TestAnswer, as: 'TestAnswer' }]
+    });
+    const testPoints = selectedAnswers.filter(sa => sa.TestAnswer.IsRightAnswer).length;
+
+    const calculatedMark = Math.round((testPoints / questionsAmount) * test.MaxMark);
+
+    await doneTest.update({
+      Mark: calculatedMark,
+      SpentTime: req.body.timeTaken
+    });
+
+    return res.status(200).json({ message: 'Mark and time updated successfully' });
   } catch (error) {
-    await t.rollback();
-    console.error('Error in setMarkForDoneTest:', error);
-    res.status(400).json({ error: error.message });
+    console.log("error.message: ", error.message);
+    return res.status(500).json({ message: error.message });
   }
 };

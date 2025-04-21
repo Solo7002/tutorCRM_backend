@@ -6,19 +6,14 @@ module.exports = (sequelize, DataTypes) => {
       primaryKey: true,
     },
     TestQuestionHeader: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      validate: {
-        notEmpty: { msg: 'TestQuestionHeader cannot be empty' },
-        len: { args: [1, 255], msg: 'TestQuestionHeader must be between 1 and 255 characters' },
-      },
+      type: DataTypes.TEXT,
+      allowNull: true,
+      
     },
     TestQuestionDescription: {
       type: DataTypes.TEXT,
       allowNull: true,
-      validate: {
-        len: { args: [1, 1000], msg: 'TestQuestionDescription must be between 1 and 1000 characters' },
-      },
+       
     },
     ImagePath: {
       type: DataTypes.STRING,

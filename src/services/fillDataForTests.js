@@ -1,4 +1,4 @@
-const {sequelize, UserReview, Course, Subject, Group, GroupStudent, Test, TestQuestion, TestAnswer, SelectedAnswer, DoneTest, Location, Teacher, Student, HomeTask, HomeTaskFile, DoneHomeTask, DoneHomeTaskFile, User  } = require('../models/dbModels');
+const {sequelize, UserReview, Course, Subject, Group, GroupStudent, Test, TestQuestion, Material, TestAnswer, SelectedAnswer, DoneTest, Location, Teacher, Student, HomeTask, HomeTaskFile, DoneHomeTask, DoneHomeTaskFile, User  } = require('../models/dbModels');
 const { Op } = require('sequelize');
 
 async function populateDatabase() {
@@ -450,4 +450,112 @@ async function populateWithReviews() {
   }
 }
 
-module.exports = {populateDatabase, populateWithHometasks, populateWithReviews };
+async function populateMaterials() {
+  const teacherId = 1;
+
+  const urls = [
+    'https://blobstorage226122007.blob.core.windows.net/blob-storage-container/1.06.04.2025.jpg',
+    'https://blobstorage226122007.blob.core.windows.net/blob-storage-container/2.06.04.2025.jpg',
+    'https://blobstorage226122007.blob.core.windows.net/blob-storage-container/3.06.04.2025.jpg',
+    'https://blobstorage226122007.blob.core.windows.net/blob-storage-container/4.06.04.2025.jpg',
+    'https://blobstorage226122007.blob.core.windows.net/blob-storage-container/5.06.04.2025.jpg',
+    'https://blobstorage226122007.blob.core.windows.net/blob-storage-container/6.06.04.2025.jpg',
+    'https://blobstorage226122007.blob.core.windows.net/blob-storage-container/7.06.04.2025.jpg',
+    'https://blobstorage226122007.blob.core.windows.net/blob-storage-container/Students Book.pdf',
+    'https://blobstorage226122007.blob.core.windows.net/blob-storage-container/Work Book.pdf',
+    'https://blobstorage226122007.blob.core.windows.net/blob-storage-container/Алгебра.pdf',
+    'https://blobstorage226122007.blob.core.windows.net/blob-storage-container/биология кр.pdf',
+    'https://blobstorage226122007.blob.core.windows.net/blob-storage-container/Биология.pdf',
+    'https://blobstorage226122007.blob.core.windows.net/blob-storage-container/Примеры задание 1.docx',
+    'https://blobstorage226122007.blob.core.windows.net/blob-storage-container/Розклад уроків 9_2022-2023.docx',
+    'https://blobstorage226122007.blob.core.windows.net/blob-storage-container/Ссылки на занятия.txt',
+    'https://blobstorage226122007.blob.core.windows.net/blob-storage-container/Полезный текст.txt'
+  ];
+
+  let urlIndex = 0;
+
+  function getNextUrl() {
+    const url = urls[urlIndex % urls.length];
+    urlIndex++;
+    return url;
+  }
+
+  function getFileName(url) {
+    return url.split('/').pop();
+  }
+
+  const rootFolderNames = ['Учебники', 'Мусор', 'Матрериалы'];
+  const rootFolderIds = [];
+
+  for (const name of rootFolderNames) {
+    const folder = await Material.create({
+      MaterialName: name,
+      Type: 'folder',
+      FilePath: null,
+      FileImage: null,
+      ParentId: null,
+      TeacherId: teacherId,
+    });
+    rootFolderIds.push(folder.MaterialId);
+  }
+
+  for (let i = 1; i <= 5; i++) {
+    const url = getNextUrl();
+    const fileName = getFileName(url);
+    await Material.create({
+      MaterialName: fileName,
+      Type: 'file',
+      FilePath: url,
+      FileImage: null,
+      ParentId: null,
+      TeacherId: teacherId,
+    });
+  }
+
+  for (const rootId of rootFolderIds) {
+    const subFolderNames = [`Еще материалы ${rootId}.1`, `Еще разные файлы ${rootId}.2`];
+    const subFolderIds = [];
+
+    for (const name of subFolderNames) {
+      const subFolder = await Material.create({
+        MaterialName: name,
+        Type: 'folder',
+        FilePath: null,
+        FileImage: null,
+        ParentId: rootId,
+        TeacherId: teacherId,
+      });
+      subFolderIds.push(subFolder.MaterialId);
+    }
+
+    for (let i = 1; i <= 2; i++) {
+      const url = getNextUrl();
+      const fileName = getFileName(url);
+      await Material.create({
+        MaterialName: fileName,
+        Type: 'file',
+        FilePath: url,
+        FileImage: null,
+        ParentId: rootId,
+        TeacherId: teacherId,
+      });
+    }
+
+    for (const subId of subFolderIds) {
+      for (let i = 1; i <= 2; i++) {
+        const url = getNextUrl();
+        const fileName = getFileName(url);
+        await Material.create({
+          MaterialName: fileName,
+          Type: 'file',
+          FilePath: url,
+          FileImage: null,
+          ParentId: subId,
+          TeacherId: teacherId,
+        });
+      }
+    }
+  }
+}
+
+module.exports = {populateDatabase, populateWithHometasks, populateWithReviews, populateMaterials };

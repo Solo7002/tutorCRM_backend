@@ -101,6 +101,8 @@ exports.getUserBalance = async (req, res) => {
       const trophies = user.Student.Trophies ? user.Student.Trophies.Amount : 0;
       return res.status(200).json({
         UserId: user.UserId,
+        LastName: user.LastName,
+        FirstName: user.FirstName,
         Username: user.Username,
         Role: 'Student',
         Balance: {
@@ -112,6 +114,8 @@ exports.getUserBalance = async (req, res) => {
       const coins = user.Teacher.OctoCoins ? user.Teacher.OctoCoins.Amount : 0;
       return res.status(200).json({
         UserId: user.UserId,
+        LastName: user.LastName,
+        FirstName: user.FirstName,
         Username: user.Username,
         Role: 'Teacher',
         Balance: {

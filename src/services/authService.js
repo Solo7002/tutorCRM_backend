@@ -39,9 +39,31 @@ const comparePassword = async (password, hashPassword) => {
 
 //Валидация пароля
 const validatePassword = (password) => {
-    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@#^()-=+_[\]{}\\/.,><'";:$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
-    if (!passwordRegex.test(password)) {
-        throw new Error('Password must contain at least one lowercase letter, one uppercase letter, one digit, one special character, and be at least 8 characters long.');
+    const minLength = 8;
+    const maxLength = 128;
+    const hasLowercase = /[a-z]/.test(password);
+    const hasUppercase = /[A-Z]/.test(password);
+    const hasDigit = /\d/.test(password);
+    const hasSpecial = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>/?]/.test(password);
+    const allowedChars = /^[A-Za-z\d!@#$%^&*()_+\-=\[\]{};':"\\|,.<>/?]*$/.test(password);
+
+    if (password.length < minLength || password.length > maxLength) {
+        throw new Error(`Password must be between ${minLength} and ${maxLength} characters`);
+    }
+    if (!hasLowercase) {
+        throw new Error("Password must contain at least one lowercase letter (a-z)");
+    }
+    if (!hasUppercase) {
+        throw new Error("Password must contain at least one uppercase letter (A-Z)");
+    }
+    if (!hasDigit) {
+        throw new Error("Password must contain at least one digit (0-9)");
+    }
+    if (!hasSpecial) {
+        throw new Error("Password must contain at least one special character (!@#$%^&*()_+-=[]{};:'\"\\|,.<>/?)");
+    }
+    if (!allowedChars) {
+        throw new Error("Password contains invalid characters. Only letters, digits, and special characters (!@#$%^&*()_+-=[]{};:'\"\\|,.<>/?) are allowed");
     }
 };
 
@@ -68,14 +90,14 @@ const registerUser = async (user) => {
                 SchoolName: user.SchoolName,
                 Grade: user.Grade
             });
-        
+
             const trophy = await Trophies.create({
                 StudentId: newStudent.StudentId,
                 Amount: 0,
             });
             await newStudent.update({ TrophyId: trophy.TrophyId });
             await newStudent.reload();
-        
+
             additionalId = newStudent.StudentId;
             await newUser.update({ StudentId: additionalId });
         } else if (user.Role === 'Teacher') {
@@ -338,6 +360,23 @@ const resetPasswordWithNew = async (Email) => {
     }
 };
 
+const changeProfilePassword = async (userId, newPassword) => {
+    try {
+        const user = await User.findOne({ where: { UserId: userId } });
+        if (!user) {
+            throw new Error("User not found");
+        }
+
+        validatePassword(newPassword);
+        const hashedPassword = await hashPassword(newPassword);
+        await user.update({ Password: hashedPassword });
+
+        return { message: "Password updated successfully" };
+    } catch (error) {
+        throw new Error(error.message);
+    }
+};
+
 module.exports = {
     loginUser,
     registerUser,
@@ -349,5 +388,6 @@ module.exports = {
     registerAndSendEmailCode,
     verifyEmailCodeAndRegisterUser,
     loginToOuth2,
-    validatePassword
+    validatePassword,
+    changeProfilePassword
 }

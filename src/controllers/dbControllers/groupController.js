@@ -1,4 +1,5 @@
-const { Group, GroupStudent,Course,Teacher } = require('../../models/dbModels');
+const { model } = require('../../config/database');
+const { Group, GroupStudent, Course, User, Teacher, Student } = require('../../models/dbModels');
 const { parseQueryParams } = require('../../utils/dbUtils/queryUtils');
 const { Op } = require('sequelize');
 
@@ -138,6 +139,41 @@ exports.getGroupsByTeacherId = async (req, res) => {
     res.status(200).json(groupInfo);
   } catch (error) {
     console.error("Error in getGroupsByTeacher:", error);
+    res.status(400).json({ error: error.message });
+  }
+};
+exports.getGroupsByCourseId = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const course = await Course.findByPk(id, {
+      include: [{
+        model: Group,
+        as: 'Groups',
+        include: [{
+          model: Student,
+          as: 'Students',
+          include: [{
+            model: User,
+            as: 'User'
+          }]
+        }]
+      }]
+    });
+
+    if (!course) {
+      return res.status(404).json({ error: 'Course not found' });
+    }
+
+    const groupsWithStudentsAndCount = course.Groups.map(group => {
+      const groupData = group.get({ plain: true });
+      groupData.studentCount = group.Students.length;
+      return groupData;
+    });
+
+    res.status(200).json(groupsWithStudentsAndCount);
+  } catch (error) {
+    console.error('Error in getGroupsByCourseId:', error);
     res.status(400).json({ error: error.message });
   }
 };

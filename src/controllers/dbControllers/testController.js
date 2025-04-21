@@ -1,4 +1,4 @@
-const { Student, GroupStudent, Test, DoneTest, Group, Course, Subject, Teacher, User, TestQuestion} = require('../../models/dbModels');
+const { Student, GroupStudent, Test, DoneTest, Group, Course, Subject, Teacher, User, TestQuestion, TestAnswer} = require('../../models/dbModels');
 const { parseQueryParams } = require('../../utils/dbUtils/queryUtils');
 const { Op } = require('sequelize');
 const testService=require('../../services/testCreatedAIService');
@@ -82,6 +82,13 @@ exports.getTestInfoByDoneTestId = async (req, res) => {
         {
           model: TestQuestion,
           as: 'TestQuestions',
+          include: [
+            {
+              model: TestAnswer,
+              as: 'TestAnswers',
+              attributes: ['TestAnswerId', 'AnswerText', 'IsRightAnswer'],
+            },
+          ],
         },
       ],
     });
@@ -100,7 +107,7 @@ exports.getTestInfoByDoneTestId = async (req, res) => {
       MaxMark: test.MaxMark,
       ShowAnswers: test.ShowAnswers,
       TimeLimit: test.TimeLimit,
-      ImageFilePath: test.ImageFilePath,
+      ImageFilePath: test.ImagePath,
       GroupId: test.GroupId,
       TestQuestions: test.TestQuestions.map(tq => ({
         TestQuestionId: tq.TestQuestionId,
@@ -109,6 +116,11 @@ exports.getTestInfoByDoneTestId = async (req, res) => {
         ImagePath: tq.ImagePath,
         AudioPath: tq.AudioPath,
         TestId: tq.TestId,
+        testAnswers: tq.TestAnswers.map(ta => ({
+          TestAnswerId: ta.TestAnswerId,
+          AnswerText: ta.AnswerText,
+          IsRightAnswer: ta.IsRightAnswer,
+        })),
       })),
     };
 
@@ -345,54 +357,57 @@ exports.getTestCreatedByAI = async (req, res) => {
 
 exports.getTestsByTeacherId = async (req, res) => {
   try {
-    const { id } = req.params; 
+    const { id } = req.params;
 
-   
     if (!id) {
       return res.status(400).json({ error: 'TeacherId is required' });
     }
 
-    
-    const tests = await Test.findAll({
+    const teacher = await Teacher.findByPk(id, {
       include: [
         {
-          model: Group,
-          as: 'Groups', 
-          include: [
-            {
-              model: Course,
-              as: 'Course',
-              include: [
-                {
-                  model: Teacher,
-                  as: 'Teacher', 
-                  where: { TeacherId: id },
-                },
-              ],
+          model: Course,
+          as: 'Courses',
+          include: {
+            model: Group,
+            as: 'Groups',
+            include: {
+              model: Test,
+              as: 'Tests',
             },
-          ],
+          },
         },
-      ],
+        {
+          model: User,
+          as: 'User'
+        }
+      ]
     });
 
     
-    if (!tests || tests.length === 0) {
-      return res.status(404).json({ error: 'No tests found for this teacher' });
-    }
+     
 
-   
-    const testInfo = tests.map(test => ({
-      TestId: test.TestId,
-      TestName: test.TestName,
-      TestDescription: test.TestDescription,
-      CreatedDate: test.CreatedDate,
-      DeadlineDate: test.DeadlineDate,
-      MaxMark: test.MaxMark,
-      TimeLimit: test.TimeLimit,
-      GroupName: test.Groups.GroupName, 
-      CourseName: test.Groups.Course.CourseName,
-    }));
+    const testInfo = [];
 
+    teacher.Courses.forEach(course => {
+      course.Groups.forEach(group => {
+        group.Tests.forEach(test => {
+          testInfo.push({
+            UserLastName: teacher.User.LastName,
+            UserFirstName: teacher.User.FirstName,
+            TestId: test.TestId,
+            TestName: test.TestName,
+            TestDescription: test.TestDescription,
+            CreatedDate: test.CreatedDate,
+            DeadlineDate: test.DeadlineDate,
+            MaxMark: test.MaxMark,
+            TimeLimit: test.TimeLimit,
+            GroupName: group.GroupName,
+            CourseName: course.CourseName,
+          });
+        });
+      });
+    });
 
     res.status(200).json(testInfo);
   } catch (error) {
@@ -400,7 +415,6 @@ exports.getTestsByTeacherId = async (req, res) => {
     res.status(400).json({ error: error.message });
   }
 };
-
 
 exports.getStudentsNotDoneTest = async (req, res) => {
   try {

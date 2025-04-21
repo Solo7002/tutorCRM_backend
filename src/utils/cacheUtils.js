@@ -35,4 +35,4 @@ const clearAllCache = async () => {
     await redisClient.flushAll();
 };
 
-module.exports = { connectRedis, setCache, getCache, updateCache, deleteCache, clearAllCache };
+module.exports = { redisClient, connectRedis, setCache, getCache, updateCache, deleteCache, clearAllCache };

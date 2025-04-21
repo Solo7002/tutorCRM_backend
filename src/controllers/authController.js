@@ -1,95 +1,95 @@
-const authService=require('../services/authService');
+const authService = require('../services/authService');
 const logger = require('../utils/logger');
-
+const teacherContoller=require('./dbControllers/teacherController');
 //регистрация
-const register=async(req,res)=>{
-    try{
-        const userData=req.body;
-        const newUser=await authService.registerUser(userData);
+const register = async (req, res) => {
+    try {
+        const userData = req.body;
+        const newUser = await authService.registerUser(userData);
         logger.info(`User registered: ${newUser.id}`);
         res.status(201).json({ message: 'User registered successfully', user: newUser });
-    }catch (error) {
+    } catch (error) {
         logger.error(`Registration error: ${error.message}`);
         res.status(400).json({ message: error.message });
-      }
+    }
 }
 
-const login=async(req,res)=>{
-    try{
+const login = async (req, res) => {
+    try {
         const { Email, Password } = req.body;
         const { user, token } = await authService.loginUser(Email, Password);
         logger.info(`User logged in: ${user.id}`);
-        res.status(200).json({ message: 'Login successful', user, token:token });
+        res.status(200).json({ message: 'Login successful', user, token: token });
 
-    }catch (error) {
+    } catch (error) {
         logger.error(`Login error: ${error.message}`);
         res.status(400).json({ message: error.message });
-      }
+    }
 
 }
 
-const resetPassword=async(req,res)=>{
-    try{
-        const{Email}=req.body;
+const resetPassword = async (req, res) => {
+    try {
+        const { Email } = req.body;
         await authService.resetPasswordByService(Email);
         logger.info(`Password reset email sent to: ${Email}`);
-        res.status(200).json({message:'Reset password send on Email'});
-    }catch(error){
+        res.status(200).json({ message: 'Reset password send on Email' });
+    } catch (error) {
         logger.error(`Reset password error: ${error.message}`);
-        res.status(400).json({message: error.message});
+        res.status(400).json({ message: error.message });
     }
 }
 
-const changePassword=async(req,res)=>{
-    try{
-        const {token}=req.params;
-        const {NewPassword}=req.body;
-        await authService.resetAndChangePassword(token,NewPassword);
+const changePassword = async (req, res) => {
+    try {
+        const { token } = req.params;
+        const { NewPassword } = req.body;
+        await authService.resetAndChangePassword(token, NewPassword);
         logger.info(`Password changed for token: ${token}`);
-        res.status(200).json({message:'Change password succesfully'});
-    }catch(error){
+        res.status(200).json({ message: 'Change password succesfully' });
+    } catch (error) {
         logger.error(`Change password error: ${error.message}`);
-        res.status(400).json({message: error.message}); 
+        res.status(400).json({ message: error.message });
     }
-    
+
 }
 
 const resetPasswordWithNew = async (req, res) => {
-  try {
-    const { Email } = req.body;
-    await authService.resetPasswordWithNew(Email);
-    logger.info(`New password reset email sent to: ${Email}`);
-    res.status(200).json({ message: 'Новый пароль отправлен на Email' });
-  } catch (error) {
-    logger.error(`Reset new password error: ${error.message}`);
-    res.status(400).json({ message: error.message });
-  }
+    try {
+        const { Email } = req.body;
+        await authService.resetPasswordWithNew(Email);
+        logger.info(`New password reset email sent to: ${Email}`);
+        res.status(200).json({ message: 'Новый пароль отправлен на Email' });
+    } catch (error) {
+        logger.error(`Reset new password error: ${error.message}`);
+        res.status(400).json({ message: error.message });
+    }
 };
 
-const sendConfirmEmail=async(req,res)=>{
-    try{
+const sendConfirmEmail = async (req, res) => {
+    try {
         const userData = req.body;
         await authService.registerAndSendEmailConfirmation(userData);
         logger.info(`Confirmation email sent to: ${userData.Email}`);
-        res.status(200).json({message:'A confirmation sheet has been sent to your email.'});
-    }catch(error){
+        res.status(200).json({ message: 'A confirmation sheet has been sent to your email.' });
+    } catch (error) {
         logger.error(`Send confirmation email error: ${error.message}`);
-        res.status(400).json({message: error.message}); 
+        res.status(400).json({ message: error.message });
     }
-    
+
 }
 
-const confirmEmail=async(req,res)=>{
-    try{
-        const {token}=req.params;
-        const newUser=await authService.verifyEmailAndRegisterUser(token);
+const confirmEmail = async (req, res) => {
+    try {
+        const { token } = req.params;
+        const newUser = await authService.verifyEmailAndRegisterUser(token);
         logger.info(`Email confirmed for user: ${newUser.id}`);
         res.status(201).json({ message: 'User registered successfully and confirm email', user: newUser });
-    }catch(error){
+    } catch (error) {
         logger.error(`Email confirmation error: ${error.message}`);
-        res.status(400).json({message: error.message}); 
+        res.status(400).json({ message: error.message });
     }
-    
+
 }
 
 
@@ -132,25 +132,48 @@ const confirmEmailWithCode = async (req, res) => {
 }*/
 
 const oauthCallback = async (req, res) => {
-  try {
-    const user = req.user;
-    const token = authService.loginToOuth2(user);
-    logger.info(`OAuth login successful for user: ${user}`);
+    try {
+        const user = req.user;
+        const token = authService.loginToOuth2(user);
+        logger.info(`OAuth login successful for user: ${user}`);
+         console.log(user);
+          
+        if (user.UserId) {
+            const isTeacher=teacherContoller.checkIfTeacher(user.UserId)
+ 
+            if(isTeacher)
+                 res.redirect(`http://localhost:3000/teacher/home?token=${token}`);
 
-    if (user.isRegistered) {
-      res.redirect(`http://localhost:3000/student/home?token=${token}`);
-    } else {
-      const firstName = user.Firstname || '';
-      const lastName = user.Lastname || '';
-      res.redirect(`http://localhost:3000/auth/register?token=${token}&email=${user.Email}&firstName=${firstName}&lastName=${lastName}`);
+            else
+                res.redirect(`http://localhost:3000/student/home?token=${token}`);
+             
+            
+        } else {
+            const firstName = user.Firstname || '';
+            const lastName = user.Lastname || '';
+            res.redirect(`http://localhost:3000/auth/register?token=${token}&email=${user.Email}&firstName=${firstName}&lastName=${lastName}`);
+        }
+    } catch (error) {
+        logger.error(`OAuth login error: ${error.message}`);
+        res.redirect(`http://localhost:3000/auth/login?error=${encodeURIComponent(error.message)}`);
     }
-  } catch (error) {
-    logger.error(`OAuth login error: ${error.message}`);
-    res.redirect(`http://localhost:3000/auth/login?error=${encodeURIComponent(error.message)}`);
-  }
 };
 
-module.exports={
+const changeProfilePassword = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const { newPassword } = req.body;
+        
+        const result = await authService.changeProfilePassword(userId, newPassword);
+        logger.info(`Password changed for user: ${userId}`);
+        res.status(200).json(result);
+    } catch (error) {
+        logger.error(`Change profile password error: ${error.message}`);
+        res.status(400).json({ message: error.message });
+    }
+};
+
+module.exports = {
     register,
     login,
     resetPassword,
@@ -160,5 +183,6 @@ module.exports={
     confirmEmail,
     oauthCallback,
     sendVerificationCode,
-    confirmEmailWithCode
+    confirmEmailWithCode,
+    changeProfilePassword
 }

@@ -33,13 +33,11 @@ module.exports = (models) => {
       onDelete: 'SET NULL',
       onUpdate: 'CASCADE',
     });
-  }
 
-  if (models.Course && models.Teacher) {
     models.Teacher.hasMany(models.Course, {
       foreignKey: 'TeacherId',
       as: 'Courses',
-      onDelete: 'CASCADE',
+      onDelete: 'SET NULL',
       onUpdate: 'CASCADE',
     });
   }
@@ -205,6 +203,29 @@ module.exports = (models) => {
       onDelete: 'SET NULL',
       onUpdate: 'CASCADE',
     });
+
+    models.Material.hasMany(models.Material, {
+      foreignKey: 'ParentId',
+      as: 'Materials',
+      onDelete: 'SET NULL',
+      onUpdate: 'CASCADE',
+    });
+  }
+
+  if (models.Material && models.Student) {
+    models.Material.belongsToMany(models.Student, {
+      through: 'MaterialVisibilityStudents',
+      foreignKey: 'MaterialId',
+      otherKey: 'StudentId',
+      as: 'VisibleStudents',
+    });
+  
+    models.Student.belongsToMany(models.Material, {
+      through: 'MaterialVisibilityStudents',
+      foreignKey: 'StudentId',
+      otherKey: 'MaterialId',
+      as: 'VisibleMaterials',
+    });
   }
 
   if (models.PlannedLesson && models.Group) {
@@ -337,6 +358,13 @@ module.exports = (models) => {
   }
 
   if (models.UserPhone && models.User) {
+    models.User.hasMany(models.UserPhone, {
+      foreignKey: 'UserId',
+      as: 'UserPhones',
+      onDelete: 'CASCADE',
+      onUpdate: 'CASCADE',
+    });
+
     models.UserPhone.belongsTo(models.User, {
       foreignKey: 'UserId',
       as: 'User',

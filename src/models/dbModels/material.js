@@ -56,6 +56,15 @@ module.exports = (sequelize, DataTypes) => {
             },
             onDelete: 'CASCADE',
         },
+        TeacherId: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+            references: {
+                model: 'Teachers',
+                key: 'TeacherId',
+            },
+            onDelete: 'CASCADE',
+        },
     }, {
         timestamps: false,
     });
