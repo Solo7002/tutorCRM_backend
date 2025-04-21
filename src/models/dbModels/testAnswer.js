@@ -26,7 +26,11 @@ module.exports = (sequelize, DataTypes) => {
     TestQuestionId: {
       type: DataTypes.INTEGER,
       allowNull: false,
-    }
+    },
+    SelectedAnswerId: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+  },
   }, {
     timestamps: false,
   });

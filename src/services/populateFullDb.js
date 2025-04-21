@@ -269,7 +269,11 @@ async function populateDbForTeacher(user_id) {
         ];
         const doneHomeTasks = [];
         for (const homeTask of createdHomeTasks) {
-            const studentIds = groupStudentMap[homeTask.GroupId];
+            const studentIds = groupStudentMap[homeTask.GroupId] || [];
+            if (studentIds.length === 0) {
+                console.log(`No students found for GroupId ${homeTask.GroupId}, skipping DoneHomeTasks creation`);
+                continue;
+            }
             const numDone = Math.floor(studentIds.length * (0.5 + Math.random() * 0.3));
             const selectedStudents = studentIds.sort(() => 0.5 - Math.random()).slice(0, numDone);
             for (const studentId of selectedStudents) {
@@ -590,7 +594,7 @@ async function populateDbForTeacher(user_id) {
                 }, { transaction });
             }
         }
-        
+
         await transaction.commit();
         console.log('База даних успішно заповнена!');
     } catch (error) {
