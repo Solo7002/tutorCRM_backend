@@ -155,5 +155,6 @@ router.delete('/:id', teacherController.deleteTeacher);
 
 
 router.get('/hometaskTeacher/:teacherId',teacherController.getNameTeacherByIdHometask)
+router.put('/profile/:userId', teacherController.updateTeacherProfileByUserId);
 
 module.exports = router;

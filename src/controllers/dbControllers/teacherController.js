@@ -1,5 +1,5 @@
 const { where } = require('../../config/database');
-const { Teacher, HomeTask, Group, User, Course, Student, UserReview, StudentCourseRating, GroupStudent, DoneHomeTask, Subject, PlannedLesson, MarkHistory, OctoCoins, Material, Trophies, sequelize } = require('../../models/dbModels');
+const { Teacher, HomeTask, Group, User, Course, Student, UserReview, StudentCourseRating, GroupStudent, DoneHomeTask, Subject, PlannedLesson, MarkHistory, OctoCoins, Material, Trophies, UserPhone, sequelize } = require('../../models/dbModels');
 const { parseQueryParams } = require('../../utils/dbUtils/queryUtils');
 const { Op } = require('sequelize');
 const moment = require('moment');
@@ -68,7 +68,19 @@ exports.getAllAboutTeacher = async (req, res) => {
   try {
     const userId = req.params.id;
 
-    const user = await User.findByPk(req.params.id);
+    const user = await User.findByPk(userId, {
+        attributes: ['UserId', 'FirstName', 'LastName', 'Email', 'CreateDate', 'ImageFilePath'],
+        include: [{
+        model: UserPhone,
+        as: 'UserPhones',
+        attributes: ['PhoneNumber'],
+        required: false
+        }]
+    });
+
+    if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+    }
 
     const teacher = await Teacher.findOne({
       where: { UserId: userId },
@@ -941,3 +953,67 @@ exports.checkIfTeacher =  (UserId) => {
     return false;
   }
 };
+
+exports.updateTeacherProfileByUserId = async (req, res) => {
+    try {
+      const { user: userData, phone: phoneData } = req.body;
+      const userId = req.params.userId;
+  
+      // Start transaction
+      const result = await sequelize.transaction(async (t) => {
+        // Update user data
+        if (userData) {
+          await User.update(userData, {
+            where: { UserId: userId },
+            transaction: t
+          });
+        }
+  
+        // Update or create phone
+        if (phoneData) {
+          const [userPhone] = await UserPhone.findOrCreate({
+            where: { UserId: userId },
+            defaults: {
+              ...phoneData,
+              UserId: userId
+            },
+            transaction: t
+          });
+  
+          if (userPhone) {
+            await userPhone.update(phoneData, { transaction: t });
+          }
+        }
+  
+        // Get updated data
+        const updatedTeacher = await Teacher.findOne({
+          where: { UserId: userId },
+          include: [
+            {
+              model: User,
+              as: 'User',
+              attributes: ['FirstName', 'LastName', 'Email', 'ImageFilePath'],
+              include: [{
+                model: UserPhone,
+                as: 'UserPhones',
+                attributes: ['PhoneNumber']
+              }]
+            }
+          ],
+          transaction: t
+        });
+  
+        if (!updatedTeacher) {
+          throw new Error('Teacher not found');
+        }
+  
+        return updatedTeacher;
+      });
+  
+      res.status(200).json(result);
+    } catch (error) {
+      console.error('Error in updateTeacherProfileByUserId:', error);
+      return res.status(400).json({ error: error.message });
+    }
+  };
+  
