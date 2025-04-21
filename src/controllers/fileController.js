@@ -1,4 +1,4 @@
-const { uploadFileToBlob, uploadFileToBlobAndReturnLink, deleteFileFromBlob, generateTemporaryUrl } = require('../storage/azureBlob');
+const { uploadFileToBlob, uploadFileToBlobAndReturnLink, deleteFileFromBlob, generateTemporaryUrl,deleteFileFromBlobByUrl } = require('../storage/azureBlob');
 const logger = require('../utils/logger');
 
 const createFile = async (req, res, file) => {
@@ -94,6 +94,22 @@ const deleteFile = async (req, res) => {
   }
 };
 
+const deleteFileByURL=async(url)=>{
+  try{
+    if(!url){
+      logger.warn('Попытка удаления файла без указания URL');
+      return res.status(400).json({ error: 'URL не указано' });
+    }
+    await deleteFileFromBlobByUrl(url);
+    logger.info(`Файл успешно удален: ${url}`);
+    res.status(200).json({ message: `Файл "${url}" успешно удален` });
+  }catch(error){
+    logger.error(`Ошибка при удалении файла по URL "${url}": ${error.message}`);
+    res.status(500).json({ error: 'Внутренняя ошибка сервера' });
+  }
+
+}
+
 const downloadFile = async (req, res) => {
   try {
     const { fileName } = req.params;
@@ -112,4 +128,4 @@ const downloadFile = async (req, res) => {
   }
 };
 
-module.exports = { uploadFile, uploadFileAndRetunLink, createFile, deleteFile, downloadFile };
+module.exports = { uploadFile, uploadFileAndRetunLink, createFile, deleteFile, downloadFile,deleteFileByURL };

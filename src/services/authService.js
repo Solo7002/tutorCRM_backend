@@ -196,6 +196,7 @@ const verifyEmailAndRegisterUser = async (token) => {
 const registerAndSendEmailCode = async (user) => {
     try {
         const verificationCode = crypto.randomInt(100000, 999999).toString();
+       
         const redisKey = `email_verification_${user.Email}`;
 
         await setCache(redisKey, verificationCode, 600);

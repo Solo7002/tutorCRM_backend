@@ -16,7 +16,12 @@ module.exports = (sequelize, DataTypes) => {
         notEmpty: { msg: 'FileName cannot be empty' },
         len: { args: [1, 255], msg: 'FileName must be between 1 and 255 characters' },
       },
-    }
+    },
+    CreatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: sequelize.literal('CURRENT_TIMESTAMP'),
+    },
   }, {
     timestamps: false,
   });

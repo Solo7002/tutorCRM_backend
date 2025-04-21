@@ -161,6 +161,8 @@ exports.getDoneTestInfoById = async (req, res) => {
     }
 
     const subjectName = doneTest.Test.Groups.Course.Subject.SubjectName;
+    const showAnswers=doneTest.Test.ShowAnswers;
+    
     const testName = doneTest.Test.TestName;
     const mark = doneTest.Mark;
     const maxMark = doneTest.Test.MaxMark;
@@ -206,6 +208,7 @@ exports.getDoneTestInfoById = async (req, res) => {
       AttemptsTotal: attemptsTotal,
       AttemptsUsed: attemptsUsed,
       Questions: questions,
+      ShowAnswers:showAnswers
     };
 
     res.status(200).json(response);
