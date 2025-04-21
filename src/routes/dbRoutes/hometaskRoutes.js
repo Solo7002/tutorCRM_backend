@@ -155,6 +155,7 @@ router.delete('/:id', hometaskController.deleteHomeTask);
 router.post('/check-homework', hometaskController.checkWithAI);
 
 router.get('/hometask-data-by-teacher-id/:userId', hometaskController.getHomeTasksDataByTeacherId);
+router.get('/getLastImageByGroupId/:groupId', hometaskController.getHometaskLastImageByGroupId);
 
 router.get('/newHometask/:studentId', hometaskController.getNewHomeTasksByStudentId);
 module.exports = router;
