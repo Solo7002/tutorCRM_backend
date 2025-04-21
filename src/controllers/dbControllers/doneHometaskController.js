@@ -1,4 +1,4 @@
-const { DoneHomeTask, HomeTask, Group, Student, Trophies, sequelize } = require('../../models/dbModels');
+const { DoneHomeTask, HomeTask, Group, Student, MarkHistory, Trophies, Course, sequelize } = require('../../models/dbModels');
 const { parseQueryParams } = require('../../utils/dbUtils/queryUtils');
 const { Op } = require('sequelize');
 
@@ -314,46 +314,56 @@ exports.getPedingHomeTasksByStudentIdAndHometaskId = async (req, res) => {
 };
 
 exports.setMarkForDoneHometask = async (req, res) => {
-  const t = await sequelize.transaction();
   try {
-    const { mark } = req.body;
+    const { Mark } = req.body;
     const doneHometaskId = req.params.id;
 
-    if (mark === undefined || typeof mark !== 'number') {
-      await t.rollback();
+    if (Mark === undefined || typeof Mark !== 'number') {
       return res.status(400).json({ error: 'Mark is required and must be a number' });
     }
-    if (mark < -1 || mark > 12) {
-      await t.rollback();
-      return res.status(400).json({ error: 'Mark must be between -1 and 12' });
-    }
 
-    const doneHometask = await DoneHomeTask.findByPk(doneHometaskId, { transaction: t });
+    const doneHometask = await DoneHomeTask.findByPk(doneHometaskId);
     if (!doneHometask) {
-      await t.rollback();
       return res.status(404).json({ error: 'DoneHomeTask not found' });
     }
 
-    const previousMark = doneHometask.Mark || 0; // Предполагаем 0, если Mark был null
-    await doneHometask.update({ Mark: mark }, { transaction: t });
+    const hometask = await HomeTask.findByPk(doneHometask.HomeTaskId);
+    const group = await Group.findByPk(hometask.GroupId, {
+      include: [{ model: Course, as: 'Course' }]});
 
-    if (mark !== previousMark && (mark >= 8 || previousMark >= 8)) {
-      const studentId = doneHometask.StudentId;
-      const newTrophyAmount = await adjustTrophiesBasedOnMark(studentId, previousMark, mark, t);
-      if (newTrophyAmount !== null) {
-        await t.commit();
-        return res.status(200).json({
-          doneHometask,
-          trophiesUpdated: true,
-          newTrophyAmount,
+    await doneHometask.update({ Mark: Mark });
+
+    const studentId = doneHometask.StudentId;
+    const mark12 = Math.round((Mark / hometask.MaxMark) * 12);
+
+    const markHistory = await MarkHistory.create({
+      Mark: mark12,
+      MarkType: 'homework',
+      MarkDate: new Date(),
+      StudentId: studentId,
+      CourseId: group.Course.CourseId
+    });
+
+    console.log("Mark history: ", markHistory);
+
+    if (mark12 >= 8) {
+      const trophyIncrement = mark12 - 7;
+      let trophies = await Trophies.findOne({ where: { StudentId: studentId }});
+
+      if (!trophies) {
+        await Trophies.create({
+          StudentId: studentId,
+          Amount: trophyIncrement
+        });
+      } else {
+        await trophies.update({
+          Amount: trophies.Amount + trophyIncrement
         });
       }
     }
 
-    await t.commit();
-    res.status(200).json(doneHometask);
+    return res.status(200).json(doneHometask);
   } catch (error) {
-    await t.rollback();
     console.error('Error in setMarkForDoneHometask:', error);
     res.status(400).json({ error: error.message });
   }

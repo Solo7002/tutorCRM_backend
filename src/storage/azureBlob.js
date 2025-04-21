@@ -41,24 +41,26 @@ async function uploadFileToBlob(file) {
 }
 
 async function uploadFileToBlobAndReturnLink(file) {
+  const decodedName = Buffer.from(file.originalname, 'binary').toString('utf8');
+  let fileName = decodedName;
+
   const containerClient = blobServiceClient.getContainerClient(containerName);
   await containerClient.createIfNotExists();
 
-  let fileName = file.originalname;
   const blockBlobClient = containerClient.getBlockBlobClient(fileName);
-
   const exists = await blockBlobClient.exists();
+
   if (exists) {
     const timestamp = new Date().toISOString().replace(/[-:.]/g, '');
-    const fileExtension = file.originalname.split('.').pop();
-    const baseName = file.originalname.replace(`.${fileExtension}`, '');
-    fileName = `${baseName}${timestamp}.${fileExtension}`;
+    const fileExtension = decodedName.split('.').pop();
+    const baseName = decodedName.replace(`.${fileExtension}`, '');
+    fileName = `${baseName}_${timestamp}.${fileExtension}`;
   }
 
   const newBlockBlobClient = containerClient.getBlockBlobClient(fileName);
   await newBlockBlobClient.upload(file.buffer, file.buffer.length);
 
-  return `https://${accountName}.blob.core.windows.net/${containerName}/${fileName}`;
+  return newBlockBlobClient.url;
 }
 
 async function deleteFileFromBlob(fileName) {

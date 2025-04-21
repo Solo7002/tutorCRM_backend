@@ -1,4 +1,4 @@
-const { DoneTest, User, Student, Teacher,  Test, Group, Course, Subject, TestQuestion, TestAnswer, SelectedAnswer, sequelize, Trophies } = require('../../models/dbModels');
+const { DoneTest, MarkHistory, User, Student, Teacher,  Test, Group, Course, Subject, TestQuestion, TestAnswer, SelectedAnswer, sequelize, Trophies } = require('../../models/dbModels');
 const { parseQueryParams } = require('../../utils/dbUtils/queryUtils');
 const { Op } = require('sequelize');
 
@@ -310,18 +310,23 @@ exports.deleteDoneTest = async (req, res) => {
 };
 
 exports.setMarkForDoneTest = async (req, res) => {
+  const t = await sequelize.transaction();
   try {
-    const doneTest = await DoneTest.findByPk(req.params.id);
+    const doneTest = await DoneTest.findByPk(req.params.id, { transaction: t });
     if (!doneTest) {
+      await t.rollback();
       return res.status(404).json({ message: 'DoneTest not found' });
     }
 
-    const test = await Test.findByPk(doneTest.TestId);
+    const test = await Test.findByPk(doneTest.TestId, { transaction: t });
     if (!test) {
+      await t.rollback();
       return res.status(404).json({ message: 'Test not found' });
     }
+
     const questionsAmount = await TestQuestion.count({ where: { TestId: test.TestId } });
     if (questionsAmount === 0) {
+      await t.rollback();
       return res.status(400).json({ message: 'No questions found for this test' });
     }
 
@@ -330,22 +335,59 @@ exports.setMarkForDoneTest = async (req, res) => {
       TestAnswerId: answer.testAnswerId,
       DoneTestId: doneTest.DoneTestId
     }));
-    await SelectedAnswer.bulkCreate(selectedAnswersData);
+    await SelectedAnswer.bulkCreate(selectedAnswersData, { transaction: t });
+
     const selectedAnswers = await SelectedAnswer.findAll({
       where: { DoneTestId: doneTest.DoneTestId },
-      include: [{ model: TestAnswer, as: 'TestAnswer' }]
+      include: [{ model: TestAnswer, as: 'TestAnswer' }],
+      transaction: t,
     });
-    const testPoints = selectedAnswers.filter(sa => sa.TestAnswer.IsRightAnswer).length;
 
+    const testPoints = selectedAnswers.filter(sa => sa.TestAnswer.IsRightAnswer).length;
     const calculatedMark = Math.round((testPoints / questionsAmount) * test.MaxMark);
 
     await doneTest.update({
       Mark: calculatedMark,
       SpentTime: req.body.timeTaken
+    }, { transaction: t });
+
+    const studentId = doneTest.StudentId;
+    const group = await Group.findByPk(test.GroupId, {
+      include: [{ model: Course, as: 'Course' }],
+      transaction: t
     });
 
+    const mark12 = Math.round((calculatedMark / test.MaxMark) * 12);
+    const markHistory = await MarkHistory.create({
+      Mark: mark12,
+      MarkType: 'test',
+      StudentId: studentId,
+      MarkDate: new Date(),
+      CourseId: group.Course.CourseId
+    }, { transaction: t });
+
+    console.log("mark history: ", markHistory);
+
+    if (mark12 >= 8) {
+      const trophyIncrement = mark12 - 7;
+      let trophies = await Trophies.findOne({ where: { StudentId: studentId }, transaction: t });
+
+      if (!trophies) {
+        await Trophies.create({
+          StudentId: studentId,
+          Amount: trophyIncrement
+        }, { transaction: t });
+      } else {
+        await trophies.update({
+          Amount: trophies.Amount + trophyIncrement
+        }, { transaction: t });
+      }
+    }
+
+    await t.commit();
     return res.status(200).json({ message: 'Mark and time updated successfully' });
   } catch (error) {
+    await t.rollback();
     console.log("error.message: ", error.message);
     return res.status(500).json({ message: error.message });
   }

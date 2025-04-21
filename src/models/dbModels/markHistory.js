@@ -28,6 +28,14 @@ module.exports = (sequelize, DataTypes) => {
         isDate: { msg: 'MarkDate must be a valid date' },
       },
     },
+    StudentId: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
+    CourseId: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
   }, {
     tableName: 'MarkHistory',
     timestamps: false,

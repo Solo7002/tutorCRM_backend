@@ -740,3 +740,58 @@ exports.getHomeTasksDataByTeacherId = async (req, res) => {
     res.status(500).json({ message: 'Внутренняя ошибка сервера' });
   }
 };
+
+exports.getHometaskLastImageByGroupId = async (req, res) => {
+  const { groupId } = req.params;
+
+  try {
+    const group = await Group.findByPk(groupId, {
+      include: [{
+        model: Course,
+        as: 'Course'
+      }]
+    });
+
+    if (!group) {
+      return res.status(404).json({ message: 'Group not found' });
+    }
+
+    const course = group.Course;
+    
+    if (!course) {
+      return res.status(200).json({ imagePath: null });
+    }
+
+    const courseWithGroups = await Course.findByPk(course.CourseId, {
+      include: [{
+        model: Group,
+        as: 'Groups',
+        include: [{
+          model: HomeTask,
+          as: 'HomeTasks'
+        }]
+      }]
+    });
+
+    const allHomeTasks = [];
+    courseWithGroups.Groups.forEach(group => {
+      if (group.HomeTasks && group.HomeTasks.length > 0) {
+        allHomeTasks.push(...group.HomeTasks);
+      }
+    });
+
+    if (allHomeTasks.length === 0) {
+      return res.status(200).json({ imagePath: null });
+    }
+
+    const latestHomeTask = allHomeTasks.sort((a, b) => 
+      new Date(b.StartDate) - new Date(a.StartDate)
+    )[0];
+
+    return res.status(200).json({ imagePath: latestHomeTask.ImageFilePath });
+  }
+  catch (ex) {
+    console.error('Error retrieving last home task image:', ex);
+    return res.status(500).json({ message: 'Internal server error', error: ex.message });
+  }
+}
