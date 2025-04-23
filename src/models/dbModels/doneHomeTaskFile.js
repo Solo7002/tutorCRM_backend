@@ -6,15 +6,14 @@ module.exports = (sequelize, DataTypes) => {
       autoIncrement: true
     },
     FilePath: {
-      type: DataTypes.STRING,
-      allowNull: true,
+      type: DataTypes.TEXT,
+      allowNull: false,
     },
     FileName: {
-      type: DataTypes.STRING,
+      type: DataTypes.TEXT,
       allowNull: false,
       validate: {
         notEmpty: { msg: 'FileName cannot be empty' },
-        len: { args: [1, 255], msg: 'FileName must be between 1 and 255 characters' },
       },
     },
     CreatedAt: {
