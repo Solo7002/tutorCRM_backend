@@ -6,18 +6,63 @@ const { createFile } = require('../fileController');
 
 exports.createMaterial = async (req, res) => {
     try {
-        const file = req.file;
-        const fileName = req.body.Type == "file" ? await createFile(req, res, file) : null;
+        if (!req.body.Type) {
+            return res.status(400).json({ error: 'Type is required' });
+        }
+
+        if (req.body.Type !== 'file' && req.body.Type !== 'folder') {
+            return res.status(400).json({ error: 'Type must be either "file" or "folder"' });
+        }
+
+        if (!req.body.TeacherId) {
+            return res.status(400).json({ error: 'TeacherId is required' });
+        }
+
+        let fileName = null;
+
+        if (req.body.Type === 'file') {
+            const file = req.file;
+            if (!file) {
+                return res.status(400).json({ error: 'No file provided' });
+            }
+
+            const MAX_FILE_SIZE = 49 * 1024 * 1024;
+            if (file.size > MAX_FILE_SIZE) {
+                return res.status(400).json({ error: 'File size exceeds maximum limit of 49MB' });
+            }
+
+            const FORBIDDEN_EXTENSIONS = ['txt', 'bat'];
+            const fileExtension = file.originalname.split('.').pop().toLowerCase();
+            if (FORBIDDEN_EXTENSIONS.includes(fileExtension)) {
+                return res.status(400).json({ error: `File type ${fileExtension} is not allowed` });
+            }
+
+            try {
+                fileName = await createFile(req, res, file);
+                if (!fileName) {
+                    return res.status(500).json({ error: 'Failed to create file' });
+                }
+            } catch (fileError) {
+                console.error('Error creating file:', fileError);
+                return res.status(500).json({ error: 'Error creating file: ' + fileError.message });
+            }
+        } 
+        else {
+            if (!req.body.MaterialName) {
+                return res.status(400).json({ error: 'MaterialName is required for folders' });
+            }
+        }
+
         const material = await Material.create({
-            MaterialName: req.body.MaterialName || file.originalname,
+            MaterialName: req.body.Type === 'file' ? (req.body.MaterialName || req.file.originalname) : req.body.MaterialName,
             Type: req.body.Type,
             ParentId: req.body.ParentId || null,
-            TeacherId: req.body.TeacherId || null,
-            FilePath: ("https://blobstorage226122007.blob.core.windows.net/blob-storage-container/" + fileName) || null,
+            TeacherId: req.body.TeacherId,
+            FilePath: req.body.Type === 'file' ? `https://blobstorage226122007.blob.core.windows.net/blob-storage-container/${fileName}` : null,
             FileImage: null
         });
 
-        if (req.body.ParentId != null){
+        if (req.body.ParentId != null) {
             const parent = await Material.findByPk(req.body.ParentId, {
                 include: [
                     {
@@ -26,11 +71,13 @@ exports.createMaterial = async (req, res) => {
                         through: { attributes: [] }
                     }
                 ]
-            })
-            await updateMaterialAccess(material.MaterialId, parent.VisibleStudents.map(student => student.StudentId), []);
+            });
+
+            if (parent && parent.VisibleStudents) {
+                await updateMaterialAccess(material.MaterialId, parent.VisibleStudents.map(student => student.StudentId), []);
+            }
         }
-        
-        
+
         res.status(201).json(material);
     } catch (error) {
         console.error('Error in createMaterial:', error);
