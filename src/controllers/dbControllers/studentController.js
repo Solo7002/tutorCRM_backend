@@ -444,14 +444,11 @@ exports.searchTeachersForStudent = async (req, res) => {
     let whereConditions = {};
     let orderConditions = [];
 
-    // Фильтрация по типу урока
     if (lessonType) whereConditions.LessonType = lessonType;
 
-    // Фильтрация по формату встречи (поддержка обоих параметров)
     if (format) whereConditions.MeetingType = format;
     if (meetingType) whereConditions.MeetingType = meetingType;
 
-    // Поиск по имени и описанию
     if (aboutTeacher) {
       whereConditions = {
         [Op.or]: [
@@ -462,7 +459,6 @@ exports.searchTeachersForStudent = async (req, res) => {
       };
     }
 
-    // Фильтрация по цене
     if (priceMin || priceMax) {
       whereConditions.LessonPrice = {};
 
@@ -480,14 +476,12 @@ exports.searchTeachersForStudent = async (req, res) => {
       }
     }
 
-    // Сортировка по цене или рейтингу
     if (priceSort) {
       orderConditions.push(['LessonPrice', priceSort === 'desc' ? 'DESC' : 'ASC']);
     } else if (rating) {
       orderConditions.push([sequelize.literal('averageRating'), rating === 'desc' ? 'DESC' : 'ASC']);
     }
 
-    // Получаем общее количество учителей для пагинации
     const totalCount = await Teacher.count({
       where: whereConditions,
       include: [
@@ -500,7 +494,6 @@ exports.searchTeachersForStudent = async (req, res) => {
       ]
     });
 
-    // Получаем учителей с пагинацией
     const teachers = await Teacher.findAll({
       where: whereConditions,
       include: [
@@ -527,7 +520,12 @@ exports.searchTeachersForStudent = async (req, res) => {
               model: Subject,
               as: 'Subject',
               attributes: ['SubjectName']
-            }
+            },
+            {
+              model: Group,
+              as: 'Groups',
+              include: [{ model: Student, as: 'Students' }],
+            },
           ]
         }
       ],
@@ -550,20 +548,36 @@ exports.searchTeachersForStudent = async (req, res) => {
       offset: (parseInt(page) - 1) * parseInt(limit)
     });
 
-    const formattedTeachers = teachers.map((teacher) => ({
-      TeacherId: teacher.TeacherId,
-      FullName: `${teacher.User.FirstName} ${teacher.User.LastName}`,
-      ImagePathUrl: teacher.User.ImageFilePath || null,
-      SubjectName: teacher.Courses?.length > 0
-        ? teacher.Courses.slice(0, 2)
-          .map((course) => course.Subject?.SubjectName)
-          .filter(Boolean)
-          .join(', ')
-        : 'Не вказано',
-      AboutTeacher: teacher.AboutTeacher || 'Без опису',
-      LessonPrice: teacher.LessonPrice || 0,
-      Rating: Number(teacher.getDataValue('averageRating')).toFixed(1)
-    }));
+    const formattedTeachers = teachers.map((teacher) => {
+      let minPrice = 100000000000000;
+
+      if (teacher.Courses && teacher.Courses.length > 0) {
+        teacher.Courses.forEach(course => {
+          if (course.Groups && course.Groups.length > 0) {
+            course.Groups.forEach(group => {
+              if (group.GroupPrice && group.GroupPrice < minPrice) {
+                minPrice = group.GroupPrice;
+              }
+            });
+          }
+        });
+      }
+
+      return {
+        TeacherId: teacher.TeacherId,
+        FullName: `${teacher.User.FirstName} ${teacher.User.LastName}`,
+        ImagePathUrl: teacher.User.ImageFilePath || null,
+        SubjectName: teacher.Courses?.length > 0
+          ? teacher.Courses.slice(0, 2)
+              .map((course) => course.Subject?.SubjectName)
+              .filter(Boolean)
+              .join(', ')
+          : 'Не вказано',
+        AboutTeacher: teacher.AboutTeacher || 'Без опису',
+        LessonPrice: minPrice==100000000000000?0:minPrice,
+        Rating: Number(teacher.getDataValue('averageRating')).toFixed(1)
+      };
+    });
 
     return res.status(200).json({
       success: true,

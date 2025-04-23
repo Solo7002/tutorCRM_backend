@@ -166,7 +166,7 @@ exports.getAllAboutTeacher = async (req, res) => {
     const teacherData = {
       ...teacher.toJSON(),
       SubjectNames: subjectNames,
-      minPrice: minPrice || null,
+      minPrice: minPrice==100000000000000?0:minPrice,
       StudentsAmount: studentsAmount || 0,
       Rating: rating,
       MaterialsAmount: materialsCount,
