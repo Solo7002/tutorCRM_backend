@@ -60,6 +60,9 @@ const userController = require('../../controllers/dbControllers/userController')
  *         description: The user was successfully created
  */
 router.post('/', userController.createUser);
+router.post('/send-update-credentials-code', userController.sendUpdateCredentialsCode);
+router.post('/confirm-update-credentials', userController.confirmUpdateCredentials);
+
 
 /**
  * @swagger
@@ -104,6 +107,8 @@ router.get('/search', userController.searchUsers);
  */
 router.get('/:id', userController.getUserById);
 router.get('/:id/balance', userController.getUserBalance);
+router.get('/:id/profile', userController.getUserProfile);
+router.get('/:id/credentials', userController.getUserCredentials);
 
 /**
  * @swagger
@@ -129,6 +134,8 @@ router.get('/:id/balance', userController.getUserBalance);
  *         description: The user was successfully updated
  */
 router.put('/:id', userController.updateUser);
+router.put('/:id/profile', userController.updateUserProfile);
+// router.put('/:id/credentials', userController.getUserCredentials);
 
 /**
  * @swagger
