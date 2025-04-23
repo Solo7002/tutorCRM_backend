@@ -1,3 +1,4 @@
+const { model } = require('../../config/database');
 const { User, Student, Teacher, Trophies, OctoCoins } = require('../../models/dbModels');
 const { parseQueryParams } = require('../../utils/dbUtils/queryUtils');
 const { Op } = require('sequelize');
@@ -52,6 +53,32 @@ exports.getUserById = async (req, res) => {
     const user = await User.findByPk(req.params.id);
     if (!user) return res.status(404).json({ message: 'User not found' });
     res.status(200).json(user);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
+exports.getUserIsTeacherById = async (req, res) => {
+  try {
+    const user = await User.findByPk(req.params.id, {
+      include: [
+        {
+          model: Student,
+          as: 'Student'
+        },
+        {
+          model: Teacher,
+          as: 'Teacher'
+        }
+      ]
+    });
+
+
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    res.status(200).json({
+      isTeacher: user.Teacher?true:false
+     });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }

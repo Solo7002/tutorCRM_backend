@@ -100,48 +100,55 @@ exports.deleteGroup = async (req, res) => {
 
 exports.getGroupsByTeacherId = async (req, res) => {
   try {
-    const { id } = req.params; 
-
+    const { id } = req.params;
     
     if (!id) {
       return res.status(400).json({ error: "TeacherId is required" });
     }
-
-
-    const groups = await Group.findAll({
+    
+    const teacher = await Teacher.findOne({
+      where: { TeacherId: id },
       include: [
         {
           model: Course,
-          as: "Course",
+          as: "Courses",
           include: [
             {
-              model: Teacher,
-              as: "Teacher",
-              where: { TeacherId: id },
-            },
-          ],
-        },
-      ],
+              model: Group,
+              as: "Groups"
+            }
+          ]
+        }
+      ]
     });
-
-  
-    if (!groups || groups.length === 0) {
-      return res.status(404).json({ error: "No groups found for this teacher" });
+    
+    if (!teacher) {
+      return res.status(404).json({ error: "Teacher not found" });
     }
 
-   
-    const groupInfo = groups.map((group) => ({
-      GroupId: group.GroupId,
-      GroupName: group.GroupName,
-      CourseName: group.Course ? group.Course.CourseName : null, 
-    }));
-
-    res.status(200).json(groupInfo);
+    const allGroups = [];
+    
+    teacher.Courses.forEach(course => {
+      course.Groups.forEach(group => {
+        allGroups.push({
+          GroupId: group.GroupId,
+          GroupName: group.GroupName,
+          CourseName: course.CourseName
+        });
+      });
+    });
+    
+    if (allGroups.length === 0) {
+      return res.status(404).json({ error: "No groups found for this teacher" });
+    }
+    
+    res.status(200).json(allGroups);
   } catch (error) {
     console.error("Error in getGroupsByTeacher:", error);
-    res.status(400).json({ error: error.message });
+    res.status(500).json({ error: error.message });
   }
 };
+
 exports.getGroupsByCourseId = async (req, res) => {
   try {
     const { id } = req.params;

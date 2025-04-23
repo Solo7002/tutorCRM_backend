@@ -55,7 +55,6 @@ async function populateDbForTeacher(user_id) {
             }
         }
 
-        // Students
         const studentNames = [
             'Шевченко Олександр', 'Бондаренко Ірина', 'Коваль Максим', 'Мельник Катерина',
             'Савченко Андрій', 'Литвиненко Марія', 'Ткачук Дмитро', 'Поліщук Олена',
@@ -64,23 +63,46 @@ async function populateDbForTeacher(user_id) {
             'Міщенко Назар', 'Білан Софія', 'Клименко Ярослав', 'Яценко Вікторія',
             'Петренко Степан', 'Шульга Дарина', 'Гончар Юрій', 'Кравчук Анастасія', 'Мороз Владлена',
         ];
+
+        const translitMap = {
+            'а': 'a', 'б': 'b', 'в': 'v', 'г': 'h', 'ґ': 'g', 'д': 'd', 'е': 'e', 'є': 'ye',
+            'ж': 'zh', 'з': 'z', 'и': 'y', 'і': 'i', 'ї': 'yi', 'й': 'y', 'к': 'k', 'л': 'l',
+            'м': 'm', 'н': 'n', 'о': 'o', 'п': 'p', 'р': 'r', 'с': 's', 'т': 't', 'у': 'u',
+            'ф': 'f', 'х': 'kh', 'ц': 'ts', 'ч': 'ch', 'ш': 'sh', 'щ': 'shch', 'ь': '',
+            'ю': 'yu', 'я': 'ya'
+        };
+
+        function transliterate(text) {
+            return text.toLowerCase().split('').map(char =>
+                translitMap[char] !== undefined ? translitMap[char] : char
+            ).join('');
+        }
+
         const students = [];
         const hashPassword = async (password) => {
             const salt = await bcrypt.genSalt(10);
             return bcrypt.hash(password, salt);
         };
+
         for (const name of studentNames) {
             const [lastName, firstName] = name.split(' ');
-            const username = `${firstName}${lastName}`;
+
+            const translitFirstName = transliterate(firstName);
+            const translitLastName = transliterate(lastName);
+
+            const username = `${translitFirstName}${translitLastName}`;
+            const email = `${username.toLowerCase()}@example.com`;
+
             const password = await hashPassword('12345678');
             const user = await models.User.create({
                 Username: username,
                 Password: password,
                 LastName: lastName,
                 FirstName: firstName,
-                Email: `${username.toLowerCase()}@example.com`,
+                Email: email,
                 ImageFilePath: null,
             }, { transaction });
+
             const student = await models.Student.create({ UserId: user.UserId }, { transaction });
             students.push(student);
         }
@@ -137,7 +159,7 @@ async function populateDbForTeacher(user_id) {
             }
             return dates;
         }
-        const platforms = ['GoogleMeet', 'ZOOM', 'Teams'];
+        const platforms = ['https://meet.google.com/landing', 'https://www.zoom.com', 'https://www.microsoft.com/uk-ua/microsoft-teams/log-in'];
         const plannedLessons = [];
         for (const group of groups) {
             const { days, slot } = assignedSlots[group.GroupId];
@@ -151,7 +173,7 @@ async function populateDbForTeacher(user_id) {
                     const [endHour, endMinute] = slot.end.split(':').map(Number);
                     endTime.setHours(endHour, endMinute, 0, 0);
                     plannedLessons.push({
-                        LessonHeader: `Урок для групи ${group.GroupName}`,
+                        LessonHeader: `Урок з ${group.GroupName}`,
                         StartLessonTime: startTime,
                         EndLessonTime: endTime,
                         LessonDate: date,
@@ -173,6 +195,7 @@ async function populateDbForTeacher(user_id) {
             months.push(new Date(currentMonth));
             currentMonth.setMonth(currentMonth.getMonth() + 1);
         }
+
         function getRandomDateInMonth(monthDate) {
             const year = monthDate.getFullYear();
             const month = monthDate.getMonth();
@@ -180,33 +203,46 @@ async function populateDbForTeacher(user_id) {
             const day = Math.floor(Math.random() * daysInMonth) + 1;
             return new Date(year, month, day);
         }
+
         const markTypes = ['test', 'homework', 'classwork'];
         const studentTrophies = {};
         for (const student of students) studentTrophies[student.StudentId] = 0;
         const markHistories = [];
+
         for (const student of students) {
             const courseIds = studentCourses[student.StudentId];
+
             for (const courseId of courseIds) {
                 for (const month of months) {
-                    const markDate = getRandomDateInMonth(month);
-                    const markType = markTypes[Math.floor(Math.random() * markTypes.length)];
-                    const mark = Math.floor(Math.random() * 12) + 1;
-                    markHistories.push({
-                        Mark: mark,
-                        MarkType: markType,
-                        MarkDate: markDate,
-                        StudentId: student.StudentId,
-                        CourseId: courseId,
-                    });
-                    if (mark >= 8) studentTrophies[student.StudentId] += (mark - 7);
+                    for (const markType of markTypes) {
+                        const numberOfMarks = Math.floor(Math.random() * 3) + 1;
+
+                        for (let i = 0; i < numberOfMarks; i++) {
+                            const markDate = getRandomDateInMonth(month);
+                            const mark = Math.floor(Math.random() * 12) + 1;
+
+                            markHistories.push({
+                                Mark: mark,
+                                MarkType: markType,
+                                MarkDate: markDate,
+                                StudentId: student.StudentId,
+                                CourseId: courseId,
+                            });
+
+                            if (mark >= 8) studentTrophies[student.StudentId] += (mark - 7);
+                        }
+                    }
                 }
             }
         }
+
         await models.MarkHistory.bulkCreate(markHistories, { transaction });
+
         const trophies = students.map(student => ({
             StudentId: student.StudentId,
             Amount: studentTrophies[student.StudentId],
         }));
+
         await models.Trophies.bulkCreate(trophies, { transaction });
 
         // HomeTasks

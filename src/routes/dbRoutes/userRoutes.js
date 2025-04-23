@@ -103,6 +103,7 @@ router.get('/search', userController.searchUsers);
  *               $ref: '#/components/schemas/User'
  */
 router.get('/:id', userController.getUserById);
+router.get('/isTeacher/:id', userController.getUserIsTeacherById);
 router.get('/:id/balance', userController.getUserBalance);
 
 /**
