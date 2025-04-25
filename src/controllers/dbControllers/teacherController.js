@@ -421,7 +421,7 @@ exports.getLatestActivitiesByTeacherId = async (req, res) => {
         name: `${student.FirstName} ${student.LastName}`,
         image: student.ImageFilePath,
         subject: groupName,
-        type: 'Домашня робота',
+        type: 'Hometask',
       };
     });
 
