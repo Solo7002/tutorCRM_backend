@@ -632,6 +632,8 @@ async function populateDbForTeacher(user_id, student_id) {
         const selectedAnswers = [];
         for (const test of createdTests) {
             const studentIds = groupStudentMap[test.GroupId];
+            
+            if(!studentIds) break;
             const numDone = Math.floor(studentIds.length * (0.5 + Math.random() * 0.3)); // 50-80%
             const selectedStudents = studentIds.sort(() => 0.5 - Math.random()).slice(0, numDone);
             for (const studentId of selectedStudents) {
