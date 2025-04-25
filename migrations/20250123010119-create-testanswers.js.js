@@ -28,6 +28,15 @@ module.exports = {
         },
         onDelete: 'CASCADE',
       },
+      SelectedAnswerId: {
+        type: Sequelize.INTEGER,
+        allowNull: true,
+        references: {
+          model: 'SelectedAnswers',
+          key: 'SelectedAnswerId',
+        },
+        onDelete: 'CASCADE',
+      }
     });
   },
 

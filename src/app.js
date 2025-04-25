@@ -17,7 +17,7 @@ const { connectRedis } = require('./utils/cacheUtils');
 const { metricsMiddleware, register } = require('./utils/metrics');
 
 const { populateDatabase, populateWithHometasks, populateWithReviews, populateMaterials } = require('./services/fillDataForTests');
-const populateDbForTeacher = require('./services/populateFullDb');
+const {populateDbForTeacher, populateDbForStudent} = require('./services/populateFullDb');
 
 require('./config/passportConfig');
 
@@ -83,7 +83,17 @@ app.get('/populate', async (req, res) => {
 app.get('/populateFullDbForTeacher/:id', async (req, res) => {
     try {
         await populateDbForTeacher(req.params.id);
-        res.send('База даних успішно заповнена');
+        res.send('База даних вчителя успішно заповнена');
+    } catch (error) {
+        console.error(error);
+        res.status(500).send('Помилка при заповненні бази даних');
+    }
+});
+
+app.get('/populateFullDbForStudent/:id', async (req, res) => {
+    try {
+        await populateDbForStudent(req.params.id);
+        res.send('База даних студента успішно заповнена');
     } catch (error) {
         console.error(error);
         res.status(500).send('Помилка при заповненні бази даних');
@@ -110,91 +120,9 @@ app.get('/metrics', async (req, res) => {
     res.end(await register.metrics());
 });
 
-/**
- * @swagger
- * /cpu-load:
- *   get:
- *     summary: Simulate CPU load
- *     parameters:
- *       - in: query
- *         name: iterations
- *         schema:
- *           type: integer
- *           default: 1000000
- *         description: Number of iterations to simulate CPU load
- *     responses:
- *       200:
- *         description: Result of CPU load simulation
- *         content:
- *           text/plain:
- *             schema:
- *               type: string
- */
-app.get('/cpu-load', (req, res) => {
-    const iterations = parseInt(req.query.iterations) || 1000000;
-    let heads = 0;
-    let tails = 0;
-
-    for (let i = 0; i < iterations; i++) {
-        const flip = Math.random() < 0.5 ? 'heads' : 'tails';
-        if (flip === 'heads') {
-            heads++;
-        } else {
-            tails++;
-        }
-    }
-
-    res.send(`Heads: ${heads}, Tails: ${tails}`);
-});
-
-/**
- * @swagger
- * /memory-load:
- *   get:
- *     summary: Simulate memory load
- *     parameters:
- *       - in: query
- *         name: iterations
- *         schema:
- *           type: integer
- *           default: 100
- *         description: Number of iterations to simulate memory load
- *     responses:
- *       200:
- *         description: Result of memory load simulation
- *         content:
- *           text/plain:
- *             schema:
- *               type: string
- */
-app.get('/memory-load', (req, res) => {
-    const iterations = parseInt(req.query.iterations) || 100;
-    const memoryHog = [];
-    for (let i = 0; i < iterations; i++) {
-        const largeString = 'x'.repeat(1024 * 1024);
-        memoryHog.push(largeString);
-    }
-    res.send(`Memory load completed with ${iterations} iterations.`);
-});
-
-
-
-/**
- * @swagger
- * /:
- *   get:
- *     summary: Get a random status code response
- *     responses:
- *       200:
- *         description: Random status code response
- *         content:
- *           text/plain:
- *             schema:
- *               type: string
- */
 app.get('/', (req, res) => {
     const randomStatusCode = Math.floor(Math.random() * 100) + 200;
-    res.status(randomStatusCode).send(`Response with status code: ${randomStatusCode}`);
+    res.status(200).send(`Test: ${randomStatusCode}`);
 });
 
 

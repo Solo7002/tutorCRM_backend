@@ -3,8 +3,63 @@ const { Sequelize, Op } = require('sequelize');
 const { sequelize } = require('../models/dbModels');
 const models = require('../models/dbModels');
 
-async function populateDbForTeacher(user_id) {
+async function populateDbForStudent(user_id) {
+    const studentUserId = user_id;
+    const transaction = await sequelize.transaction();
+
+    try {
+        const student = await models.Student.findOne({
+            where: { UserId: studentUserId },
+            transaction
+        });
+
+        if (!student) {
+            throw new Error('Студента не знайдено для заданого UserId');
+        }
+
+        const hashPassword = async (password) => {
+            const salt = await bcrypt.genSalt(10);
+            return bcrypt.hash(password, salt);
+        };
+
+        const now = new Date();
+        const minutes = now.getMinutes().toString().padStart(2, '0');
+        const seconds = now.getSeconds().toString().padStart(2, '0');
+        const milliseconds = now.getMilliseconds().toString().padStart(3, '0');
+        const timeStamp = `${minutes}${seconds}${milliseconds}`;
+
+        const password = await hashPassword('12345678');
+        const teacherUser = await models.User.create({
+            Username: `Черненко Людмила ${timeStamp}`,
+            Password: password,
+            LastName: 'Черненко',
+            FirstName: 'Людмила',
+            Email: `chernenko_lu${timeStamp}@example.com`,
+            ImageFilePath: null,
+        }, { transaction });
+
+        const teacher = await models.Teacher.create({
+            UserId: teacherUser.UserId
+        }, { transaction });
+
+        await transaction.commit();
+
+        await populateDbForTeacher(teacherUser.UserId, studentUserId);
+
+        console.log('База даних успішно заповнена для студента!');
+        return true;
+    } catch (error) {
+        if (transaction && !transaction.finished) {
+            await transaction.rollback();
+        }
+        console.error('Помилка при заповненні бази даних для студента:', error);
+        throw error;
+    }
+}
+
+async function populateDbForTeacher(user_id, student_id) {
     const userId = user_id;
+    const specificStudentId = student_id;
     const transaction = await sequelize.transaction();
 
     try {
@@ -55,14 +110,23 @@ async function populateDbForTeacher(user_id) {
             }
         }
 
-        const studentNames = [
-            'Шевченко Олександр', 'Бондаренко Ірина', 'Коваль Максим', 'Мельник Катерина',
-            'Савченко Андрій', 'Литвиненко Марія', 'Ткачук Дмитро', 'Поліщук Олена',
-            'Сидоренко Артем', 'Дяченко Наталія', 'Хоменко Владислав', 'Гаврилюк Аліна',
-            'Романенко Єгор', 'Остапчук Тетяна', 'Зінченко Ілля', 'Панченко Христина',
-            'Міщенко Назар', 'Білан Софія', 'Клименко Ярослав', 'Яценко Вікторія',
-            'Петренко Степан', 'Шульга Дарина', 'Гончар Юрій', 'Кравчук Анастасія', 'Мороз Владлена',
-        ];
+        const students = [];
+        let specificStudent = null;
+
+        if (student_id) {
+            specificStudent = await models.Student.findOne({
+                where: { UserId: student_id },
+                include: [{ model: models.User, as: 'User' }],
+                transaction
+            });
+
+            if (specificStudent) {
+                students.push(specificStudent);
+                console.log(`Using existing student: ${specificStudent.User.FirstName} ${specificStudent.User.LastName}`);
+            } else {
+                console.log(`Warning: Specified student (ID: ${student_id}) not found`);
+            }
+        }
 
         const translitMap = {
             'а': 'a', 'б': 'b', 'в': 'v', 'г': 'h', 'ґ': 'g', 'д': 'd', 'е': 'e', 'є': 'ye',
@@ -78,19 +142,36 @@ async function populateDbForTeacher(user_id) {
             ).join('');
         }
 
-        const students = [];
         const hashPassword = async (password) => {
             const salt = await bcrypt.genSalt(10);
             return bcrypt.hash(password, salt);
         };
 
-        for (const name of studentNames) {
+        const studentNames = [
+            'Шевченко Олександр', 'Бондаренко Ірина', 'Коваль Максим', 'Мельник Катерина',
+            'Савченко Андрій', 'Литвиненко Марія', 'Ткачук Дмитро', 'Поліщук Олена',
+            'Сидоренко Артем', 'Дяченко Наталія', 'Хоменко Владислав', 'Гаврилюк Аліна',
+            'Романенко Єгор', 'Остапчук Тетяна', 'Зінченко Ілля', 'Панченко Христина',
+            'Міщенко Назар', 'Білан Софія', 'Клименко Ярослав', 'Яценко Вікторія',
+            'Петренко Степан', 'Шульга Дарина', 'Гончар Юрій', 'Кравчук Анастасія', 'Мороз Владлена',
+        ];
+
+        const totalStudentsToCreate = specificStudent ? Math.min(24, studentNames.length) : studentNames.length;
+
+        for (let i = 0; i < totalStudentsToCreate; i++) {
+            const name = studentNames[i];
             const [lastName, firstName] = name.split(' ');
 
             const translitFirstName = transliterate(firstName);
             const translitLastName = transliterate(lastName);
 
-            const username = `${translitFirstName}${translitLastName}`;
+            const now = new Date();
+            const minutes = now.getMinutes().toString().padStart(2, '0');
+            const seconds = now.getSeconds().toString().padStart(2, '0');
+            const milliseconds = now.getMilliseconds().toString().padStart(3, '0');
+            const timeStamp = `${minutes}${seconds}${milliseconds}`;
+
+            const username = `${translitFirstName}${translitLastName}${timeStamp}`;
             const email = `${username.toLowerCase()}@example.com`;
 
             const password = await hashPassword('12345678');
@@ -109,29 +190,52 @@ async function populateDbForTeacher(user_id) {
 
         // GroupStudent
         const studentCourses = {};
-        for (const student of students) {
-            const numCourses = Math.floor(Math.random() * 2) + 1;
-            const selectedCourses = courses.sort(() => 0.5 - Math.random()).slice(0, numCourses);
-            studentCourses[student.StudentId] = selectedCourses.map(c => c.CourseId);
-        }
-        const groupStudents = [];
         const courseGroups = {};
+        const groupStudents = [];
+
         for (const group of groups) {
             courseGroups[group.CourseId] = courseGroups[group.CourseId] || [];
             courseGroups[group.CourseId].push(group);
         }
-        for (const student of students) {
-            const courseIds = studentCourses[student.StudentId];
-            for (const courseId of courseIds) {
+
+        if (specificStudent) {
+            studentCourses[specificStudent.StudentId] = courses.map(c => c.CourseId);
+
+            for (const courseId of studentCourses[specificStudent.StudentId]) {
                 const courseGroupsList = courseGroups[courseId];
-                const randomGroup = courseGroupsList[Math.floor(Math.random() * courseGroupsList.length)];
-                groupStudents.push({
-                    StudentId: student.StudentId,
-                    GroupId: randomGroup.GroupId,
-                    JoinDate: new Date(),
-                });
+                if (courseGroupsList && courseGroupsList.length > 0) {
+                    const randomGroup = courseGroupsList[Math.floor(Math.random() * courseGroupsList.length)];
+                    groupStudents.push({
+                        StudentId: specificStudent.StudentId,
+                        GroupId: randomGroup.GroupId,
+                        JoinDate: new Date(),
+                    });
+                }
             }
         }
+
+        for (const student of students) {
+            if (specificStudent && student.StudentId === specificStudent.StudentId) {
+                continue;
+            }
+
+            const numCourses = Math.floor(Math.random() * 2) + 1;
+            const selectedCourses = [...courses].sort(() => 0.5 - Math.random()).slice(0, numCourses);
+            studentCourses[student.StudentId] = selectedCourses.map(c => c.CourseId);
+
+            for (const courseId of studentCourses[student.StudentId]) {
+                const courseGroupsList = courseGroups[courseId];
+                if (courseGroupsList && courseGroupsList.length > 0) {
+                    const randomGroup = courseGroupsList[Math.floor(Math.random() * courseGroupsList.length)];
+                    groupStudents.push({
+                        StudentId: student.StudentId,
+                        GroupId: randomGroup.GroupId,
+                        JoinDate: new Date(),
+                    });
+                }
+            }
+        }
+
         await models.GroupStudent.bulkCreate(groupStudents, { transaction });
 
         // PlannedLessons
@@ -243,7 +347,9 @@ async function populateDbForTeacher(user_id) {
             Amount: studentTrophies[student.StudentId],
         }));
 
-        await models.Trophies.bulkCreate(trophies, { transaction });
+        for (const trophyData of trophies) {
+          await models.Trophies.upsert(trophyData, { transaction });
+        }
 
         // HomeTasks
         const twoMonthsAgo = new Date(today); twoMonthsAgo.setMonth(today.getMonth() - 2);
@@ -634,10 +740,12 @@ async function populateDbForTeacher(user_id) {
         await transaction.commit();
         console.log('База даних успішно заповнена!');
     } catch (error) {
-        await transaction.rollback();
+        if (transaction && !transaction.finished) {
+            await transaction.rollback();
+        }
         console.error('Помилка при заповненні бази даних:', error);
         throw error;
     }
 }
 
-module.exports = populateDbForTeacher;
+module.exports = {populateDbForTeacher, populateDbForStudent};
