@@ -17,7 +17,16 @@ services:
       - DB_HOST=mysql
       - REDIS_HOST=redis
       - REDIS_PORT=6379
+    command: >
+      sh -c "
+        until nc -z mysql 3306; do 
+          echo 'Waiting for MySQL...'; 
+          sleep 1; 
+        done && 
+        npx sequelize-cli db:migrate && 
+        node /tutor-crm-backend/src/server.js"
     restart: on-failure
+
 
   mysql:
     image: mysql:8.0
@@ -30,7 +39,7 @@ services:
       - mysql_data:/var/lib/mysql
       - ./seeders:/docker-entrypoint-initdb.d
     ports:
-      - '3307:3306'
+      - "3307:3306"
     networks:
       - monitoring
 
@@ -39,7 +48,7 @@ services:
     container_name: redis-cache
     restart: always
     ports:
-      - '6379:6379'
+      - "6379:6379"
     volumes:
       - redis_data:/data
     networks:

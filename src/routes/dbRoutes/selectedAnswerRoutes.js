@@ -103,7 +103,7 @@ router.get('/:id', selectedAnswerController.getSelectedAnswerById);
  *     requestBody:
  *       required: true
  *       content:
- *         application/json
+ *         application/json:
  *           schema:
  *             $ref: '#/components/schemas/SelectedAnswer'
  *     responses:
