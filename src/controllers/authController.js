@@ -136,16 +136,18 @@ const oauthCallback = async (req, res) => {
         const user = req.user;
         const token = authService.loginToOuth2(user);
         logger.info(`OAuth login successful for user: ${user}`);
-         console.log(user);
+         console.log("user: ", user);
           
         if (user.UserId) {
-            const isTeacher=teacherContoller.checkIfTeacher(user.UserId)
+            const isTeacher=teacherContoller.checkIfTeacher(user.UserId);
+
+            console.log("----- url_params: ", `http://localhost:3000/auth/login/${token}`);
  
             if(isTeacher)
-                 res.redirect(`http://localhost:3000/teacher/home?token=${token}`);
+                 res.redirect(`http://localhost:3000/auth/login/${token}/${isTeacher}`);
 
             else
-                res.redirect(`http://localhost:3000/student/home?token=${token}`);
+                res.redirect(`http://localhost:3000/auth/login/${token}/${isTeacher}`);
              
             
         } else {
