@@ -1,6 +1,9 @@
 const authService = require('../services/authService');
 const logger = require('../utils/logger');
 const teacherContoller=require('./dbControllers/teacherController');
+
+require('dotenv').config();
+
 //регистрация
 const register = async (req, res) => {
     try {
@@ -141,23 +144,23 @@ const oauthCallback = async (req, res) => {
         if (user.UserId) {
             const isTeacher=teacherContoller.checkIfTeacher(user.UserId);
 
-            console.log("----- url_params: ", `http://localhost:3000/auth/login/${token}`);
+            console.log("----- url_params: ", `${process.env.BASE_REACT_URL}/auth/login/${token}`);
  
             if(isTeacher)
-                 res.redirect(`http://localhost:3000/auth/login/${token}/${isTeacher}`);
+                 res.redirect(`${process.env.BASE_REACT_URL}/auth/login/${token}/${isTeacher}`);
 
             else
-                res.redirect(`http://localhost:3000/auth/login/${token}/${isTeacher}`);
+                res.redirect(`${process.env.BASE_REACT_URL}/auth/login/${token}/${isTeacher}`);
              
             
         } else {
             const firstName = user.Firstname || '';
             const lastName = user.Lastname || '';
-            res.redirect(`http://localhost:3000/auth/register?token=${token}&email=${user.Email}&firstName=${firstName}&lastName=${lastName}`);
+            res.redirect(`${process.env.BASE_REACT_URL}/auth/register?token=${token}&email=${user.Email}&firstName=${firstName}&lastName=${lastName}`);
         }
     } catch (error) {
         logger.error(`OAuth login error: ${error.message}`);
-        res.redirect(`http://localhost:3000/auth/login?error=${encodeURIComponent(error.message)}`);
+        res.redirect(`${process.env.BASE_REACT_URL}/auth/login?error=${encodeURIComponent(error.message)}`);
     }
 };
 
